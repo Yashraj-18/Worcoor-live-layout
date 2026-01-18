@@ -1096,7 +1096,7 @@ export default function BulkUploadPage() {
           <CardTitle>Upload Instructions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
               <h4 className="font-medium mb-2">CSV Format Requirements:</h4>
               <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
@@ -1114,6 +1114,273 @@ export default function BulkUploadPage() {
                 <li>Include clear column headers</li>
                 <li>Avoid merged cells and complex formatting</li>
               </ul>
+            </div>
+            
+            {/* Demo Headers Section */}
+            <div className="space-y-6">
+              <div className="text-center">
+                <h4 className="font-medium text-xl text-gray-900">Demo Tables & Data Structure</h4>
+                <p className="text-sm text-gray-600 mt-1">Copy these tables to create properly formatted CSV/Excel files</p>
+              </div>
+              
+              {/* SKUs Demo Table */}
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                    <Package className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-lg text-blue-900">SKUs Demo Table</h5>
+                    <p className="text-sm text-blue-700">Stock Keeping Units - Complete data structure</p>
+                  </div>
+                </div>
+                
+                <div className="bg-white rounded-lg p-4 border border-blue-200 overflow-x-auto">
+                  <table className="min-w-full text-xs">
+                    <thead className="bg-blue-50 border-b border-blue-200">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">sku_id</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">name</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">description</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">category</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">type</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">available_quantity</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">min_quantity</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">unit_cost</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">currency</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">unit_weight</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">weight_unit</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">quality_rating</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">quality_check_done</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">location</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">department</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">brand</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">sku_code</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">procured_date</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">wastage_quantity</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">tagged_for_production</th>
+                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">total_procured</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-blue-100">
+                      <tr className="hover:bg-blue-50">
+                        <td className="px-3 py-2 text-gray-700 font-mono">SKU-001</td>
+                        <td className="px-3 py-2 text-gray-700">Oak Wood Panel</td>
+                        <td className="px-3 py-2 text-gray-700">High-quality oak wood panel for furniture</td>
+                        <td className="px-3 py-2 text-gray-700">Wood</td>
+                        <td className="px-3 py-2 text-gray-700">Primary</td>
+                        <td className="px-3 py-2 text-gray-700">150</td>
+                        <td className="px-3 py-2 text-gray-700">20</td>
+                        <td className="px-3 py-2 text-gray-700">45.50</td>
+                        <td className="px-3 py-2 text-gray-700">USD</td>
+                        <td className="px-3 py-2 text-gray-700">2.5</td>
+                        <td className="px-3 py-2 text-gray-700">kg</td>
+                        <td className="px-3 py-2 text-gray-700">A</td>
+                        <td className="px-3 py-2 text-gray-700">true</td>
+                        <td className="px-3 py-2 text-gray-700">U1-W1-Z2-R3</td>
+                        <td className="px-3 py-2 text-gray-700">Materials</td>
+                        <td className="px-3 py-2 text-gray-700">Premium Woods Co.</td>
+                        <td className="px-3 py-2 text-gray-700">OWP-001</td>
+                        <td className="px-3 py-2 text-gray-700">2024-01-15</td>
+                        <td className="px-3 py-2 text-gray-700">5</td>
+                        <td className="px-3 py-2 text-gray-700">30</td>
+                        <td className="px-3 py-2 text-gray-700">180</td>
+                      </tr>
+                      <tr className="hover:bg-blue-50">
+                        <td className="px-3 py-2 text-gray-700 font-mono">SKU-002</td>
+                        <td className="px-3 py-2 text-gray-700">Steel Beam</td>
+                        <td className="px-3 py-2 text-gray-700">Structural steel beam for construction</td>
+                        <td className="px-3 py-2 text-gray-700">Metal</td>
+                        <td className="px-3 py-2 text-gray-700">Primary</td>
+                        <td className="px-3 py-2 text-gray-700">75</td>
+                        <td className="px-3 py-2 text-gray-700">10</td>
+                        <td className="px-3 py-2 text-gray-700">120.00</td>
+                        <td className="px-3 py-2 text-gray-700">USD</td>
+                        <td className="px-3 py-2 text-gray-700">15.0</td>
+                        <td className="px-3 py-2 text-gray-700">kg</td>
+                        <td className="px-3 py-2 text-gray-700">A</td>
+                        <td className="px-3 py-2 text-gray-700">true</td>
+                        <td className="px-3 py-2 text-gray-700">U2-W1-Z1-R1</td>
+                        <td className="px-3 py-2 text-gray-700">Construction</td>
+                        <td className="px-3 py-2 text-gray-700">Steel Works Inc.</td>
+                        <td className="px-3 py-2 text-gray-700">SB-001</td>
+                        <td className="px-3 py-2 text-gray-700">2024-01-10</td>
+                        <td className="px-3 py-2 text-gray-700">2</td>
+                        <td className="px-3 py-2 text-gray-700">15</td>
+                        <td className="px-3 py-2 text-gray-700">90</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Locations Demo Table */}
+              <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-6 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 bg-green-500 rounded-lg flex items-center justify-center">
+                    <Database className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-lg text-green-900">Locations Demo Table</h5>
+                    <p className="text-sm text-green-700">Location Tags & Categories - Complete data structure</p>
+                  </div>
+                </div>
+                
+                <div className="bg-white rounded-lg p-4 border border-green-200 overflow-x-auto">
+                  <table className="min-w-full text-xs">
+                    <thead className="bg-green-50 border-b border-green-200">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">location_id</th>
+                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">name</th>
+                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">description</th>
+                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">category</th>
+                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">capacity</th>
+                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">unit</th>
+                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">zone</th>
+                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">type</th>
+                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-green-100">
+                      <tr className="hover:bg-green-50">
+                        <td className="px-3 py-2 text-gray-700 font-mono">LOC-001</td>
+                        <td className="px-3 py-2 text-gray-700">Warehouse Zone A</td>
+                        <td className="px-3 py-2 text-gray-700">Main storage area for finished goods</td>
+                        <td className="px-3 py-2 text-gray-700">Storage</td>
+                        <td className="px-3 py-2 text-gray-700">1000</td>
+                        <td className="px-3 py-2 text-gray-700">pieces</td>
+                        <td className="px-3 py-2 text-gray-700">Zone A</td>
+                        <td className="px-3 py-2 text-gray-700">Storage</td>
+                        <td className="px-3 py-2 text-gray-700">Active</td>
+                      </tr>
+                      <tr className="hover:bg-green-50">
+                        <td className="px-3 py-2 text-gray-700 font-mono">LOC-002</td>
+                        <td className="px-3 py-2 text-gray-700">Cold Storage Unit</td>
+                        <td className="px-3 py-2 text-gray-700">Temperature-controlled storage for perishables</td>
+                        <td className="px-3 py-2 text-gray-700">Cold Storage</td>
+                        <td className="px-3 py-2 text-gray-700">500</td>
+                        <td className="px-3 py-2 text-gray-700">boxes</td>
+                        <td className="px-3 py-2 text-gray-700">Zone B</td>
+                        <td className="px-3 py-2 text-gray-700">Cold Storage</td>
+                        <td className="px-3 py-2 text-gray-700">Active</td>
+                      </tr>
+                      <tr className="hover:bg-green-50">
+                        <td className="px-3 py-2 text-gray-700 font-mono">LOC-003</td>
+                        <td className="px-3 py-2 text-gray-700">Hazardous Materials Area</td>
+                        <td className="px-3 py-2 text-gray-700">Secure storage for hazardous chemicals</td>
+                        <td className="px-3 py-2 text-gray-700">Hazardous</td>
+                        <td className="px-3 py-2 text-gray-700">200</td>
+                        <td className="px-3 py-2 text-gray-700">containers</td>
+                        <td className="px-3 py-2 text-gray-700">Zone C</td>
+                        <td className="px-3 py-2 text-gray-700">Hazardous Storage</td>
+                        <td className="px-3 py-2 text-gray-700">Active</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Assets Demo Table */}
+              <div className="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-6 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-lg text-purple-900">Assets Demo Table</h5>
+                    <p className="text-sm text-purple-700">Asset & Equipment Management - Complete data structure</p>
+                  </div>
+                </div>
+                
+                <div className="bg-white rounded-lg p-4 border border-purple-200 overflow-x-auto">
+                  <table className="min-w-full text-xs">
+                    <thead className="bg-purple-50 border-b border-purple-200">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">asset_id</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">name</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">description</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">category</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">type</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">location</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">serial_number</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">manufacturer</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">model</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">purchase_cost</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">currency</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">purchase_date</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">status</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">maintenance_schedule</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">last_maintenance</th>
+                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">next_maintenance</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-purple-100">
+                      <tr className="hover:bg-purple-50">
+                        <td className="px-3 py-2 text-gray-700 font-mono">ASSET-001</td>
+                        <td className="px-3 py-2 text-gray-700">Forklift Machine</td>
+                        <td className="px-3 py-2 text-gray-700">Industrial forklift for warehouse operations</td>
+                        <td className="px-3 py-2 text-gray-700">Equipment</td>
+                        <td className="px-3 py-2 text-gray-700">Lifting Machine</td>
+                        <td className="px-3 py-2 text-gray-700">Warehouse A</td>
+                        <td className="px-3 py-2 text-gray-700">FL-001</td>
+                        <td className="px-3 py-2 text-gray-700">Caterpillar</td>
+                        <td className="px-3 py-2 text-gray-700">CF500</td>
+                        <td className="px-3 py-2 text-gray-700">25000.00</td>
+                        <td className="px-3 py-2 text-gray-700">USD</td>
+                        <td className="px-3 py-2 text-gray-700">2023-01-15</td>
+                        <td className="px-3 py-2 text-gray-700">Active</td>
+                        <td className="px-3 py-2 text-gray-700">Quarterly</td>
+                        <td className="px-3 py-2 text-gray-700">2024-12-01</td>
+                        <td className="px-3 py-2 text-gray-700">2025-03-01</td>
+                      </tr>
+                      <tr className="hover:bg-purple-50">
+                        <td className="px-3 py-2 text-gray-700 font-mono">ASSET-002</td>
+                        <td className="px-3 py-2 text-gray-700">Conveyor Belt System</td>
+                        <td className="px-3 py-2 text-gray-700">Automated conveyor for material handling</td>
+                        <td className="px-3 py-2 text-gray-700">Equipment</td>
+                        <td className="px-3 py-2 text-gray-700">Conveyor</td>
+                        <td className="px-3 py-2 text-gray-700">Production Line 1</td>
+                        <td className="px-3 py-2 text-gray-700">CV-001</td>
+                        <td className="px-3 py-2 text-gray-700">FlexLink</td>
+                        <td className="px-3 py-2 text-gray-700">X-250</td>
+                        <td className="px-3 py-2 text-gray-700">45000.00</td>
+                        <td className="px-3 py-2 text-gray-700">USD</td>
+                        <td className="px-3 py-2 text-gray-700">2023-06-20</td>
+                        <td className="px-3 py-2 text-gray-700">Active</td>
+                        <td className="px-3 py-2 text-gray-700">Monthly</td>
+                        <td className="px-3 py-2 text-gray-700">2024-12-15</td>
+                        <td className="px-3 py-2 text-gray-700">2025-01-15</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Important Notes */}
+              <div className="bg-gradient-to-r from-amber-50 to-orange-100 border border-amber-200 rounded-xl p-6 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="h-8 w-8 bg-amber-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                    <AlertCircle className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-lg text-amber-900 mb-3">Important Notes</h5>
+                    <div className="space-y-2 text-sm text-amber-800">
+                      <div className="flex items-start gap-2">
+                        <div className="h-1.5 w-1.5 bg-amber-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                        <p><strong>Update Operations:</strong> Include the ID field (sku_id, location_id, or asset_id) to identify existing records that need updating.</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="h-1.5 w-1.5 bg-amber-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                        <p><strong>Delete Operations:</strong> Only the ID field is required to remove records from the system.</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="h-1.5 w-1.5 bg-amber-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                        <p><strong>Create Operations:</strong> All fields are optional except name. The system will auto-generate IDs if not provided.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>

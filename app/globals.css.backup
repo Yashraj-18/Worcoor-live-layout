@@ -1,0 +1,297 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Simple fade animation for dropdowns */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Apply fade-in animation to dialogs, popups, and dropdowns */
+.dialog-animation,
+[data-state='open'] {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Fix for radix dropdown content positioning */
+[data-radix-popper-content-wrapper] {
+  opacity: 0;
+  animation: fadeIn 0.2s ease-out forwards;
+  /* This ensures the dropdown appears immediately at its final position */
+  transition: none !important;
+}
+
+/* Globle remove focus outlines */
+*:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --modal:0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --radius: 0.5rem;
+    /* Chart colors */
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    /* Sidebar colors */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    --darkblue: 222 47% 11%;
+    --darkblue-foreground:222 32.6% 18.55%;
+  }
+}
+
+@layer base {
+  .dark {
+     --background:218.4 36.23% 13.53%;
+    /* --background:217.5 54.33% 5.85%; */
+    /* --background: 0 0% 3.9%; */
+    --modal:218.4 36.23% 13.53%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 30.62%;
+    --ring: 0 0% 83.1%;
+    /* Chart colors */
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    /* Sidebar colors */
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    --darkblue:216.43 31.82% 17.25%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+   *:focus {
+    @apply border-input !important;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .h-fill-available {
+    height: -webkit-fill-available;
+  }
+  
+  .scrollbar-thumb-hover::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    transition: background-color 0.3s ease;
+  }
+
+  .scrollbar-thumb-hover:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 100, 100, 0.5);
+  }
+  /* .dark-scrollbar-thumb-hover:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(182, 182, 182, 0.5);
+  } */
+}
+
+/* Custom scrollbar styling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (max-width: 768px) {
+.responsive-table,
+  .responsive-table thead,
+  .responsive-table tbody,
+  .responsive-table th,
+  .responsive-table td,
+  .responsive-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .responsive-table thead {
+    display: none;
+  }
+
+  .responsive-table tr {
+    margin-bottom: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    background: #fff;
+  }
+
+  .responsive-table td {
+    display: block;
+    padding: 0.5rem 0;
+    border: none;
+    text-align: left;
+  }
+
+  .responsive-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-weight: 600;
+    color: #4b5563; /* Tailwind gray-600 */
+    margin-bottom: 0.25rem;
+  }
+}
+
+
+input[type="datetime-local"] {
+  background-color: white;
+  color: black;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 8px;
+  accent-color: red; /* Works in some browsers only */
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow,
+    transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+:deep(.outer-div > div) {
+  @apply !rounded-none !border-0 !bg-transparent !shadow-none;
+}
+.outer-div > div{
+border: none !important;
+background-color: transparent !important;
+box-shadow: none !important;
+}
+
+/* Glass effect utility */
+.glass-effect {
+  backdrop-filter: blur(16px) saturate(180%);
+  background-color: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.125);
+}
+
+.dark .glass-effect {
+  background-color: rgba(17, 25, 40, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.125);
+}
+
+/* Custom scrollbar styling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom scrollbar for sidebar */
+*::-webkit-scrollbar {
+  width: 2px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: hsl(222.22deg 47.37% 11.18% / 39%);
+  border-radius: 2px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(222.22deg 47.37% 11.18% / 39%);
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow,
+    transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Glass effect utility */
+.glass-effect {
+  backdrop-filter: blur(16px) saturate(180%);
+  background-color: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.125);
+}
+
+.dark .glass-effect {
+  background-color: rgba(17, 25, 40, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.125);
+}
+
+.nextjs-toast{
+  left:none !important;
+  right:20px;
+}

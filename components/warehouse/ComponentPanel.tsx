@@ -230,7 +230,8 @@ const ComponentPanel = () => {
     'Shapes': false,
     'Layout Boundaries': true,
     'Zone Types': true,
-    'Unit Types': true
+    'Unit Types': true,
+    'Common Areas': false
   });
 
   const toggleCategory = (categoryName: string) => {

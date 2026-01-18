@@ -19,7 +19,13 @@ export const COMPONENT_TYPES = {
   STORAGE_UNIT: 'storage_unit',
   SKU_HOLDER: 'sku_holder',
   VERTICAL_SKU_HOLDER: 'vertical_sku_holder',
-  SPARE_UNIT: 'spare_unit'
+  SPARE_UNIT: 'spare_unit',
+  
+  // Common Areas
+  FIRE_EXIT_MARKING: 'fire_exit_marking',
+  SECURITY_AREA: 'security_area',
+  RESTROOMS_AREA: 'restrooms_area',
+  PATHWAYS_ARROWS: 'pathways_arrows'
 };
 
 // Drag and drop types
@@ -308,6 +314,87 @@ export const WAREHOUSE_COMPONENTS = [
         allowEmpty: true,
         hasSku: true,
         singleSku: true
+      }
+    ]
+  },
+  {
+    category: "Common Areas",
+    icon: "🏢",
+    priority: "medium",
+    expanded: false,
+    components: [
+      {
+        type: COMPONENT_TYPES.FIRE_EXIT_MARKING,
+        name: "Fire Exit Marking",
+        icon: "🚪",
+        color: "#F44336", // Red for fire safety
+        defaultSize: { width: 120, height: 60 }, // 2×1 grid blocks
+        description: "Fire exit safety marking for emergency evacuation routes",
+        priority: "high",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
+        maxSize: { width: 240, height: 120 }, // Maximum 4×2 grid blocks
+        isSafetyFeature: true,
+        isPathway: true
+      },
+      {
+        type: COMPONENT_TYPES.SECURITY_AREA,
+        name: "Security Area",
+        icon: "🔒",
+        color: "#9C27B0", // Purple for security
+        defaultSize: { width: 180, height: 120 }, // 3×2 grid blocks
+        description: "Security monitoring and access control area",
+        priority: "high",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 120, height: 120 }, // Minimum 2×2 grid blocks
+        maxSize: { width: 300, height: 240 }, // Maximum 5×4 grid blocks
+        isRestricted: true,
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 8
+      },
+      {
+        type: COMPONENT_TYPES.RESTROOMS_AREA,
+        name: "Restrooms Area",
+        icon: "🚻",
+        color: "#607D8B", // Blue Gray for facilities
+        defaultSize: { width: 120, height: 120 }, // 2×2 grid blocks
+        description: "Restroom facilities area for warehouse personnel",
+        priority: "medium",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 120, height: 120 }, // Minimum 2×2 grid blocks
+        maxSize: { width: 240, height: 240 }, // Maximum 4×4 grid blocks
+        isFacility: true,
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 8
+      },
+      {
+        type: COMPONENT_TYPES.PATHWAYS_ARROWS,
+        name: "Pathways Arrows",
+        icon: "➡️",
+        color: "#FF9800", // Orange for directional guidance
+        defaultSize: { width: 180, height: 60 }, // 3×1 grid blocks
+        description: "Directional arrows for pathway and traffic flow guidance",
+        priority: "medium",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
+        maxSize: { width: 360, height: 120 }, // Maximum 6×2 grid blocks
+        isDirectional: true,
+        isPathway: true,
+        rotatable: true
       }
     ]
   }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { ShoppingCart, ReceiptText, FilePlus, BarChart3, Bell, ChevronRight, ClipboardList, Cog, Database, FileText, LayoutDashboard, Package, Users, Layers, Truck, ChevronLeft, LineChart, Trash, Activity, PackageSearch } from "lucide-react"
+import { ShoppingCart, ReceiptText, FilePlus, BarChart3, Bell, ChevronRight, Database, FileText, LayoutDashboard, Layers, Truck, ChevronLeft, LineChart, Trash, Activity, PackageSearch } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { ThemeSwitcher } from "@/components/theme-switcher"
@@ -56,49 +56,7 @@ export function DashboardSidebar({ isOpen, toggle }: SidebarProps) {
       href: "/dashboard",
       icon: LayoutDashboard,
     },
-    // Admin Panel Menu
-    {
-      title: "Admin Panel",
-      href: "/dashboard/admin",
-      icon: Users,
-    },
-    {
-      title: "Role Management",
-      href: "/dashboard/admin/roles",
-      icon: ClipboardList,
-      parent: "Admin Panel",
-    },
-    {
-      title: "User Management",
-      href: "/dashboard/admin/users",
-      icon: Users,
-      parent: "Admin Panel",
-    },
-    {
-      title: "System Settings",
-      href: "/dashboard/admin/settings",
-      icon: Cog,
-      parent: "Admin Panel",
-    },
-    // Product Management Menu
-    {
-      title: "Product Management",
-      href: "/dashboard/product-manager",
-      icon: Package,
-    },
-    {
-      title: "Product Definition",
-      href: "/dashboard/product-manager/products",
-      icon: Package,
-      parent: "Product Management",
-    },
-    // {
-    //   title: "Manufacturing Process",
-    //   href: "/dashboard/product-manager/manufacturing",
-    //   icon: Truck,
-    //   parent: "Product Management",
-    // },
-    // Task Management Menu
+                // Task Management Menu
     // {
     //   title: "Task Management",
     //   href: "/dashboard/task-manager",
@@ -167,13 +125,13 @@ export function DashboardSidebar({ isOpen, toggle }: SidebarProps) {
     {
       title: "Location Tags",
       href: "/dashboard/reference-data/location-tags",
-      icon: Package,
+      icon: Database,
       parent: "Reference Data Management",
     },
     {
       title: "Asset Management",
       href: "/dashboard/reference-data/asset-management",
-      icon: Package,
+      icon: Database,
       parent: "Reference Data Management",
     },
     // {

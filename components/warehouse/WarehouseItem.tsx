@@ -1001,6 +1001,64 @@ const WarehouseItem = ({
           </div>
       )}
 
+      {/* Security Area - Custom Image Display */}
+      {item.type === 'security_area' && (
+        <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              borderRadius: '4px'
+              // No backgroundColor - let image show through
+            }}
+            title="Security Area - Access Control and Monitoring"
+          >
+            {/* Security Area Image */}
+            <img
+              src="/assets/images/icons/security-area.png"
+              alt="Security Area"
+              style={{
+                width: '90%',
+                height: '60px', // Fixed height to 60px as expected
+                objectFit: 'contain', // Show full image properly
+                borderRadius: '2px',
+                backgroundColor: '#FFFFFF' // Ensure white background
+              }}
+              onError={(e) => {
+                console.error('Failed to load security area image, showing fallback');
+                // Show fallback text
+                e.target.style.display = 'none';
+                const fallback = document.createElement('div');
+                fallback.innerHTML = `
+                  <div style="
+                    background-color: #9C27B0;
+                    color: white;
+                    font-weight: bold;
+                    text-align: center;
+                    padding: 10px;
+                    font-size: 12px;
+                    border-radius: 4px;
+                    width: 90%;
+                    height: 60px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  ">
+                    🔒<br/>SECURITY
+                  </div>
+                `;
+                e.target.parentNode.appendChild(fallback);
+              }}
+            />
+          </div>
+      )}
+
       {/* SKU compartment grid rendering for SKU Holder components */}
       {renderCompartmentGrid()}
       {hoverTooltip && <HoverInfoTooltip tooltip={hoverTooltip} />}

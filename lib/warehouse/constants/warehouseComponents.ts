@@ -510,17 +510,17 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.SECURITY_AREA,
         name: "Security Area",
-        icon: "🔒",
+        icon: "/assets/images/icons/security-area.png",
         color: "#9C27B0", // Purple for security
-        defaultSize: { width: 180, height: 120 }, // 3×2 grid blocks
+        defaultSize: { width: 180, height: 60 }, // 3×1 grid blocks
         description: "Security monitoring and access control area",
         priority: "high",
         snapToGrid: true,
         gridAligned: true,
         gridStep: 60,
         resizable: true,
-        minSize: { width: 120, height: 120 }, // Minimum 2×2 grid blocks
-        maxSize: { width: 300, height: 240 }, // Maximum 5×4 grid blocks
+        minSize: { width: 120, height: 60 }, // Minimum 2×1 grid blocks
+        maxSize: { width: 300, height: 120 }, // Maximum 5×2 grid blocks
         isRestricted: true,
         isContainer: true,
         containerLevel: 2,

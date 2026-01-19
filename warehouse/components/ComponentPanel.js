@@ -72,7 +72,13 @@ const DraggableComponent = ({ component }) => {
               // Fallback to emoji
               e.target.style.display = 'none';
               const fallback = document.createElement('span');
-              fallback.textContent = component.icon === '/assets/images/icons/fire-exit.jpg' ? '🚪' : '📦';
+              if (component.icon === '/assets/images/icons/fire-exit.jpg') {
+                fallback.textContent = '🚪';
+              } else if (component.icon === '/assets/images/icons/office-space.png') {
+                fallback.textContent = '🏢';
+              } else {
+                fallback.textContent = '📦';
+              }
               fallback.style.fontSize = '16px';
               e.target.parentNode.appendChild(fallback);
             }}

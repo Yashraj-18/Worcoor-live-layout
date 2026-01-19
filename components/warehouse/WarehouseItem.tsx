@@ -330,7 +330,7 @@ const WarehouseItem = ({
     }
 
     const inventoryEntries = item.inventoryData?.inventory || [];
-    const isStorageComponent = ['storage_unit', 'sku_holder', 'vertical_sku_holder', 'storage_zone', 'container_unit'].includes(item.type);
+    const isStorageComponent = ['storage_unit', 'sku_holder', 'vertical_sku_holder', 'storage_zone', 'container_unit', 'cold_storage', 'open_storage_space', 'dispatch_staging_area', 'grading_area', 'packaging_area'].includes(item.type);
     const maxCapacity = isStorageComponent ? (item.inventoryData?.capacity ?? item.capacity ?? null) : null;
     const totalInventoryQuantity = inventoryEntries.reduce((sum, entry) => {
       const value = entry?.availableQuantity ?? entry?.quantity ?? 0;
@@ -479,12 +479,13 @@ const WarehouseItem = ({
     const cellWidth = cols > 0 ? (item.width - gap * (cols - 1)) / cols : item.width;
     const cellHeight = rows > 0 ? (item.height - gap * (rows - 1)) / rows : item.height;
     const isVertical = item.type === 'vertical_sku_holder';
-    const filledFill = isVertical ? '#FFE0B2' : '#E0F7FA';
-    const emptyFill = isVertical ? '#FFF3E0' : '#E3F2FD';
+    const isOfficeSpace = item.type === 'office_space_area';
+    const filledFill = isVertical ? '#FFE0B2' : (isOfficeSpace ? 'transparent' : '#E0F7FA');
+    const emptyFill = isVertical ? '#FFF3E0' : (isOfficeSpace ? 'transparent' : '#E3F2FD');
     const highlightFill = '#FFF9C4';
-    const hoverFillOccupied = isVertical ? '#FFCC80' : '#B2EBF2';
-    const hoverFillEmpty = isVertical ? '#FFE0CC' : '#BBDEFB';
-    const textColor = isVertical ? '#E65100' : '#006064';
+    const hoverFillOccupied = isVertical ? '#FFCC80' : (isOfficeSpace ? 'rgba(96, 125, 139, 0.1)' : '#B2EBF2');
+    const hoverFillEmpty = isVertical ? '#FFE0CC' : (isOfficeSpace ? 'rgba(96, 125, 139, 0.05)' : '#BBDEFB');
+    const textColor = isVertical ? '#E65100' : (isOfficeSpace ? '#607D8B' : '#006064');
 
     const resolveLabel = (compartmentData) => {
       if (!compartmentData) {
@@ -590,17 +591,32 @@ const WarehouseItem = ({
                 strokeWidth={borderWidth}
                 rx={1.5}
               />
-              <text
-                x={x + cellWidth / 2}
-                y={y + cellHeight / 2 + fontSize * 0.35}
-                textAnchor="middle"
-                fontSize={fontSize}
-                fontWeight={compartmentData ? 600 : 500}
-                fill={isCompartmentHighlighted ? '#1B5E20' : textColor}
-                style={{ pointerEvents: 'none' }}
-              >
-                {label}
-              </text>
+              {/* Show office-space image for Office Space Area components */}
+              {isOfficeSpace && (
+                <image
+                  x={x + cellWidth * 0.1}
+                  y={y + cellHeight * 0.1}
+                  width={cellWidth * 0.8}
+                  height={cellHeight * 0.8}
+                  href="/assets/images/icons/office-space.png"
+                  preserveAspectRatio="xMidYMid meet"
+                  style={{ pointerEvents: 'none' }}
+                />
+              )}
+              {/* Show text label for non-office-space components or when compartment has data */}
+              {(!isOfficeSpace || compartmentData) && (
+                <text
+                  x={x + cellWidth / 2}
+                  y={y + cellHeight / 2 + fontSize * 0.35}
+                  textAnchor="middle"
+                  fontSize={fontSize}
+                  fontWeight={compartmentData ? 600 : 500}
+                  fill={isCompartmentHighlighted ? '#1B5E20' : textColor}
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {label}
+                </text>
+              )}
             </g>
           );
         })}
@@ -634,10 +650,31 @@ const WarehouseItem = ({
       return;
     }
 
-    // Handle Storage Unit / Spare Unit Location assignment
+    // Handle Storage Unit / Spare Unit / Cold Storage / Open Storage Space / Dispatch Staging Area / Grading Area / Packaging Area Location assignment
     const isSingleSkuUnit = (item.type === 'storage_unit' || item.type === 'spare_unit') && item.hasSku && item.singleSku;
-    if (isSingleSkuUnit && onRequestSkuId && !item.locationId) {
-      const selectorId = item.type === 'spare_unit' ? 'spare-unit' : 'single-sku';
+    const isColdStorageUnit = item.type === 'cold_storage';
+    const isOpenStorageUnit = item.type === 'open_storage_space';
+    const isDispatchStagingUnit = item.type === 'dispatch_staging_area';
+    const isGradingUnit = item.type === 'grading_area';
+    const isPackagingUnit = item.type === 'packaging_area';
+    
+    if ((isSingleSkuUnit || isColdStorageUnit || isOpenStorageUnit || isDispatchStagingUnit || isGradingUnit || isPackagingUnit) && onRequestSkuId && !item.locationId) {
+      let selectorId;
+      if (item.type === 'spare_unit') {
+        selectorId = 'spare-unit';
+      } else if (item.type === 'cold_storage') {
+        selectorId = 'cold-storage';
+      } else if (item.type === 'open_storage_space') {
+        selectorId = 'open-storage';
+      } else if (item.type === 'dispatch_staging_area') {
+        selectorId = 'dispatch-staging';
+      } else if (item.type === 'grading_area') {
+        selectorId = 'grading';
+      } else if (item.type === 'packaging_area') {
+        selectorId = 'packaging';
+      } else {
+        selectorId = 'single-sku';
+      }
       onRequestSkuId(item.id, selectorId, 0, 0);
       return;
     }
@@ -1059,6 +1096,238 @@ const WarehouseItem = ({
           </div>
       )}
 
+      {/* Restrooms Area - Custom Image Display */}
+      {item.type === 'restrooms_area' && (
+        <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              borderRadius: '4px'
+              // No backgroundColor - let image show through
+            }}
+            title="Restrooms Area - Warehouse Personnel Facilities"
+          >
+            {/* Restrooms Area Image */}
+            <img
+              src="/assets/images/icons/restroom.png"
+              alt="Restrooms Area"
+              style={{
+                width: '90%',
+                height: '60px', // Fixed height to 60px as expected
+                objectFit: 'contain', // Show full image properly
+                borderRadius: '2px',
+                backgroundColor: '#FFFFFF' // Ensure white background
+              }}
+              onError={(e) => {
+                console.error('Failed to load restrooms area image, showing fallback');
+                // Show fallback text
+                e.target.style.display = 'none';
+                const fallback = document.createElement('div');
+                fallback.innerHTML = `
+                  <div style="
+                    background-color: #607D8B;
+                    color: white;
+                    font-weight: bold;
+                    text-align: center;
+                    padding: 10px;
+                    font-size: 12px;
+                    border-radius: 4px;
+                    width: 90%;
+                    height: 60px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  ">
+                    🚻<br/>RESTROOM
+                  </div>
+                `;
+                e.target.parentNode.appendChild(fallback);
+              }}
+            />
+          </div>
+      )}
+
+      {/* Seating Area - Custom Image Display */}
+      {item.type === 'seating_area' && (
+        <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              borderRadius: '4px'
+              // No backgroundColor - let image show through
+            }}
+            title="Seating Area - Informal Gatherings Space"
+          >
+            {/* Seating Area Image */}
+            <img
+              src="/assets/images/icons/seating-area.png"
+              alt="Seating Area"
+              style={{
+                width: '90%',
+                height: '60px', // Fixed height to 60px as expected
+                objectFit: 'contain', // Show full image properly
+                borderRadius: '2px',
+                backgroundColor: '#FFFFFF' // Ensure white background
+              }}
+              onError={(e) => {
+                console.error('Failed to load seating area image, showing fallback');
+                // Show fallback text
+                e.target.style.display = 'none';
+                const fallback = document.createElement('div');
+                fallback.innerHTML = `
+                  <div style="
+                    background-color: #607D8B;
+                    color: white;
+                    font-weight: bold;
+                    text-align: center;
+                    padding: 10px;
+                    font-size: 12px;
+                    border-radius: 4px;
+                    width: 90%;
+                    height: 60px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  ">
+                    🪑<br/>SEATING
+                  </div>
+                `;
+                e.target.parentNode.appendChild(fallback);
+              }}
+            />
+          </div>
+      )}
+
+      {/* Dispatch Gates - Custom Image Display */}
+      {item.type === 'dispatch_gates' && (
+        <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              borderRadius: '4px'
+              // No backgroundColor - completely transparent
+            }}
+            title="Dispatch Gates - Loading and Shipping Operations"
+          >
+            {/* Dispatch Gates Image */}
+            <img
+              src="/assets/images/icons/dispatch-gate.png"
+              alt="Dispatch Gates"
+              style={{
+                width: '90%',
+                height: '60px', // Fixed height to 60px as expected
+                objectFit: 'contain', // Show full image properly
+                borderRadius: '2px'
+                // No backgroundColor - transparent background
+              }}
+              onError={(e) => {
+                console.error('Failed to load dispatch gates image, showing fallback');
+                // Show fallback text
+                e.target.style.display = 'none';
+                const fallback = document.createElement('div');
+                fallback.innerHTML = `
+                  <div style="
+                    background-color: #2196F3;
+                    color: white;
+                    font-weight: bold;
+                    text-align: center;
+                    padding: 10px;
+                    font-size: 12px;
+                    border-radius: 4px;
+                    width: 90%;
+                    height: 60px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  ">
+                    🚚<br/>DISPATCH
+                  </div>
+                `;
+                e.target.parentNode.appendChild(fallback);
+              }}
+            />
+          </div>
+      )}
+
+      {/* Inbound Gates - Custom Image Display */}
+      {item.type === 'inbound_gates' && (
+        <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              borderRadius: '4px'
+              // No backgroundColor - completely transparent
+            }}
+            title="Inbound Gates - Receiving and Unloading Operations"
+          >
+            {/* Inbound Gates Image */}
+            <img
+              src="/assets/images/icons/inbound-gate.png"
+              alt="Inbound Gates"
+              style={{
+                width: '90%',
+                height: '60px', // Fixed height to 60px as expected
+                objectFit: 'contain', // Show full image properly
+                borderRadius: '2px'
+                // No backgroundColor - transparent background
+              }}
+              onError={(e) => {
+                console.error('Failed to load inbound gates image, showing fallback');
+                // Show fallback text
+                e.target.style.display = 'none';
+                const fallback = document.createElement('div');
+                fallback.innerHTML = `
+                  <div style="
+                    background-color: #00BCD4;
+                    color: white;
+                    font-weight: bold;
+                    text-align: center;
+                    padding: 10px;
+                    font-size: 12px;
+                    border-radius: 4px;
+                    width: 90%;
+                    height: 60px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  ">
+                    📥<br/>INBOUND
+                  </div>
+                `;
+                e.target.parentNode.appendChild(fallback);
+              }}
+            />
+          </div>
+      )}
+
       {/* SKU compartment grid rendering for SKU Holder components */}
       {renderCompartmentGrid()}
       {hoverTooltip && <HoverInfoTooltip tooltip={hoverTooltip} />}
@@ -1078,15 +1347,14 @@ const WarehouseItem = ({
       />
 
       {/* Component Type Label - Shown below the component */}
-      {(item.type === 'sku_holder' || item.type === 'vertical_sku_holder' || item.type === 'storage_unit' || item.type === 'spare_unit') && (() => {
+      {(item.type === 'sku_holder' || item.type === 'vertical_sku_holder' || item.type === 'storage_unit' || item.type === 'spare_unit' || item.type === 'cold_storage' || item.type === 'open_storage_space' || item.type === 'dispatch_staging_area' || item.type === 'grading_area' || item.type === 'packaging_area') && (() => {
         // Determine the label text - use item.label if available, otherwise use default component type
         let labelText = '';
         
-        // First check if there's a custom label from properties panel
         if (item.label && item.label.trim()) {
           labelText = item.label.trim();
         } else {
-          // Fall back to default component type names
+          // Auto-generate label based on component type
           if (item.type === 'sku_holder') {
             labelText = 'Horizontal Storage Rack';
           } else if (item.type === 'vertical_sku_holder') {
@@ -1095,6 +1363,18 @@ const WarehouseItem = ({
             labelText = 'Storage Unit';
           } else if (item.type === 'spare_unit') {
             labelText = 'Spare Unit';
+          } else if (item.type === 'cold_storage') {
+            labelText = 'Cold Storage';
+          } else if (item.type === 'open_storage_space') {
+            labelText = 'Open Storage';
+          } else if (item.type === 'dispatch_staging_area') {
+            labelText = 'Dispatch Staging';
+          } else if (item.type === 'grading_area') {
+            labelText = 'Grading Area';
+          } else if (item.type === 'packaging_area') {
+            labelText = 'Packaging Area';
+          } else {
+            labelText = 'Storage Component';
           }
         }
         

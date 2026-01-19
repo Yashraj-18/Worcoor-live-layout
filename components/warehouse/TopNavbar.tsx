@@ -221,19 +221,6 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
                   <span>Save Layout</span>
                 </button>
                 <div className="dropdown-separator"></div>
-                <button onClick={() => onExportLayout?.('png')} className="action-option">
-                  <span className="option-icon">🖼️</span>
-                  <span>Export PNG</span>
-                </button>
-                <button onClick={() => onExportLayout?.('svg')} className="action-option">
-                  <span className="option-icon">🎨</span>
-                  <span>Export SVG</span>
-                </button>
-                <button onClick={() => onExportLayout?.('pdf')} className="action-option">
-                  <span className="option-icon">📋</span>
-                  <span>Export PDF</span>
-                </button>
-                <div className="dropdown-separator"></div>
                 <button onClick={() => onClear?.()} className="action-option danger">
                   <span className="option-icon">🗑️</span>
                   <span>Clear All</span>
@@ -252,28 +239,9 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
             </button>
             {activeDropdown === 'view' && (
               <div className="action-dropdown">
-                <button 
-                  onClick={() => onToggleGrid?.()}
-                  className={`action-option ${gridVisible ? 'active' : ''}`}
-                >
-                  <span className="option-icon">⚏</span>
-                  <span>{gridVisible ? 'Hide' : 'Show'} Grid</span>
-                </button>
-                <button 
-                  onClick={() => onToggleSnap?.()}
-                  className={`action-option ${snapEnabled ? 'active' : ''}`}
-                >
-                  <span className="option-icon">🎯</span>
-                  <span>{snapEnabled ? 'Disable' : 'Enable'} Snap</span>
-                </button>
-                <div className="dropdown-separator"></div>
                 <button onClick={() => { onZoomReset?.(); closeDropdowns(); }} className="action-option">
                   <span className="option-icon">🎯</span>
                   <span>Reset to Center</span>
-                </button>
-                <button onClick={() => { onZoomFit?.(); closeDropdowns(); }} className="action-option">
-                  <span className="option-icon">🔲</span>
-                  <span>Fit to View</span>
                 </button>
               </div>
             )}
@@ -292,15 +260,6 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
                 <button onClick={onAutoGenerateBoundary} className="action-option">
                   <span className="option-icon">⬜</span>
                   <span>Auto-Generate Boundary</span>
-                </button>
-                <div className="dropdown-separator"></div>
-                <button onClick={onFacilityManager} className="action-option">
-                  <span className="option-icon">🏢</span>
-                  <span>Facility Manager</span>
-                </button>
-                <button onClick={onSearch} className="action-option">
-                  <span className="option-icon">🔍</span>
-                  <span>Search Items</span>
                 </button>
               </div>
             )}

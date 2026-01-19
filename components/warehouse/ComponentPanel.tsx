@@ -231,7 +231,8 @@ const ComponentPanel = () => {
     'Layout Boundaries': true,
     'Zone Types': true,
     'Unit Types': true,
-    'Common Areas': false
+    'Common Areas': false,
+    'Office Spaces': false
   });
 
   const toggleCategory = (categoryName: string) => {

@@ -26,6 +26,8 @@ const DraggableComponent = ({ component }) => {
       if (!monitor.didDrop()) {
         // Handle failed drop if needed
         console.log('Drop failed for:', item.name);
+      } else {
+        console.log('Successfully dropped:', item.name, item.type);
       }
     }
   });
@@ -42,6 +44,47 @@ const DraggableComponent = ({ component }) => {
       }}
       title={`${component.description}${component.priority ? ` (${component.priority} priority)` : ''}\nDrag to canvas to add`}
     >
+      {/* Icon Display - Handle both emoji and image icons */}
+      <div className="component-icon" style={{
+        position: 'absolute',
+        top: '4px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        fontSize: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '20px',
+        height: '20px'
+      }}>
+        {component.icon && component.icon.startsWith('/') ? (
+          <img
+            src={component.icon}
+            alt={component.name}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              borderRadius: '2px'
+            }}
+            onError={(e) => {
+              console.error('Failed to load component icon:', component.icon);
+              // Fallback to emoji
+              e.target.style.display = 'none';
+              const fallback = document.createElement('span');
+              fallback.textContent = component.icon === '/assets/images/icons/fire-exit.jpg' ? '🚪' : '📦';
+              fallback.style.fontSize = '16px';
+              e.target.parentNode.appendChild(fallback);
+            }}
+            onLoad={() => {
+              // Successfully loaded
+            }}
+          />
+        ) : (
+          <span>{component.icon || '📦'}</span>
+        )}
+      </div>
+      
       <div className="component-name" style={{
         color: 'white',
         fontWeight: '600',
@@ -58,7 +101,8 @@ const DraggableComponent = ({ component }) => {
         alignItems: 'center',
         justifyContent: 'center',
         height: 'calc(100% - 20px)',
-        maxHeight: '100%'
+        maxHeight: '100%',
+        paddingTop: '20px' // Make room for icon
       }}>{component.name}</div>
       <div className="component-size" style={{
         position: 'absolute',

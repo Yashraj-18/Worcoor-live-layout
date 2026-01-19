@@ -950,6 +950,57 @@ const WarehouseItem = ({
         );
       })()}
 
+      {/* Fire Exit Marking - Custom Image Display */}
+      {item.type === 'fire_exit_marking' && (
+        <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              borderRadius: '4px',
+              backgroundColor: item.color || '#F44336' // Fallback background
+            }}
+            title="Fire Exit - Emergency Evacuation Route"
+          >
+            {/* Fire Exit Image */}
+            <img
+              src="/assets/images/icons/fire-exit.jpg"
+              alt="Fire Exit"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                borderRadius: '4px'
+                // No border - clean image display
+              }}
+              onError={(e) => {
+                console.error('Failed to load fire exit image, showing fallback');
+                // Show fallback text
+                e.target.style.display = 'none';
+                const fallback = document.createElement('div');
+                fallback.innerHTML = `
+                  <div style="
+                    color: white;
+                    font-weight: bold;
+                    text-align: center;
+                    padding: 10px;
+                    font-size: 12px;
+                  ">
+                    🚪<br/>FIRE EXIT
+                  </div>
+                `;
+                e.target.parentNode.appendChild(fallback);
+              }}
+            />
+          </div>
+      )}
+
       {/* SKU compartment grid rendering for SKU Holder components */}
       {renderCompartmentGrid()}
       {hoverTooltip && <HoverInfoTooltip tooltip={hoverTooltip} />}

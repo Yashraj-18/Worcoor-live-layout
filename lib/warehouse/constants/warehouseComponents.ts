@@ -25,7 +25,25 @@ export const COMPONENT_TYPES = {
   FIRE_EXIT_MARKING: 'fire_exit_marking',
   SECURITY_AREA: 'security_area',
   RESTROOMS_AREA: 'restrooms_area',
-  PATHWAYS_ARROWS: 'pathways_arrows'
+  PATHWAYS_ARROWS: 'pathways_arrows',
+  
+  // Office Spaces
+  CONFERENCE_ROOM: 'conference_room',
+  MEETING_ROOMS: 'meeting_rooms',
+  PANTRY_AREA: 'pantry_area',
+  OPEN_STAGE: 'open_stage',
+  SEATING_AREA: 'seating_area',
+  BOOTHS: 'booths',
+  GENERAL_AREA: 'general_area',
+  
+  // Primary Warehouse Operations
+  OPEN_STORAGE_SPACE: 'open_storage_space',
+  DISPATCH_STAGING_AREA: 'dispatch_staging_area',
+  DISPATCH_GATES: 'dispatch_gates',
+  INBOUND_GATES: 'inbound_gates',
+  GRADING_AREA: 'grading_area',
+  PACKAGING_AREA: 'packaging_area',
+  OFFICE_SPACE_AREA: 'office_space_area'
 };
 
 // Drag and drop types
@@ -113,7 +131,25 @@ export const COMPONENT_COLORS = {
   [COMPONENT_TYPES.PROCESSING_AREA]: '#F44336', // Red - Processing areas
   [COMPONENT_TYPES.CONTAINER_UNIT]: '#00BCD4', // Cyan - Container units
   [COMPONENT_TYPES.ZONE_DIVIDER]: '#795548', // Brown - Zone dividers
-  [COMPONENT_TYPES.AREA_BOUNDARY]: '#607D8B' // Blue Gray - Area boundaries
+  [COMPONENT_TYPES.AREA_BOUNDARY]: '#607D8B', // Blue Gray - Area boundaries
+  
+  // Office Spaces
+  [COMPONENT_TYPES.CONFERENCE_ROOM]: '#3F51B5', // Indigo - Professional meeting space
+  [COMPONENT_TYPES.MEETING_ROOMS]: '#009688', // Teal - Collaborative spaces
+  [COMPONENT_TYPES.PANTRY_AREA]: '#795548', // Brown - Food/kitchen area
+  [COMPONENT_TYPES.OPEN_STAGE]: '#E91E63', // Pink - Presentation/performance area
+  [COMPONENT_TYPES.SEATING_AREA]: '#607D8B', // Blue Gray - General seating
+  [COMPONENT_TYPES.BOOTHS]: '#FF5722', // Deep Orange - Private work booths
+  [COMPONENT_TYPES.GENERAL_AREA]: '#9E9E9E', // Grey - Multipurpose space
+  
+  // Primary Warehouse Operations
+  [COMPONENT_TYPES.OPEN_STORAGE_SPACE]: '#4CAF50', // Green - Open storage area
+  [COMPONENT_TYPES.DISPATCH_STAGING_AREA]: '#FF9800', // Orange - Dispatch staging
+  [COMPONENT_TYPES.DISPATCH_GATES]: '#2196F3', // Blue - Dispatch gates
+  [COMPONENT_TYPES.INBOUND_GATES]: '#00BCD4', // Cyan - Inbound gates
+  [COMPONENT_TYPES.GRADING_AREA]: '#9C27B0', // Purple - Quality grading
+  [COMPONENT_TYPES.PACKAGING_AREA]: '#FF5722', // Deep Orange - Packaging operations
+  [COMPONENT_TYPES.OFFICE_SPACE_AREA]: '#607D8B' // Blue Gray - Office workspace
 };
 
 // Storage Category Colors - Based on Storage Type
@@ -192,6 +228,137 @@ export const WAREHOUSE_COMPONENTS = [
         maxSKUsPerCompartment: 1, // One SKU unit per compartment
         supportsMultipleLocationIds: true, // Support multiple location IDs (L1, L2, L3)
         supportsMultipleTags: true // Support multiple tags per location
+      },
+      {
+        type: COMPONENT_TYPES.OPEN_STORAGE_SPACE,
+        name: "Open Storage Space",
+        icon: "📦",
+        color: "#4CAF50", // Green - Open storage area
+        defaultSize: { width: 240, height: 180 }, // 4×3 grid blocks
+        description: "Open storage space for flexible storage arrangements",
+        priority: "high",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 120, height: 120 }, // Minimum 2×2 grid blocks
+        maxSize: { width: 480, height: 360 }, // Maximum 8×6 grid blocks
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 8
+      },
+      {
+        type: COMPONENT_TYPES.DISPATCH_STAGING_AREA,
+        name: "Dispatch Staging Area",
+        icon: "🚚",
+        color: "#FF9800", // Orange - Dispatch staging
+        defaultSize: { width: 300, height: 180 }, // 5×3 grid blocks
+        description: "Staging area for dispatch operations and order fulfillment",
+        priority: "high",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 180, height: 120 }, // Minimum 3×2 grid blocks
+        maxSize: { width: 420, height: 240 }, // Maximum 7×4 grid blocks
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 10
+      },
+      {
+        type: COMPONENT_TYPES.DISPATCH_GATES,
+        name: "Dispatch Gates",
+        icon: "🚪",
+        color: "#2196F3", // Blue - Dispatch gates
+        defaultSize: { width: 120, height: 60 }, // 2×1 grid blocks
+        description: "Dispatch gates for loading and shipping operations",
+        priority: "high",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
+        maxSize: { width: 240, height: 120 }, // Maximum 4×2 grid blocks
+        isFacility: true,
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 6
+      },
+      {
+        type: COMPONENT_TYPES.INBOUND_GATES,
+        name: "Inbound Gates",
+        icon: "📥",
+        color: "#00BCD4", // Cyan - Inbound gates
+        defaultSize: { width: 120, height: 60 }, // 2×1 grid blocks
+        description: "Inbound gates for receiving and unloading operations",
+        priority: "high",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
+        maxSize: { width: 240, height: 120 }, // Maximum 4×2 grid blocks
+        isFacility: true,
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 6
+      },
+      {
+        type: COMPONENT_TYPES.GRADING_AREA,
+        name: "Grading Area",
+        icon: "🔍",
+        color: "#9C27B0", // Purple - Quality grading
+        defaultSize: { width: 180, height: 180 }, // 3×3 grid blocks
+        description: "Quality grading and inspection area for products",
+        priority: "medium",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 120, height: 120 }, // Minimum 2×2 grid blocks
+        maxSize: { width: 300, height: 300 }, // Maximum 5×5 grid blocks
+        isFacility: true,
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 8
+      },
+      {
+        type: COMPONENT_TYPES.PACKAGING_AREA,
+        name: "Packaging Area",
+        icon: "📦",
+        color: "#FF5722", // Deep Orange - Packaging operations
+        defaultSize: { width: 240, height: 180 }, // 4×3 grid blocks
+        description: "Packaging area for product preparation and shipping",
+        priority: "medium",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 120, height: 120 }, // Minimum 2×2 grid blocks
+        maxSize: { width: 360, height: 300 }, // Maximum 6×5 grid blocks
+        isFacility: true,
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 8
+      },
+      {
+        type: COMPONENT_TYPES.OFFICE_SPACE_AREA,
+        name: "Office Space Area",
+        icon: "🏢",
+        color: "#607D8B", // Blue Gray - Office workspace
+        defaultSize: { width: 180, height: 120 }, // 3×2 grid blocks
+        description: "Office space area for administrative operations",
+        priority: "medium",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 120, height: 120 }, // Minimum 2×2 grid blocks
+        maxSize: { width: 300, height: 240 }, // Maximum 5×4 grid blocks
+        isFacility: true,
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 8
       }
     ]
   },
@@ -326,7 +493,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.FIRE_EXIT_MARKING,
         name: "Fire Exit Marking",
-        icon: "🚪",
+        icon: "/assets/images/icons/fire-exit.jpg",
         color: "#F44336", // Red for fire safety
         defaultSize: { width: 120, height: 60 }, // 2×1 grid blocks
         description: "Fire exit safety marking for emergency evacuation routes",
@@ -395,6 +562,147 @@ export const WAREHOUSE_COMPONENTS = [
         isDirectional: true,
         isPathway: true,
         rotatable: true
+      }
+    ]
+  },
+  {
+    category: "Office Spaces",
+    icon: "🏢",
+    priority: "medium",
+    expanded: false,
+    components: [
+      {
+        type: COMPONENT_TYPES.CONFERENCE_ROOM,
+        name: "Conference Room",
+        icon: "🤝",
+        color: "#3F51B5", // Indigo - Professional meeting space
+        defaultSize: { width: 300, height: 240 }, // 5×4 grid blocks
+        description: "Large conference room for meetings and presentations",
+        priority: "high",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 180, height: 120 }, // Minimum 3×2 grid blocks
+        maxSize: { width: 480, height: 360 }, // Maximum 8×6 grid blocks
+        isFacility: true,
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 12
+      },
+      {
+        type: COMPONENT_TYPES.MEETING_ROOMS,
+        name: "Meeting Rooms",
+        icon: "👥",
+        color: "#009688", // Teal - Collaborative spaces
+        defaultSize: { width: 180, height: 180 }, // 3×3 grid blocks
+        description: "Small meeting rooms for team discussions",
+        priority: "medium",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 120, height: 120 }, // Minimum 2×2 grid blocks
+        maxSize: { width: 240, height: 240 }, // Maximum 4×4 grid blocks
+        isFacility: true,
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 8
+      },
+      {
+        type: COMPONENT_TYPES.PANTRY_AREA,
+        name: "Pantry Area",
+        icon: "☕",
+        color: "#795548", // Brown - Food/kitchen area
+        defaultSize: { width: 120, height: 120 }, // 2×2 grid blocks
+        description: "Kitchen and refreshment area for staff",
+        priority: "medium",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
+        maxSize: { width: 180, height: 180 }, // Maximum 3×3 grid blocks
+        isFacility: true,
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 6
+      },
+      {
+        type: COMPONENT_TYPES.OPEN_STAGE,
+        name: "Open Stage",
+        icon: "🎭",
+        color: "#E91E63", // Pink - Presentation/performance area
+        defaultSize: { width: 360, height: 240 }, // 6×4 grid blocks
+        description: "Open stage area for presentations and performances",
+        priority: "medium",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 180, height: 120 }, // Minimum 3×2 grid blocks
+        maxSize: { width: 600, height: 360 }, // Maximum 10×6 grid blocks
+        isFacility: true,
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 16
+      },
+      {
+        type: COMPONENT_TYPES.SEATING_AREA,
+        name: "Seating Area",
+        icon: "🪑",
+        color: "#607D8B", // Blue Gray - General seating
+        defaultSize: { width: 240, height: 180 }, // 4×3 grid blocks
+        description: "General seating area for informal gatherings",
+        priority: "medium",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 120, height: 120 }, // Minimum 2×2 grid blocks
+        maxSize: { width: 360, height: 300 }, // Maximum 6×5 grid blocks
+        isFacility: true,
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 10
+      },
+      {
+        type: COMPONENT_TYPES.BOOTHS,
+        name: "Booths",
+        icon: "🪟",
+        color: "#FF5722", // Deep Orange - Private work booths
+        defaultSize: { width: 120, height: 120 }, // 2×2 grid blocks
+        description: "Private work booths for focused work",
+        priority: "medium",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
+        maxSize: { width: 180, height: 180 }, // Maximum 3×3 grid blocks
+        isFacility: true,
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 6
+      },
+      {
+        type: COMPONENT_TYPES.GENERAL_AREA,
+        name: "General Area",
+        icon: "🏛️",
+        color: "#9E9E9E", // Grey - Multipurpose space
+        defaultSize: { width: 180, height: 180 }, // 3×3 grid blocks
+        description: "Multipurpose area for various activities",
+        priority: "low",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: true,
+        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
+        maxSize: { width: 360, height: 360 }, // Maximum 6×6 grid blocks
+        isFacility: true,
+        isContainer: true,
+        containerLevel: 2,
+        containerPadding: 8
       }
     ]
   }

@@ -934,6 +934,115 @@ const WarehouseItem = ({
         );
       })()}
 
+      {/* Fire Exit Marking - Custom Image Display with Debugging */}
+      {item.type === 'fire_exit_marking' && (() => {
+        console.log('Rendering Fire Exit Marking:', item);
+        console.log('Item type:', item.type);
+        console.log('Item properties:', {
+          id: item.id,
+          name: item.name,
+          width: item.width,
+          height: item.height,
+          color: item.color
+        });
+        
+        return (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              borderRadius: '4px',
+              backgroundColor: item.color || '#F44336' // Fallback background
+            }}
+            title="Fire Exit - Emergency Evacuation Route"
+          >
+            {/* Debug Info */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '2px',
+                right: '2px',
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                color: '#00FF00',
+                fontSize: '8px',
+                padding: '1px 3px',
+                borderRadius: '2px',
+                fontFamily: 'monospace',
+                zIndex: 1000
+              }}
+            >
+              DEBUG: {item.type}
+            </div>
+            
+            {/* Try to load image */}
+            <img
+              src="/assets/images/icons/fire-exit.jpg"
+              alt="Fire Exit"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                borderRadius: '4px',
+                border: '2px solid #D32F2F' // Darker red border for definition
+              }}
+              onError={(e) => {
+                console.error('Failed to load fire exit image on canvas');
+                console.error('Image path:', e.target.src);
+                console.error('Error event:', e);
+                console.error('Network error:', e.target.naturalWidth === 0);
+                
+                // Show fallback text
+                e.target.style.display = 'none';
+                const fallback = document.createElement('div');
+                fallback.innerHTML = `
+                  <div style="
+                    color: white;
+                    font-weight: bold;
+                    text-align: center;
+                    padding: 10px;
+                    font-size: 12px;
+                  ">
+                    🚪<br/>FIRE EXIT
+                  </div>
+                `;
+                e.target.parentNode.appendChild(fallback);
+              }}
+              onLoad={() => {
+                console.log('Successfully loaded fire exit image on canvas');
+              }}
+            />
+            
+            {/* Overlay Text for better visibility */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '4px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: 'rgba(211, 47, 47, 0.9)',
+                color: '#FFFFFF',
+                padding: '2px 6px',
+                borderRadius: '2px',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+              }}
+            >
+              EXIT
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Spare Unit - Display name inside the square */}
       {item.type === 'spare_unit' && (() => {
         const displayText = (item.name && item.name.trim()) || 'Spare Unit';

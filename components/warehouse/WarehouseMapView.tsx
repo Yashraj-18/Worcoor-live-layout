@@ -7,6 +7,12 @@ import LocationDetailsPanel from '@/components/warehouse/LocationDetailsPanel';
 import SavedLayoutRenderer, { getLayoutItemKey } from '@/components/warehouse/SavedLayoutRenderer';
 import summarizeStorageComponents from '@/lib/warehouse/utils/layoutComponentSummary';
 import layoutComponentsMock from '@/lib/warehouse/data/layoutComponentsMock.json';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
 // TypeScript interfaces
 interface WarehouseLayout {
@@ -78,14 +84,15 @@ interface FacilityData {
 
 interface WarehouseMapViewProps {
   facilityData?: FacilityData;
+  initialSelectedLayoutId?: string | null;
 }
 
-const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData }) => {
+const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initialSelectedLayoutId }) => {
   const router = useRouter();
   const [selectedZone, setSelectedZone] = useState<any>(null);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
-  const [selectedUnitForDemo, setSelectedUnitForDemo] = useState<string | null>(null);
-  const [showDemoMapModal, setShowDemoMapModal] = useState<boolean>(false);
+  const [selectedUnitForDemo, setSelectedUnitForDemo] = useState<string | null>(initialSelectedLayoutId || null);
+  const [showDemoMapModal, setShowDemoMapModal] = useState<boolean>(!!initialSelectedLayoutId);
   const [showTemplateModal, setShowTemplateModal] = useState<boolean>(false);
   const [showCreateUnitModal, setShowCreateUnitModal] = useState<boolean>(false);
   const [currentSection, setCurrentSection] = useState<string>('dashboard');
@@ -450,129 +457,8 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData }) => 
   const shouldShowDemoLegend = !selectedDemoUnit || !selectedDemoUnit.isCustomLayout;
   const isDemoUnit = selectedDemoUnit && !selectedDemoUnit.isCustomLayout;
 
-  // Demo map data for each unit
-  const demoMapsData: Record<string, any> = {
-    unit1: {
-      name: 'Warehouse 1 - Org Unit',
-      location: 'RM 1',
-      zones: [
-        // Horizontal Storage Racks A-H (Cyan color like reference)
-        { id: 'A', name: 'Rack A', type: 'rack', x: 120, y: 40, width: 55, height: 140, color: '#00CED1', items: 24, capacity: 28, racks: 4 },
-        { id: 'B', name: 'Rack B', type: 'rack', x: 185, y: 40, width: 55, height: 140, color: '#00CED1', items: 26, capacity: 28, racks: 4 },
-        { id: 'C', name: 'Rack C', type: 'rack', x: 250, y: 40, width: 55, height: 140, color: '#00CED1', items: 22, capacity: 28, racks: 4 },
-        { id: 'D', name: 'Rack D', type: 'rack', x: 315, y: 40, width: 55, height: 140, color: '#00CED1', items: 25, capacity: 28, racks: 4 },
-        { id: 'E', name: 'Rack E', type: 'rack', x: 380, y: 40, width: 55, height: 140, color: '#00CED1', items: 27, capacity: 28, racks: 4 },
-        { id: 'F', name: 'Rack F', type: 'rack', x: 445, y: 40, width: 55, height: 140, color: '#00CED1', items: 23, capacity: 28, racks: 4 },
-        { id: 'G', name: 'Rack G', type: 'rack', x: 510, y: 40, width: 55, height: 140, color: '#00CED1', items: 28, capacity: 28, racks: 4 },
-        { id: 'H', name: 'Rack H', type: 'rack', x: 575, y: 40, width: 55, height: 140, color: '#00CED1', items: 21, capacity: 28, racks: 4 },
-        
-        // Back Office Space (Blue)
-        { id: 'OFFICE', name: 'Back Office Space', type: 'office', x: 20, y: 40, width: 80, height: 140, color: '#1E90FF', items: 0, capacity: 0 },
-        
-        // Receiving Areas (Orange/Yellow)
-        { id: 'REC1', name: 'Receiving Area 1', type: 'receiving', x: 120, y: 200, width: 80, height: 60, color: '#FFA500', items: 8, capacity: 12 },
-        { id: 'REC2', name: 'Receiving Area 2', type: 'receiving', x: 210, y: 200, width: 80, height: 60, color: '#FFD700', items: 6, capacity: 12 },
-        
-        // Dispatch Areas (Green)
-        { id: 'DISP1', name: 'Dispatch Area 1', type: 'dispatch', x: 300, y: 200, width: 80, height: 60, color: '#32CD32', items: 5, capacity: 10 },
-        { id: 'DISP2', name: 'Dispatch Area 2', type: 'dispatch', x: 390, y: 200, width: 80, height: 60, color: '#228B22', items: 7, capacity: 10 },
-        { id: 'DISP3', name: 'Dispatch Area 3', type: 'dispatch', x: 480, y: 200, width: 80, height: 60, color: '#006400', items: 4, capacity: 10 },
-        
-        // Transit/Temp Area (Light Green)
-        { id: 'TRANSIT', name: 'Transit/Temp Area', type: 'transit', x: 570, y: 200, width: 80, height: 60, color: '#90EE90', items: 3, capacity: 8 },
-        
-        // Packaging Area (Purple)
-        { id: 'PACK', name: 'Packaging Area', type: 'packaging', x: 20, y: 200, width: 80, height: 60, color: '#9370DB', items: 12, capacity: 15 }
-      ],
-      gates: [
-        { id: 'IN1', name: 'In-Gate 1', x: 150, y: 280, type: 'in-gate' },
-        { id: 'IN2', name: 'In-Gate 2', x: 240, y: 280, type: 'in-gate' },
-        { id: 'OUT1', name: 'Out Gate 1', x: 330, y: 280, type: 'out-gate' },
-        { id: 'OUT2', name: 'Out Gate 2', x: 420, y: 280, type: 'out-gate' },
-        { id: 'OUT3', name: 'Out Gate 3', x: 510, y: 280, type: 'out-gate' }
-      ],
-      equipment: [
-        { id: 'fork1', name: 'Forklift #1', x: 150, y: 190, status: 'active' },
-        { id: 'fork2', name: 'Forklift #2', x: 350, y: 190, status: 'active' },
-        { id: 'scanner1', name: 'Barcode Scanner', x: 60, y: 230, status: 'active' }
-      ]
-    },
-    unit2: {
-      name: 'Unit 2 - Cold Storage',
-      zones: [
-        { id: 'CS1', name: 'Cold Zone 1', type: 'cold-storage', x: 50, y: 50, width: 150, height: 100, color: '#5DADE2', items: 28, capacity: 35 },
-        { id: 'CS2', name: 'Cold Zone 2', type: 'cold-storage', x: 220, y: 50, width: 150, height: 100, color: '#5DADE2', items: 32, capacity: 35 },
-        { id: 'FZ1', name: 'Freezer Zone', type: 'freezer', x: 390, y: 50, width: 120, height: 100, color: '#3498DB', items: 18, capacity: 25 },
-        { id: 'R2', name: 'Cold Receiving', type: 'receiving', x: 50, y: 180, width: 180, height: 50, color: '#58D68D', items: 5, capacity: 10 },
-        { id: 'S2', name: 'Cold Dispatch', type: 'shipping', x: 250, y: 180, width: 180, height: 50, color: '#F39C12', items: 3, capacity: 10 }
-      ],
-      equipment: [
-        { id: 'temp1', name: 'Temperature Monitor', x: 150, y: 100, status: 'normal', temp: '-18°C' },
-        { id: 'temp2', name: 'Temperature Monitor', x: 300, y: 100, status: 'normal', temp: '-18°C' },
-        { id: 'temp3', name: 'Freezer Monitor', x: 450, y: 100, status: 'normal', temp: '-25°C' }
-      ]
-    },
-    unit3: {
-      name: 'Unit 3 - Distribution Hub',
-      zones: [
-        { id: 'SORT', name: 'Sorting Area', type: 'sorting', x: 50, y: 50, width: 200, height: 80, color: '#E67E22', items: 150, capacity: 200 },
-        { id: 'PACK', name: 'Packaging', type: 'packaging', x: 280, y: 50, width: 150, height: 80, color: '#8E44AD', items: 45, capacity: 60 },
-        { id: 'QC', name: 'Quality Control', type: 'quality', x: 460, y: 50, width: 100, height: 80, color: '#E74C3C', items: 12, capacity: 20 },
-        { id: 'DOCK1', name: 'Loading Dock 1', type: 'loading', x: 50, y: 160, width: 120, height: 60, color: '#F39C12', items: 8, capacity: 10 },
-        { id: 'DOCK2', name: 'Loading Dock 2', type: 'loading', x: 200, y: 160, width: 120, height: 60, color: '#F39C12', items: 6, capacity: 10 },
-        { id: 'DOCK3', name: 'Loading Dock 3', type: 'loading', x: 350, y: 160, width: 120, height: 60, color: '#F39C12', items: 4, capacity: 10 }
-      ],
-      equipment: [
-        { id: 'conv2', name: 'Main Conveyor', x: 150, y: 130, width: 200, height: 15, status: 'running' },
-        { id: 'scanner1', name: 'Barcode Scanner', x: 200, y: 80, status: 'active' },
-        { id: 'scale1', name: 'Weighing Scale', x: 350, y: 80, status: 'active' }
-      ]
-    },
-    unit4: {
-      name: 'Unit 4 - Returns Processing',
-      zones: [
-        { id: 'RET1', name: 'Returns Intake', type: 'returns', x: 50, y: 50, width: 140, height: 70, color: '#E67E22', items: 25, capacity: 40 },
-        { id: 'INSP', name: 'Inspection Area', type: 'inspection', x: 220, y: 50, width: 120, height: 70, color: '#9B59B6', items: 15, capacity: 25 },
-        { id: 'REP', name: 'Repair Station', type: 'repair', x: 370, y: 50, width: 100, height: 70, color: '#E74C3C', items: 8, capacity: 15 },
-        { id: 'RESTOCK', name: 'Restock Area', type: 'restock', x: 50, y: 150, width: 180, height: 60, color: '#27AE60', items: 32, capacity: 50 },
-        { id: 'DISP', name: 'Disposal', type: 'disposal', x: 260, y: 150, width: 100, height: 60, color: '#95A5A6', items: 5, capacity: 20 }
-      ],
-      equipment: [
-        { id: 'test1', name: 'Testing Station', x: 280, y: 80, status: 'active' },
-        { id: 'printer1', name: 'Label Printer', x: 150, y: 180, status: 'active' }
-      ]
-    },
-    unit5: {
-      name: 'Unit 5 - Hazmat Storage (OFFLINE)',
-      zones: [
-        { id: 'HAZ1', name: 'Hazmat Zone 1', type: 'hazmat', x: 50, y: 50, width: 120, height: 80, color: '#E74C3C', items: 0, capacity: 30 },
-        { id: 'HAZ2', name: 'Hazmat Zone 2', type: 'hazmat', x: 200, y: 50, width: 120, height: 80, color: '#E74C3C', items: 0, capacity: 30 },
-        { id: 'SAFE', name: 'Safety Station', type: 'safety', x: 350, y: 50, width: 80, height: 80, color: '#F39C12', items: 0, capacity: 0 },
-        { id: 'DECON', name: 'Decontamination', type: 'decon', x: 50, y: 160, width: 150, height: 60, color: '#95A5A6', items: 0, capacity: 0 }
-      ],
-      equipment: [
-        { id: 'alarm1', name: 'Safety Alarm', x: 390, y: 90, status: 'offline' },
-        { id: 'vent1', name: 'Ventilation System', x: 125, y: 190, status: 'offline' }
-      ],
-      offline: true
-    },
-    unit6: {
-      name: 'Unit 6 - Overflow Storage',
-      zones: [
-        { id: 'OV1', name: 'Overflow A', type: 'overflow', x: 50, y: 40, width: 100, height: 60, color: '#3498DB', items: 48, capacity: 50 },
-        { id: 'OV2', name: 'Overflow B', type: 'overflow', x: 170, y: 40, width: 100, height: 60, color: '#3498DB', items: 50, capacity: 50 },
-        { id: 'OV3', name: 'Overflow C', type: 'overflow', x: 290, y: 40, width: 100, height: 60, color: '#3498DB', items: 47, capacity: 50 },
-        { id: 'OV4', name: 'Overflow D', type: 'overflow', x: 410, y: 40, width: 100, height: 60, color: '#3498DB', items: 45, capacity: 50 },
-        { id: 'OV5', name: 'Overflow E', type: 'overflow', x: 50, y: 120, width: 100, height: 60, color: '#3498DB', items: 49, capacity: 50 },
-        { id: 'OV6', name: 'Overflow F', type: 'overflow', x: 170, y: 120, width: 100, height: 60, color: '#3498DB', items: 46, capacity: 50 },
-        { id: 'TEMP', name: 'Temporary Storage', type: 'temporary', x: 290, y: 120, width: 220, height: 60, color: '#F39C12', items: 25, capacity: 40 }
-      ],
-      equipment: [
-        { id: 'crane1', name: 'Overhead Crane', x: 250, y: 20, status: 'active' },
-        { id: 'lift1', name: 'Scissor Lift', x: 150, y: 200, status: 'active' }
-      ]
-    }
-  };
+  // Demo map data - empty as we only use custom layouts
+  const demoMapsData: Record<string, any> = {};
 
   // Real-time notifications data
   const notifications = [];
@@ -1506,77 +1392,81 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData }) => 
           <div className={`warehouse-scroll-container ${isExpanded ? 'expanded' : ''}`}>
             <div className={`warehouse-grid-horizontal ${isExpanded ? 'expanded-grid' : ''}`}>
               {filteredUnits.map((unit) => (
-                <div key={unit.id} className="unit-card">
-                  <div className="unit-header">
-                    <div className="unit-status">
-                      <span className={`status-indicator ${unit.status.toLowerCase()}`}>
+                <Card key={unit.id} className="group relative overflow-hidden border-0 bg-white/80 backdrop-blur-sm shadow-soft hover:shadow-medium transition-all duration-300 h-full min-w-[320px] max-w-[380px]">
+                  <CardHeader className="space-y-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-slate-900 dark:text-slate-50 text-lg font-bold leading-tight">{unit.name}</CardTitle>
+                      <Badge className="bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 shrink-0">
                         {unit.status}
-                      </span>
+                      </Badge>
                     </div>
-                    <h3 className="unit-name">{unit.name}</h3>
-                    <p className="unit-subtitle">{unit.subtitle}</p>
-                  </div>
+                    <CardDescription className="text-slate-600 dark:text-slate-200 text-sm">
+                      {unit.subtitle}
+                    </CardDescription>
+                  </CardHeader>
                   
-                  <div className="unit-content">
-                    <p className="unit-description">{unit.details}</p>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground leading-relaxed">{unit.details}</p>
                     
-                    <div className="unit-metrics">
-                      <div className="metric">
-                        <span className="metric-label">Utilization:</span>
-                        <span className="metric-value">{unit.utilization}%</span>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Utilization</p>
+                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{unit.utilization}%</p>
+                        </div>
+                        <Progress value={unit.utilization} className="h-2" />
                       </div>
-                      <div className="metric">
-                        <span className="metric-label">Zones:</span>
-                        <span className="metric-value">{unit.zones}</span>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Zones</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{unit.zones}</p>
                       </div>
+
                       {unit.temperature && (
-                        <div className="metric">
-                          <span className="metric-label">Temperature:</span>
-                          <span className="metric-value">{unit.temperature}</span>
+                        <div className="flex items-center justify-between pt-1">
+                          <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Temperature</p>
+                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{unit.temperature}</p>
                         </div>
                       )}
                     </div>
-                    
-                    <div className="unit-actions">
-                      <button 
-                        className="action-btn view-btn"
-                        onClick={() => {
-                          setSelectedUnitForDemo(unit.id);
-                          setShowDemoMapModal(true);
-                        }}
-                      >
-                        View Live
-                      </button>
-                      {unit.isCustomLayout ? (
-                        <>
-                          <button 
-                            className="action-btn edit-btn"
-                            onClick={() => {
-                              // Navigate to the new edit route with layout ID
-                              router.push(`/dashboard/warehouse-management/edit/${unit.id}`);
-                            }}
-                          >
-                            Edit Layout
-                          </button>
-                          <button
-                            className="action-btn delete-btn"
-                            onClick={() => handleDeleteLayout(unit.id)}
-                          >
-                            Delete Layout
-                          </button>
-                        </>
-                      ) : (
-                        <button 
-                          className="action-btn edit-btn"
-                          disabled
-                          style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                  </CardContent>
+                  
+                  <CardFooter className="flex flex-col gap-2 pt-4 pb-6 px-6">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-center"
+                      onClick={() => {
+                        setSelectedUnitForDemo(unit.id);
+                        setShowDemoMapModal(true);
+                      }}
+                    >
+                      View Live <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                    {unit.isCustomLayout && (
+                      <>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full justify-center"
+                          onClick={() => {
+                            router.push(`/dashboard/warehouse-management/edit/${unit.id}`);
+                          }}
                         >
-                          Edit
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                          Edit Layout
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-center text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                          onClick={() => handleDeleteLayout(unit.id)}
+                        >
+                          Delete Layout
+                        </Button>
+                      </>
+                    )}
+                  </CardFooter>
+                </Card>
               ))}
             </div>
           </div>

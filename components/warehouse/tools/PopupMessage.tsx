@@ -69,7 +69,8 @@ const PopupMessage: React.FC<PopupMessageProps> = ({ message, type = 'info', onC
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backdropFilter: 'blur(8px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -79,11 +80,13 @@ const PopupMessage: React.FC<PopupMessageProps> = ({ message, type = 'info', onC
   };
 
   const popupStyle: React.CSSProperties = {
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
+    background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.98) 100%)',
+    backdropFilter: 'blur(20px)',
+    border: '1px solid rgba(59, 130, 246, 0.3)',
+    borderRadius: '16px',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(59, 130, 246, 0.2)',
     maxWidth: '500px',
-    minWidth: '300px',
+    minWidth: '320px',
     overflow: 'hidden',
     animation: isClosing ? 'slideOut 0.3s ease-out' : 'slideIn 0.3s ease-out',
     transform: isClosing ? 'scale(0.95)' : 'scale(1)',
@@ -91,41 +94,44 @@ const PopupMessage: React.FC<PopupMessageProps> = ({ message, type = 'info', onC
   };
 
   const headerStyle: React.CSSProperties = {
-    backgroundColor: typeStyles.backgroundColor,
-    padding: '16px 20px',
+    background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%)',
+    borderBottom: '1px solid rgba(59, 130, 246, 0.2)',
+    padding: '20px 24px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between'
   };
 
   const iconStyle: React.CSSProperties = {
-    width: '28px',
-    height: '28px',
+    width: '32px',
+    height: '32px',
     borderRadius: '50%',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    border: '1px solid rgba(59, 130, 246, 0.3)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: '18px',
     fontWeight: 'bold',
-    color: typeStyles.iconColor,
+    color: '#3b82f6',
     marginRight: '12px'
   };
 
   const titleStyle: React.CSSProperties = {
-    color: 'white',
-    fontSize: '18px',
-    fontWeight: '600',
+    color: '#ffffff',
+    fontSize: '1.125rem',
+    fontWeight: '700',
     display: 'flex',
     alignItems: 'center',
-    flex: 1
+    flex: 1,
+    letterSpacing: '-0.02em'
   };
 
   const closeButtonStyle: React.CSSProperties = {
-    background: 'none',
-    border: 'none',
-    color: 'white',
-    fontSize: '24px',
+    background: 'rgba(30, 41, 59, 0.6)',
+    border: '1px solid rgba(59, 130, 246, 0.2)',
+    color: '#cbd5e1',
+    fontSize: '20px',
     cursor: 'pointer',
     padding: '0',
     width: '32px',
@@ -133,37 +139,38 @@ const PopupMessage: React.FC<PopupMessageProps> = ({ message, type = 'info', onC
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: '50%',
-    transition: 'background-color 0.2s ease',
+    borderRadius: '8px',
+    transition: 'all 0.2s ease',
     marginLeft: '12px'
   };
 
   const contentStyle: React.CSSProperties = {
-    padding: '20px',
-    fontSize: '15px',
+    padding: '24px',
+    fontSize: '0.9375rem',
     lineHeight: '1.6',
-    color: '#333',
+    color: '#e2e8f0',
     whiteSpace: 'pre-wrap'
   };
 
   const footerStyle: React.CSSProperties = {
-    padding: '16px 20px',
-    borderTop: '1px solid #e0e0e0',
+    padding: '16px 24px',
+    borderTop: '1px solid rgba(59, 130, 246, 0.2)',
+    background: 'rgba(15, 23, 42, 0.5)',
     display: 'flex',
     justifyContent: 'flex-end'
   };
 
   const okButtonStyle: React.CSSProperties = {
-    backgroundColor: typeStyles.backgroundColor,
+    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
     color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    padding: '10px 24px',
-    fontSize: '14px',
+    border: '1px solid rgba(59, 130, 246, 0.5)',
+    borderRadius: '8px',
+    padding: '0.75rem 1.5rem',
+    fontSize: '0.875rem',
     fontWeight: '600',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)'
   };
 
   const getTitle = () => {
@@ -225,10 +232,14 @@ const PopupMessage: React.FC<PopupMessageProps> = ({ message, type = 'info', onC
               style={closeButtonStyle}
               onClick={handleClose}
               onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
-                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                e.currentTarget.style.background = 'rgba(51, 65, 85, 0.8)';
+                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+                e.currentTarget.style.color = '#ffffff';
               }}
               onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.background = 'rgba(30, 41, 59, 0.6)';
+                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.2)';
+                e.currentTarget.style.color = '#cbd5e1';
               }}
             >
               ×
@@ -242,12 +253,14 @@ const PopupMessage: React.FC<PopupMessageProps> = ({ message, type = 'info', onC
               style={okButtonStyle}
               onClick={handleClose}
               onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.3)';
+                e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)';
               }}
               onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.2)';
+                e.currentTarget.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
               }}
             >
               OK
@@ -291,7 +304,8 @@ class PopupManager {
     return new Promise<void>((resolve) => {
       const handleClose = () => {
         if (this.root) {
-          this.root.unmount();
+          // Don't unmount, just render null to clear the popup
+          this.root.render(null);
         }
         resolve();
       };

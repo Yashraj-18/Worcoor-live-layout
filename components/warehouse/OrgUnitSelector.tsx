@@ -41,70 +41,81 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backdropFilter: 'blur(8px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10000,
-    backdropFilter: 'blur(4px)'
+    zIndex: 10000
   };
 
   const modalStyle = {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    padding: '24px',
-    width: '480px',
+    background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.98) 100%)',
+    backdropFilter: 'blur(20px)',
+    border: '1px solid rgba(59, 130, 246, 0.3)',
+    borderRadius: '16px',
+    padding: '0',
+    width: '500px',
     maxWidth: '90vw',
     maxHeight: '80vh',
-    overflow: 'auto',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-    fontFamily: 'Arial, sans-serif'
+    overflow: 'hidden',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(59, 130, 246, 0.2)',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   };
 
   const headerStyle = {
-    fontSize: '20px',
-    fontWeight: 'bold',
-    marginBottom: '20px',
-    color: '#1f2937',
-    textAlign: 'center'
+    background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%)',
+    borderBottom: '1px solid rgba(59, 130, 246, 0.2)',
+    padding: '20px 24px',
+    fontSize: '1.125rem',
+    fontWeight: '700',
+    color: '#ffffff',
+    textAlign: 'center',
+    letterSpacing: '-0.02em'
   };
 
   const sectionStyle = {
-    marginBottom: '24px'
+    marginBottom: '24px',
+    padding: '0 24px'
   };
 
   const labelStyle = {
     display: 'block',
-    fontSize: '14px',
+    fontSize: '0.8125rem',
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: '8px'
+    color: '#94a3b8',
+    marginBottom: '8px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em'
   };
 
   const selectStyle = {
     width: '100%',
-    padding: '10px 12px',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '14px',
-    backgroundColor: '#ffffff',
-    color: '#1f2937',
+    padding: '0.75rem 1rem',
+    border: '1px solid rgba(59, 130, 246, 0.3)',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    color: '#ffffff',
     outline: 'none',
-    transition: 'border-color 0.2s ease'
+    transition: 'all 0.2s ease'
   };
 
   const buttonContainerStyle = {
     display: 'flex',
     gap: '12px',
     justifyContent: 'flex-end',
-    marginTop: '24px'
+    padding: '16px 24px',
+    borderTop: '1px solid rgba(59, 130, 246, 0.2)',
+    background: 'rgba(15, 23, 42, 0.5)',
+    margin: '0'
   };
 
   const buttonStyle = {
-    padding: '10px 20px',
-    borderRadius: '6px',
-    fontSize: '14px',
-    fontWeight: '500',
+    padding: '0.75rem 1.5rem',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
     border: 'none'
@@ -112,21 +123,25 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
 
   const cancelButtonStyle = {
     ...buttonStyle,
-    backgroundColor: '#f3f4f6',
-    color: '#374151',
-    border: '1px solid #d1d5db'
+    background: 'rgba(30, 41, 59, 0.6)',
+    color: '#cbd5e1',
+    border: '1px solid rgba(59, 130, 246, 0.2)'
   };
 
   const saveButtonStyle = {
     ...buttonStyle,
-    backgroundColor: '#2563eb',
-    color: '#ffffff'
+    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+    color: '#ffffff',
+    border: '1px solid rgba(59, 130, 246, 0.5)',
+    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)'
   };
 
   const disabledButtonStyle = {
     ...saveButtonStyle,
-    backgroundColor: '#9ca3af',
-    cursor: 'not-allowed'
+    background: 'rgba(100, 116, 139, 0.3)',
+    border: '1px solid rgba(100, 116, 139, 0.3)',
+    cursor: 'not-allowed',
+    boxShadow: 'none'
   };
 
   return (
@@ -137,8 +152,9 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
         </div>
 
         <div style={{
-          fontSize: '14px',
-          color: '#6b7280',
+          fontSize: '0.9375rem',
+          color: '#94a3b8',
+          padding: '20px 24px 0',
           marginBottom: '20px',
           textAlign: 'center'
         }}>
@@ -165,19 +181,20 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
 
         {selectedStatus && (
           <div style={{
-            backgroundColor: '#f0f9ff',
-            border: '1px solid #0ea5e9',
-            borderRadius: '6px',
-            padding: '12px',
-            marginBottom: '16px'
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            border: '1px solid rgba(59, 130, 246, 0.3)',
+            borderRadius: '8px',
+            padding: '16px',
+            margin: '0 24px 24px',
+            backdropFilter: 'blur(10px)'
           }}>
-            <div style={{ fontSize: '12px', color: '#0369a1', fontWeight: '500' }}>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Layout will be saved as:
             </div>
-            <div style={{ fontSize: '14px', color: '#0c4a6e', fontWeight: '600', marginTop: '4px' }}>
+            <div style={{ fontSize: '0.9375rem', color: '#ffffff', fontWeight: '700', marginTop: '8px' }}>
               {statusOptions.find(s => s.id === selectedStatus)?.name}
             </div>
-            <div style={{ fontSize: '12px', color: '#0369a1', marginTop: '4px' }}>
+            <div style={{ fontSize: '0.8125rem', color: '#cbd5e1', marginTop: '4px' }}>
               {statusOptions.find(s => s.id === selectedStatus)?.description}
             </div>
           </div>

@@ -19,13 +19,28 @@ export default function InventoryManagementPage() {
 
       {/* KPI Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-full">
+          <CardContent className="p-6 flex flex-col">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-orange-100">Total Org Units</p>
+                <p className="text-3xl font-bold text-white">12</p>
+                <p className="text-xs text-orange-200 font-medium">Warehouses, production units, offices</p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Warehouse className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-full">
           <CardContent className="p-6 flex flex-col">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-blue-100">Total SKUs</p>
                 <p className="text-3xl font-bold text-white">248</p>
-                <p className="text-xs text-blue-200 font-medium">+12.5% from last month</p>
+                <p className="text-xs text-blue-200 font-medium">Active inventory items</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
                 <Box className="h-6 w-6 text-white" />
@@ -34,28 +49,13 @@ export default function InventoryManagementPage() {
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-full">
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-full">
           <CardContent className="p-6 flex flex-col">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-emerald-100">Total Value</p>
-                <p className="text-3xl font-bold text-white">$125,750</p>
-                <p className="text-xs text-emerald-200 font-medium">+8.2% from last month</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Database className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-full">
-          <CardContent className="p-6 flex flex-col">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-purple-100">Low Stock Items</p>
-                <p className="text-3xl font-bold text-white">45</p>
-                <p className="text-xs text-purple-200 font-medium">-3.1% from last week</p>
+                <p className="text-sm font-medium text-indigo-100">Total Location Tags</p>
+                <p className="text-3xl font-bold text-white">24</p>
+                <p className="text-xs text-indigo-200 font-medium">Organized location categories</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
                 <Package className="h-6 w-6 text-white" />
@@ -64,16 +64,16 @@ export default function InventoryManagementPage() {
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-full">
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-full">
           <CardContent className="p-6 flex flex-col">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-amber-100">Wastage Rate</p>
-                <p className="text-3xl font-bold text-white">2.4%</p>
-                <p className="text-xs text-amber-200 font-medium">Target: 3.0%</p>
+                <p className="text-sm font-medium text-teal-100">Total Assets</p>
+                <p className="text-3xl font-bold text-white">156</p>
+                <p className="text-xs text-teal-200 font-medium">Warehouse equipment & resources</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Trash className="h-6 w-6 text-white" />
+                <Database className="h-6 w-6 text-white" />
               </div>
             </div>
           </CardContent>
@@ -257,93 +257,6 @@ export default function InventoryManagementPage() {
           </CardContent>
         </Card>
 
-      </div>
-
-      {/* Quick Access Section */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Inventory Health</CardTitle>
-            <CardDescription>Current inventory status overview</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 rounded-lg bg-muted/50 p-4">
-                  <p className="text-sm font-medium text-muted-foreground">Total SKUs</p>
-                  <p className="text-2xl font-bold">248</p>
-                </div>
-                <div className="space-y-2 rounded-lg bg-muted/50 p-4">
-                  <p className="text-sm font-medium text-muted-foreground">Total Value</p>
-                  <p className="text-2xl font-bold">$125,750</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2 rounded-lg bg-muted/50 p-4">
-                  <p className="text-sm font-medium text-muted-foreground">Healthy Stock</p>
-                  <p className="text-2xl font-bold text-muted-foreground">182</p>
-                </div>
-                <div className="space-y-2 rounded-lg bg-muted/50 p-4">
-                  <p className="text-sm font-medium text-muted-foreground">Low Stock</p>
-                  <p className="text-2xl font-bold text-muted-foreground">45</p>
-                </div>
-                <div className="space-y-2 rounded-lg bg-muted/50 p-4">
-                  <p className="text-sm font-medium text-muted-foreground">Out of Stock</p>
-                  <p className="text-2xl font-bold text-muted-foreground">21</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest inventory transactions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                {
-                  action: "Stock Received",
-                  sku: "WD-FRAME-01",
-                  quantity: 25,
-                  date: "Today, 10:30 AM",
-                },
-                {
-                  action: "Wastage Recorded",
-                  sku: "MT-LEG-02",
-                  quantity: 3,
-                  date: "Today, 9:15 AM",
-                },
-                {
-                  action: "Procurement Created",
-                  sku: "UPH-SEAT-02",
-                  quantity: 30,
-                  date: "Yesterday, 4:45 PM",
-                },
-                {
-                  action: "Stock Adjusted",
-                  sku: "HW-SCREWS-01",
-                  quantity: -5,
-                  date: "Yesterday, 2:30 PM",
-                },
-              ].map((item, index) => (
-                <div key={index} className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="space-y-1">
-                    <p className="font-medium">{item.action}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {item.sku} • {item.quantity > 0 ? "+" : ""}
-                      {item.quantity} units
-                    </p>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{item.date}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )

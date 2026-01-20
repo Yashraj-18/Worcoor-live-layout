@@ -343,131 +343,115 @@ const MultiLocationSelector = ({
   })();
 
   return (
-    <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-content multi-location-selector" onClick={(event) => event.stopPropagation()}>
-        <div className="modal-header">
-          <h3>
-            {isVerticalStorageRack ? 'Assign Levels to Location IDs' : 'Location ID Selection'}
+    <div className="fixed inset-0 z-50 bg-black/80 animate-pure-fade flex items-center justify-center p-4" onClick={handleClose}>
+      <div className="bg-background border border-border rounded-lg shadow-lg w-full max-w-2xl animate-pure-fade max-h-[90vh] overflow-hidden flex flex-col" onClick={(event) => event.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-border">
+          <div>
+            <h3 className="text-lg font-semibold leading-none tracking-tight">
+              {isVerticalStorageRack ? 'Assign Levels to Location IDs' : 'Location ID Selection'}
+            </h3>
             {isVerticalStorageRack && (
-              <span style={{ color: '#FF5722', fontSize: '0.9em' }}> (Vertical Storage Rack)</span>
+              <span className="text-sm text-orange-500 dark:text-orange-400 font-medium mt-1 inline-block">Vertical Storage Rack</span>
             )}
-          </h3>
-          <button className="modal-close" onClick={handleClose}>
-            ×
+          </div>
+          <button 
+            onClick={handleClose}
+            className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span className="sr-only">Close</span>
           </button>
         </div>
 
-        <div className="modal-body">
+        {/* Body */}
+        <div className="p-6 space-y-6 overflow-y-auto flex-1">
           {isVerticalStorageRack && (
-            <div
-              style={{
-                backgroundColor: '#fff3e0',
-                padding: '12px',
-                borderRadius: '6px',
-                marginBottom: '16px',
-                border: '1px solid #ff9800'
-              }}
-            >
-              <div style={{ fontWeight: 'bold', color: '#e65100', marginBottom: '4px' }}>
-                📐 Vertical Storage Rack - Level & Location Mapping
+            <div className="rounded-md bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 p-4">
+              <div className="font-semibold text-orange-900 dark:text-orange-100 mb-1 flex items-center gap-2">
+                <span>📐</span>
+                <span>Vertical Storage Rack - Level & Location Mapping</span>
               </div>
-              <div style={{ fontSize: '0.9em', color: '#bf360c' }}>
+              <p className="text-sm text-orange-800 dark:text-orange-200">
                 Select a level (L1, L2, L3...) and assign a unique Location ID to it.
-              </div>
+              </p>
             </div>
           )}
 
-          <div style={{ marginBottom: '24px' }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '12px', color: '#333' }}>
-              Attach Level to Location ID
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                gap: '12px',
-                flexWrap: 'nowrap',
-                alignItems: 'center'
-              }}
-            >
-              <select
-                value={selectedLevelId}
-                onChange={(event) => setSelectedLevelId(event.target.value)}
-                style={{
-                  flex: '0 0 140px',
-                  padding: '8px 12px',
-                  border: '1px solid #8bc34a',
-                  borderRadius: '4px',
-                  fontSize: '0.9em',
-                  backgroundColor: 'white'
-                }}
-                disabled={availableLevelIds.length === 0}
-              >
-                {availableLevelIds.length === 0 ? (
-                  <option value="">All levels attached</option>
-                ) : (
-                  availableLevelIds.slice(0, 50).map((levelId) => (
-                    <option key={levelId} value={levelId}>
-                      {levelId}
-                    </option>
-                  ))
-                )}
-              </select>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-3 block">
+                Attach Level to Location ID
+              </label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <select
+                  value={selectedLevelId}
+                  onChange={(event) => setSelectedLevelId(event.target.value)}
+                  className="flex h-10 w-full sm:w-40 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 hover:border-input/80"
+                  disabled={availableLevelIds.length === 0}
+                >
+                  {availableLevelIds.length === 0 ? (
+                    <option value="">All levels attached</option>
+                  ) : (
+                    availableLevelIds.slice(0, 50).map((levelId) => (
+                      <option key={levelId} value={levelId}>
+                        {levelId}
+                      </option>
+                    ))
+                  )}
+                </select>
 
-              <select
-                value={locationSelectValue}
-                onChange={handleLocationSelectChange}
-                style={{
-                  flex: '0 0 200px',
-                  minWidth: '160px',
-                  padding: '8px 12px',
-                  border: '1px solid #00796b',
-                  borderRadius: '4px',
-                  fontSize: '0.9em',
-                  backgroundColor: 'white'
-                }}
-                disabled={availableLocationOptions.length === 0}
-              >
-                {availableLocationOptions.length === 0 ? (
-                  <option value="">No LOC IDs available</option>
-                ) : (
-                  availableLocationOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))
-                )}
-              </select>
+                <select
+                  value={locationSelectValue}
+                  onChange={handleLocationSelectChange}
+                  className="flex h-10 w-full sm:flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 hover:border-input/80"
+                  disabled={availableLocationOptions.length === 0}
+                >
+                  {availableLocationOptions.length === 0 ? (
+                    <option value="">No LOC IDs available</option>
+                  ) : (
+                    availableLocationOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))
+                  )}
+                </select>
 
-              <button
-                type="button"
-                onClick={handleAttachMapping}
-                className="btn btn-primary"
-                style={{ padding: '8px 16px' }}
-                disabled={!selectedLevelId || !locationSelectValue}
-              >
-                Attach Pair
-              </button>
-            </div>
-            {currentLocationWarning && (
-              <div style={{ color: '#c62828', fontSize: '0.8em', marginTop: '8px' }}>{currentLocationWarning}</div>
-            )}
-            {!currentLocationWarning && locationSelectValue && (
-              <div style={{ color: '#388e3c', fontSize: '0.8em', marginTop: '8px' }}>
-                Selected ID ready to attach: {locationSelectValue}
+                <button
+                  type="button"
+                  onClick={handleAttachMapping}
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-out focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 active:scale-95 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md h-10 px-4 py-2"
+                  disabled={!selectedLevelId || !locationSelectValue}
+                >
+                  Attach Pair
+                </button>
               </div>
-            )}
+              {currentLocationWarning && (
+                <p className="text-xs text-destructive mt-2">{currentLocationWarning}</p>
+              )}
+              {!currentLocationWarning && locationSelectValue && (
+                <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                  Selected ID ready to attach: {locationSelectValue}
+                </p>
+              )}
+            </div>
           </div>
 
-          <div>
-            <div style={{ fontWeight: 'bold', marginBottom: '12px', color: '#333' }}>
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-foreground block">
               Attached Level / Location Pairs
-            </div>
+            </label>
             {attachedMappings.length === 0 ? (
-              <div style={{ fontSize: '0.85em', color: '#666' }}>
-                No mappings added yet. Select a level, enter a Location ID, and click "Attach Pair".
+              <div className="rounded-md bg-muted/50 p-4 border border-border">
+                <p className="text-sm text-muted-foreground">
+                  No mappings added yet. Select a level, enter a Location ID, and click "Attach Pair".
+                </p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="space-y-2">
                 {attachedMappings.map((mapping, index) => {
                   const normalizedLocation = normalizeLocationId(mapping.locationId);
                   const isDuplicate = normalizedLocation && (attachedLocationCounts.get(normalizedLocation) || 0) > 1;
@@ -476,37 +460,29 @@ const MultiLocationSelector = ({
                   return (
                     <div
                       key={mapping.levelId}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '12px',
-                        padding: '10px 14px',
-                        borderRadius: '6px',
-                        border: '1px solid #c5e1a5',
-                        backgroundColor: '#f9fff2'
-                      }}
+                      className="rounded-md border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20 p-3"
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1b5e20' }}>
-                        <span style={{ fontWeight: 600 }}>{index + 1}.</span>
-                        <span style={{ fontWeight: 600 }}>L{mapping.levelId.replace(/[^0-9]/g, '') || mapping.levelId}</span>
-                        <span style={{ color: '#388e3c', fontSize: '0.9em' }}>→</span>
-                        <span style={{ fontWeight: 600, color: '#01579b' }}>{mapping.locationId || 'Not set'}</span>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 text-sm">
+                          <span className="font-semibold text-foreground">{index + 1}.</span>
+                          <span className="font-semibold text-green-700 dark:text-green-300">L{mapping.levelId.replace(/[^0-9]/g, '') || mapping.levelId}</span>
+                          <span className="text-muted-foreground">→</span>
+                          <span className="font-semibold text-blue-700 dark:text-blue-300">{mapping.locationId || 'Not set'}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMapping(mapping.levelId)}
+                          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-out focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 active:scale-95 bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm hover:shadow-md h-8 px-3 py-1"
+                        >
+                          Remove
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMapping(mapping.levelId)}
-                        className="btn btn-secondary"
-                        style={{ padding: '6px 12px' }}
-                      >
-                        Remove
-                      </button>
                       {(isDuplicate || conflictsExternally || !normalizedLocation) && (
-                        <div style={{ flexBasis: '100%', fontSize: '0.75em', color: '#c62828' }}>
+                        <p className="text-xs text-destructive mt-2">
                           {!normalizedLocation && 'Provide a Location ID for this level.'}
                           {normalizedLocation && conflictsExternally && `Location ID ${normalizedLocation} is already used elsewhere.`}
                           {normalizedLocation && !conflictsExternally && isDuplicate && `Location ID ${normalizedLocation} is assigned to multiple levels.`}
-                        </div>
+                        </p>
                       )}
                     </div>
                   );
@@ -516,14 +492,18 @@ const MultiLocationSelector = ({
           </div>
         </div>
 
-        <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={handleClose}>
+        {/* Footer */}
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 p-6 border-t border-border">
+          <button 
+            onClick={handleClose}
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-out focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 active:scale-95 bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm hover:shadow-md h-10 px-4 py-2"
+          >
             Cancel
           </button>
           <button
-            className="btn btn-primary"
             onClick={handleSave}
             disabled={attachedMappings.length === 0}
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-out focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 active:scale-95 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md h-10 px-4 py-2 mt-2 sm:mt-0"
           >
             Save Level Mappings
           </button>

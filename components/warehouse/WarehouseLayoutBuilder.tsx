@@ -1098,9 +1098,7 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     // Show confirmation with status
     const statusLabels = {
       'operational': 'Operational (Ready for live operations)',
-      'offline': 'Offline (Not currently in use)',
-      'maintenance': 'Maintenance (Under maintenance/construction)', 
-      'planning': 'Planning (Still in planning phase)'
+      'draft': 'Draft (Work in progress - not ready for operations)'
     };
     
     // Show confirmation with ultra-tight cropping info

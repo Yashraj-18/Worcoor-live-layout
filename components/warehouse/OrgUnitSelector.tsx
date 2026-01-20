@@ -8,15 +8,13 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
   const [selectedStatus, setSelectedStatus] = useState('');
 
   const statusOptions = [
-    { id: 'operational', name: 'Operational', description: 'Ready for live operations' },
-    { id: 'offline', name: 'Offline', description: 'Not currently in use' },
-    { id: 'maintenance', name: 'Maintenance', description: 'Under maintenance/construction' },
-    { id: 'planning', name: 'Planning', description: 'Still in planning phase' }
+    { id: 'operational', name: 'Save as Operational', description: 'Ready for live operations' },
+    { id: 'draft', name: 'Save as Draft', description: 'Work in progress - not ready for operations' }
   ];
 
   const handleSave = () => {
     if (!selectedStatus) {
-      showMessage.warning('Please select a map type (operational status).');
+      showMessage.warning('Please select a save option (Operational or Draft).');
       return;
     }
 
@@ -135,7 +133,7 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
     <div style={modalOverlayStyle} onClick={handleCancel}>
       <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
         <div style={headerStyle}>
-          🗺️ Select Map Type
+          💾 Select Save Option
         </div>
 
         <div style={{
@@ -144,19 +142,19 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
           marginBottom: '20px',
           textAlign: 'center'
         }}>
-          Choose the operational status for this warehouse layout
+          Choose how you want to save this warehouse layout
         </div>
 
         <div style={sectionStyle}>
           <label style={labelStyle}>
-            Map Type (Operational Status) *
+            Save Option *
           </label>
           <select
             style={selectStyle}
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
           >
-            <option value="">Select map type...</option>
+            <option value="">Select save option...</option>
             {statusOptions.map(status => (
               <option key={status.id} value={status.id}>
                 {status.name} - {status.description}
@@ -174,7 +172,7 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
             marginBottom: '16px'
           }}>
             <div style={{ fontSize: '12px', color: '#0369a1', fontWeight: '500' }}>
-              Layout will be saved with status:
+              Layout will be saved as:
             </div>
             <div style={{ fontSize: '14px', color: '#0c4a6e', fontWeight: '600', marginTop: '4px' }}>
               {statusOptions.find(s => s.id === selectedStatus)?.name}

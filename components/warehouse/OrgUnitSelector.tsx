@@ -4,7 +4,13 @@ import React, { useState } from 'react';
 import '@/styles/warehouse/OrgUnitSelector.css';
 import showMessage from '@/lib/warehouse/utils/showMessage';
 
-const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
+interface OrgUnitSelectorProps {
+  isVisible: boolean;
+  onClose: () => void;
+  onSave: (data: { status: { id: string; name: string; description: string } }) => void;
+}
+
+const OrgUnitSelector: React.FC<OrgUnitSelectorProps> = ({ isVisible, onClose, onSave }) => {
   const [selectedStatus, setSelectedStatus] = useState('');
 
   const statusOptions = [
@@ -19,6 +25,11 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
     }
 
     const selectedStatusObj = statusOptions.find(status => status.id === selectedStatus);
+    
+    if (!selectedStatusObj) {
+      showMessage.error('Invalid save option selected.');
+      return;
+    }
 
     onSave({
       status: selectedStatusObj
@@ -35,7 +46,7 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
 
   if (!isVisible) return null;
 
-  const modalOverlayStyle = {
+  const modalOverlayStyle: React.CSSProperties = {
     position: 'fixed',
     top: 0,
     left: 0,
@@ -49,7 +60,7 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
     zIndex: 10000
   };
 
-  const modalStyle = {
+  const modalStyle: React.CSSProperties = {
     background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.98) 100%)',
     backdropFilter: 'blur(20px)',
     border: '1px solid rgba(59, 130, 246, 0.3)',
@@ -63,7 +74,7 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   };
 
-  const headerStyle = {
+  const headerStyle: React.CSSProperties = {
     background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%)',
     borderBottom: '1px solid rgba(59, 130, 246, 0.2)',
     padding: '20px 24px',
@@ -74,12 +85,12 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
     letterSpacing: '-0.02em'
   };
 
-  const sectionStyle = {
+  const sectionStyle: React.CSSProperties = {
     marginBottom: '24px',
     padding: '0 24px'
   };
 
-  const labelStyle = {
+  const labelStyle: React.CSSProperties = {
     display: 'block',
     fontSize: '0.8125rem',
     fontWeight: '600',
@@ -89,7 +100,7 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
     letterSpacing: '0.05em'
   };
 
-  const selectStyle = {
+  const selectStyle: React.CSSProperties = {
     width: '100%',
     padding: '0.75rem 1rem',
     border: '1px solid rgba(59, 130, 246, 0.3)',
@@ -101,7 +112,7 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
     transition: 'all 0.2s ease'
   };
 
-  const buttonContainerStyle = {
+  const buttonContainerStyle: React.CSSProperties = {
     display: 'flex',
     gap: '12px',
     justifyContent: 'flex-end',
@@ -111,7 +122,7 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
     margin: '0'
   };
 
-  const buttonStyle = {
+  const buttonStyle: React.CSSProperties = {
     padding: '0.75rem 1.5rem',
     borderRadius: '8px',
     fontSize: '0.875rem',
@@ -121,14 +132,14 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
     border: 'none'
   };
 
-  const cancelButtonStyle = {
+  const cancelButtonStyle: React.CSSProperties = {
     ...buttonStyle,
     background: 'rgba(30, 41, 59, 0.6)',
     color: '#cbd5e1',
     border: '1px solid rgba(59, 130, 246, 0.2)'
   };
 
-  const saveButtonStyle = {
+  const saveButtonStyle: React.CSSProperties = {
     ...buttonStyle,
     background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
     color: '#ffffff',
@@ -136,7 +147,7 @@ const OrgUnitSelector = ({ isVisible, onClose, onSave }) => {
     boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)'
   };
 
-  const disabledButtonStyle = {
+  const disabledButtonStyle: React.CSSProperties = {
     ...saveButtonStyle,
     background: 'rgba(100, 116, 139, 0.3)',
     border: '1px solid rgba(100, 116, 139, 0.3)',

@@ -4,7 +4,14 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { createRoot } from 'react-dom/client';
 
-const PopupMessage = ({ message, type = 'info', onClose, duration = null }) => {
+interface PopupMessageProps {
+  message: string;
+  type?: 'info' | 'success' | 'error' | 'warning';
+  onClose?: () => void;
+  duration?: number | null;
+}
+
+const PopupMessage: React.FC<PopupMessageProps> = ({ message, type = 'info', onClose, duration = null }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [isClosing, setIsClosing] = useState(false);
 
@@ -58,13 +65,14 @@ const PopupMessage = ({ message, type = 'info', onClose, duration = null }) => {
 
   const typeStyles = getTypeStyles();
 
-  const overlayStyle = {
+  const overlayStyle: React.CSSProperties = {
     position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backdropFilter: 'blur(8px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -73,54 +81,59 @@ const PopupMessage = ({ message, type = 'info', onClose, duration = null }) => {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
   };
 
-  const popupStyle = {
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
+  const popupStyle: React.CSSProperties = {
+    background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.98) 100%)',
+    backdropFilter: 'blur(20px)',
+    border: '1px solid rgba(59, 130, 246, 0.3)',
+    borderRadius: '16px',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(59, 130, 246, 0.2)',
     maxWidth: '500px',
-    minWidth: '300px',
+    minWidth: '320px',
     overflow: 'hidden',
     animation: isClosing ? 'slideOut 0.3s ease-out' : 'slideIn 0.3s ease-out',
     transform: isClosing ? 'scale(0.95)' : 'scale(1)',
     transition: 'transform 0.3s ease-out'
   };
 
-  const headerStyle = {
-    backgroundColor: typeStyles.backgroundColor,
-    padding: '16px 20px',
+  const headerStyle: React.CSSProperties = {
+    background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%)',
+    borderBottom: '1px solid rgba(59, 130, 246, 0.2)',
+    padding: '20px 24px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between'
   };
 
-  const iconStyle = {
-    width: '28px',
-    height: '28px',
+  const iconStyle: React.CSSProperties = {
+    width: '32px',
+    height: '32px',
     borderRadius: '50%',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    border: '1px solid rgba(59, 130, 246, 0.3)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: '18px',
     fontWeight: 'bold',
-    color: typeStyles.iconColor,
+    color: '#3b82f6',
     marginRight: '12px'
   };
 
-  const titleStyle = {
-    color: 'white',
-    fontSize: '18px',
-    fontWeight: '600',
+  const titleStyle: React.CSSProperties = {
+    color: '#ffffff',
+    fontSize: '1.125rem',
+    fontWeight: '700',
     display: 'flex',
     alignItems: 'center',
-    flex: 1
+    flex: 1,
+    letterSpacing: '-0.02em'
   };
 
-  const closeButtonStyle = {
-    background: 'none',
-    border: 'none',
-    color: 'white',
-    fontSize: '24px',
+  const closeButtonStyle: React.CSSProperties = {
+    background: 'rgba(30, 41, 59, 0.6)',
+    border: '1px solid rgba(59, 130, 246, 0.2)',
+    color: '#cbd5e1',
+    fontSize: '20px',
     cursor: 'pointer',
     padding: '0',
     width: '32px',
@@ -128,37 +141,38 @@ const PopupMessage = ({ message, type = 'info', onClose, duration = null }) => {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: '50%',
-    transition: 'background-color 0.2s ease',
+    borderRadius: '8px',
+    transition: 'all 0.2s ease',
     marginLeft: '12px'
   };
 
-  const contentStyle = {
-    padding: '20px',
-    fontSize: '15px',
+  const contentStyle: React.CSSProperties = {
+    padding: '24px',
+    fontSize: '0.9375rem',
     lineHeight: '1.6',
-    color: '#333',
+    color: '#e2e8f0',
     whiteSpace: 'pre-wrap'
   };
 
-  const footerStyle = {
-    padding: '16px 20px',
-    borderTop: '1px solid #e0e0e0',
+  const footerStyle: React.CSSProperties = {
+    padding: '16px 24px',
+    borderTop: '1px solid rgba(59, 130, 246, 0.2)',
+    background: 'rgba(15, 23, 42, 0.5)',
     display: 'flex',
     justifyContent: 'flex-end'
   };
 
-  const okButtonStyle = {
-    backgroundColor: typeStyles.backgroundColor,
+  const okButtonStyle: React.CSSProperties = {
+    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
     color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    padding: '10px 24px',
-    fontSize: '14px',
+    border: '1px solid rgba(59, 130, 246, 0.5)',
+    borderRadius: '8px',
+    padding: '0.75rem 1.5rem',
+    fontSize: '0.875rem',
     fontWeight: '600',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)'
   };
 
   const getTitle = () => {
@@ -214,8 +228,16 @@ const PopupMessage = ({ message, type = 'info', onClose, duration = null }) => {
             <button 
               style={closeButtonStyle}
               onClick={handleClose}
-              onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              onMouseEnter={(e) => {
+                (e.target as HTMLButtonElement).style.background = 'rgba(51, 65, 85, 0.8)';
+                (e.target as HTMLButtonElement).style.borderColor = 'rgba(59, 130, 246, 0.4)';
+                (e.target as HTMLButtonElement).style.color = '#ffffff';
+              }}
+              onMouseLeave={(e) => {
+                (e.target as HTMLButtonElement).style.background = 'rgba(30, 41, 59, 0.6)';
+                (e.target as HTMLButtonElement).style.borderColor = 'rgba(59, 130, 246, 0.2)';
+                (e.target as HTMLButtonElement).style.color = '#cbd5e1';
+              }}
             >
               ×
             </button>
@@ -228,12 +250,14 @@ const PopupMessage = ({ message, type = 'info', onClose, duration = null }) => {
               style={okButtonStyle}
               onClick={handleClose}
               onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-1px)';
-                e.target.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
+                (e.target as HTMLButtonElement).style.transform = 'translateY(-2px)';
+                (e.target as HTMLButtonElement).style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.3)';
+                (e.target as HTMLButtonElement).style.background = 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)';
               }}
               onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+                (e.target as HTMLButtonElement).style.transform = 'translateY(0)';
+                (e.target as HTMLButtonElement).style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.2)';
+                (e.target as HTMLButtonElement).style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
               }}
             >
               OK
@@ -248,7 +272,9 @@ const PopupMessage = ({ message, type = 'info', onClose, duration = null }) => {
 
 // Singleton manager for popup messages
 class PopupManager {
-  static instance = null;
+  static instance: PopupManager | null = null;
+  container: HTMLDivElement | null = null;
+  root: ReturnType<typeof createRoot> | null = null;
   
   constructor() {
     if (PopupManager.instance) {
@@ -265,43 +291,48 @@ class PopupManager {
     PopupManager.instance = this;
   }
   
-  show(message, type = 'info', duration = null) {
+  show(message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info', duration: number | null = null): Promise<void> {
     // Only show popup on client-side
     if (typeof window === 'undefined' || !this.container || !this.root) {
       console.warn('PopupManager: Cannot show popup during SSR');
       return Promise.resolve();
     }
     
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       const handleClose = () => {
-        this.root.unmount();
+        // Don't unmount, just render null to clear the popup
+        if (this.root) {
+          this.root.render(null);
+        }
         resolve();
       };
       
-      this.root.render(
-        <PopupMessage 
-          message={message} 
-          type={type} 
-          onClose={handleClose}
-          duration={duration}
-        />
-      );
+      if (this.root) {
+        this.root.render(
+          <PopupMessage 
+            message={message} 
+            type={type} 
+            onClose={handleClose}
+            duration={duration}
+          />
+        );
+      }
     });
   }
   
-  info(message, duration = null) {
+  info(message: string, duration: number | null = null): Promise<void> {
     return this.show(message, 'info', duration);
   }
   
-  success(message, duration = 3000) {
+  success(message: string, duration: number = 3000): Promise<void> {
     return this.show(message, 'success', duration);
   }
   
-  error(message, duration = null) {
+  error(message: string, duration: number | null = null): Promise<void> {
     return this.show(message, 'error', duration);
   }
   
-  warning(message, duration = null) {
+  warning(message: string, duration: number | null = null): Promise<void> {
     return this.show(message, 'warning', duration);
   }
 }

@@ -54,7 +54,6 @@ import * as z from "zod"
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -64,27 +63,21 @@ import { toast } from "@/components/ui/use-toast"
 
 // Types
 interface OrgUnit {
-  id: string
-  name: string
-  type: "Warehouse" | "Production" | "Office"
-  status: "active" | "inactive"
-  location: string
+  unit_name: string
+  unit_type: "warehouse" | "office" | "production"
+  status: "LIVE" | "OFFLINE" | "MAINTENANCE" | "PLANNING"
   description?: string
-  createdAt: string
-  updatedAt: string
 }
 
 // Form schema
 const orgUnitSchema = z.object({
-  id: z.string().min(1, "Org Unit ID is required").max(50, "ID must be less than 50 characters").regex(/^[A-Za-z0-9_-]+$/, "ID can only contain letters, numbers, underscores, and hyphens"),
-  name: z.string().min(1, "Org Unit Name is required").max(100, "Name must be less than 100 characters"),
-  type: z.enum(["Warehouse", "Production", "Office"], {
+  unit_name: z.string().min(1, "Unit Name is required").max(100, "Name must be less than 100 characters"),
+  unit_type: z.enum(["warehouse", "office", "production"], {
     required_error: "Please select a unit type",
   }),
-  status: z.enum(["active", "inactive"], {
+  status: z.enum(["LIVE", "OFFLINE", "MAINTENANCE", "PLANNING"], {
     required_error: "Please select a status",
   }),
-  location: z.string().min(1, "Location is required").max(200, "Location must be less than 200 characters"),
   description: z.string().optional(),
 })
 
@@ -93,34 +86,22 @@ type OrgUnitFormValues = z.infer<typeof orgUnitSchema>
 // Default data
 const defaultOrgUnits: OrgUnit[] = [
   {
-    id: "WH-001",
-    name: "Warehouse 1",
-    type: "Warehouse",
-    status: "active",
-    location: "Building A, Floor 1",
+    unit_name: "Warehouse 1",
+    unit_type: "warehouse",
+    status: "LIVE",
     description: "Main warehouse for finished goods storage",
-    createdAt: "2025-01-01T00:00:00Z",
-    updatedAt: "2025-01-07T14:32:00Z",
   },
   {
-    id: "PROD-001",
-    name: "Production Line 1",
-    type: "Production",
-    status: "active",
-    location: "Building B, Floor 2",
+    unit_name: "Production Unit 1",
+    unit_type: "production",
+    status: "PLANNING",
     description: "Primary production line for assembly operations",
-    createdAt: "2025-01-01T00:00:00Z",
-    updatedAt: "2025-01-06T09:15:00Z",
   },
   {
-    id: "OFF-001",
-    name: "Office Floor 1",
-    type: "Office",
-    status: "inactive",
-    location: "Main Building, Floor 1",
+    unit_name: "Main Office",
+    unit_type: "office",
+    status: "OFFLINE",
     description: "Administrative offices and management",
-    createdAt: "2025-01-01T00:00:00Z",
-    updatedAt: "2025-01-05T16:45:00Z",
   },
 ]
 
@@ -142,11 +123,9 @@ export default function OrgUnitsPage() {
   const form = useForm<OrgUnitFormValues>({
     resolver: zodResolver(orgUnitSchema),
     defaultValues: {
-      id: "",
-      name: "",
-      type: "Warehouse",
-      status: "active",
-      location: "",
+      unit_name: "",
+      unit_type: "warehouse",
+      status: "LIVE",
       description: "",
     },
   })
@@ -180,12 +159,13 @@ export default function OrgUnitsPage() {
 
   // Filter units based on search and filters
   const filteredUnits = orgUnits.filter((unit) => {
-    const matchesSearch =
-      unit.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      unit.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      unit.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    const search = searchTerm.toLowerCase()
+    const unitName = (unit.unit_name ?? (unit as any).name ?? "").toString().toLowerCase()
+    const unitDescription = (unit.description ?? "").toString().toLowerCase()
 
-    const matchesType = filterType === "all" || unit.type === filterType
+    const matchesSearch = unitName.includes(search) || unitDescription.includes(search)
+
+    const matchesType = filterType === "all" || unit.unit_type === filterType
     const matchesStatus = filterStatus === "all" || unit.status === filterStatus
 
     return matchesSearch && matchesType && matchesStatus
@@ -195,27 +175,11 @@ export default function OrgUnitsPage() {
   const handleAddUnit = (data: OrgUnitFormValues) => {
     setIsSubmitting(true)
 
-    // Check if ID is unique
-    const existingUnit = orgUnits.find(unit => unit.id === data.id)
-    if (existingUnit) {
-      toast({
-        title: "Validation Error",
-        description: `Org Unit ID "${data.id}" already exists. Please choose a different ID.`,
-        variant: "destructive",
-      })
-      setIsSubmitting(false)
-      return
-    }
-
     const newUnit: OrgUnit = {
-      id: data.id, // Use provided ID instead of auto-generated
-      name: data.name,
-      type: data.type,
+      unit_name: data.unit_name,
+      unit_type: data.unit_type,
       status: data.status,
-      location: data.location,
       description: data.description,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     }
 
     setOrgUnits((prev) => [...prev, newUnit])
@@ -224,7 +188,7 @@ export default function OrgUnitsPage() {
 
     toast({
       title: "Organizational unit created",
-      description: `${newUnit.name} (ID: ${newUnit.id}) has been added successfully.`,
+      description: `${newUnit.unit_name} has been added successfully.`,
     })
 
     setIsSubmitting(false)
@@ -236,31 +200,16 @@ export default function OrgUnitsPage() {
 
     setIsSubmitting(true)
 
-    // Check if ID is unique (excluding current unit)
-    const existingUnit = orgUnits.find(unit => unit.id === data.id && unit.id !== editingUnit.id)
-    if (existingUnit) {
-      toast({
-        title: "Validation Error",
-        description: `Org Unit ID "${data.id}" already exists. Please choose a different ID.`,
-        variant: "destructive",
-      })
-      setIsSubmitting(false)
-      return
-    }
-
     const updatedUnit: OrgUnit = {
       ...editingUnit,
-      id: data.id, // Allow ID changes
-      name: data.name,
-      type: data.type,
+      unit_name: data.unit_name,
+      unit_type: data.unit_type,
       status: data.status,
-      location: data.location,
       description: data.description,
-      updatedAt: new Date().toISOString(),
     }
 
     setOrgUnits((prev) =>
-      prev.map((unit) => (unit.id === editingUnit.id ? updatedUnit : unit))
+      prev.map((unit) => (unit === editingUnit ? updatedUnit : unit))
     )
     setIsEditDialogOpen(false)
     setEditingUnit(null)
@@ -268,7 +217,7 @@ export default function OrgUnitsPage() {
 
     toast({
       title: "Organizational unit updated",
-      description: `${updatedUnit.name} (ID: ${updatedUnit.id}) has been updated successfully.`,
+      description: `${updatedUnit.unit_name} has been updated successfully.`,
     })
 
     setIsSubmitting(false)
@@ -278,11 +227,11 @@ export default function OrgUnitsPage() {
   const handleDeleteUnit = () => {
     if (!deleteUnit) return
 
-    setOrgUnits((prev) => prev.filter((unit) => unit.id !== deleteUnit.id))
+    setOrgUnits((prev) => prev.filter((unit) => unit !== deleteUnit))
 
     toast({
       title: "Organizational unit deleted",
-      description: `${deleteUnit.name} has been deleted successfully.`,
+      description: `${deleteUnit.unit_name} has been deleted successfully.`,
       variant: "destructive",
     })
 
@@ -293,11 +242,9 @@ export default function OrgUnitsPage() {
   const handleEditClick = (unit: OrgUnit) => {
     setEditingUnit(unit)
     form.reset({
-      id: unit.id, // Include ID for editing
-      name: unit.name,
-      type: unit.type,
+      unit_name: unit.unit_name,
+      unit_type: unit.unit_type,
       status: unit.status,
-      location: unit.location,
       description: unit.description || "",
     })
     setIsEditDialogOpen(true)
@@ -381,36 +328,28 @@ export default function OrgUnitsPage() {
                 <TableHead>Unit Name</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Last Updated</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUnits.length > 0 ? (
-                filteredUnits.map((unit) => (
-                  <TableRow key={unit.id}>
-                    <TableCell className="font-medium">{unit.name}</TableCell>
+                filteredUnits.map((unit, idx) => (
+                  <TableRow key={`${unit.unit_name}-${idx}`}>
+                    <TableCell className="font-medium">{unit.unit_name}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="capitalize">
-                        {unit.type}
+                        {unit.unit_type}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <span
                           className={`h-2 w-2 rounded-full ${
-                            unit.status === "active" ? "bg-green-500" : "bg-gray-400"
+                            unit.status === "LIVE" ? "bg-green-500" : unit.status === "OFFLINE" ? "bg-gray-400" : unit.status === "MAINTENANCE" ? "bg-amber-500" : "bg-blue-500"
                           }`}
                         />
-                        <span className="capitalize">{unit.status}</span>
+                        <span>{unit.status}</span>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {unit.location}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(unit.updatedAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -439,7 +378,7 @@ export default function OrgUnitsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={4} className="h-24 text-center">
                     {orgUnits.length === 0
                       ? "No organizational units found. Add your first unit to get started."
                       : "No units match your current filters."}
@@ -475,31 +414,10 @@ export default function OrgUnitsPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="id"
+                name="unit_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Org Unit ID</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Enter unique ID (e.g., WH-001, PROD-001)"
-                        {...field}
-                        disabled={!!editingUnit} // Disable ID editing in edit mode
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Unique identifier for this organizational unit. Cannot be changed after creation.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Org Unit Name</FormLabel>
+                    <FormLabel>Unit Name</FormLabel>
                     <FormControl>
                       <Input placeholder="Enter unit name" {...field} />
                     </FormControl>
@@ -510,7 +428,7 @@ export default function OrgUnitsPage() {
 
               <FormField
                 control={form.control}
-                name="type"
+                name="unit_type"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Unit Type</FormLabel>
@@ -521,9 +439,9 @@ export default function OrgUnitsPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Warehouse">Warehouse</SelectItem>
-                        <SelectItem value="Production">Production</SelectItem>
-                        <SelectItem value="Office">Office</SelectItem>
+                        <SelectItem value="warehouse">warehouse</SelectItem>
+                        <SelectItem value="office">office</SelectItem>
+                        <SelectItem value="production">production</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -544,24 +462,12 @@ export default function OrgUnitsPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="LIVE">LIVE</SelectItem>
+                        <SelectItem value="OFFLINE">OFFLINE</SelectItem>
+                        <SelectItem value="MAINTENANCE">MAINTENANCE</SelectItem>
+                        <SelectItem value="PLANNING">PLANNING</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter location details" {...field} />
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -614,7 +520,7 @@ export default function OrgUnitsPage() {
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the organizational unit
-              "{deleteUnit?.name}" and remove all associated data.
+              "{deleteUnit?.unit_name}" and remove all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

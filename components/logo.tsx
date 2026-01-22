@@ -15,7 +15,7 @@ const PATHS_WITH_LOGO = [
   "/dashboard/task-manager",
   "/dashboard/inventory",
   "/dashboard/audit",
-  "/dashboard/asset-management/assets",
+  "/dashboard/reference-data/asset-management/assets",
   "/login"
 ]
 

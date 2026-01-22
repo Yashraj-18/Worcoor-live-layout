@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
 
 export default function AssetManagementPage() {
-  redirect("/dashboard/asset-management/assets")
+  redirect("/dashboard/reference-data/asset-management/assets")
 }

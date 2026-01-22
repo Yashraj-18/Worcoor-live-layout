@@ -25,30 +25,15 @@ import { useInfiniteScroll } from "@/src/lib/use-infinite-scroll";
 import { getPaginatedRequestParams } from "@/src/lib/pagination";
 import { FileUploadBox } from "@/components/file-uploaders/file-upload-box"
 
+const LOCATION_TAG_NONE_VALUE = "__none__"
+
 // Asset form schema
 const assetFormSchema = z.object({
-  parentResource: z.string({
-    required_error: "Please select a parent resource.",
-  }).min(1, { message: "Please select a parent resource." }),
-  category: z.string({
-    required_error: "Please select a category.",
-  }).min(1, { message: "Please select a category." }),
-  name: z.string().min(2, { message: "Asset name is required" }),
-  code: z.string().min(2, { message: "Asset code is required" }),
-  description: z.string().optional(),
-  status: z.string({
-    required_error: "Please select a asset status.",
-  }).min(1, { message: "Please select a asset status." }),
-  locationTag: z.string({
-    required_error: "Please select a location tag.",
-  }).min(1, { message: "Please select a location tag." }),
-  unit: z.string({
-    required_error: "Please select a unit.",
-  }).min(1, { message: "Please select a unit." }),
-  department: z.string({
-    required_error: "Please select a department.",
-  }).min(1, { message: "Please select a department." }),
-  attachments: z.array(z.string().url()).optional()
+  asset_name: z.string().min(1, { message: "Asset Name is required" }).transform((v) => v.trim()),
+  asset_type: z.enum(["forklift", "pallet_jack", "scanner"], {
+    required_error: "Please select an asset type.",
+  }),
+  location_tag_id: z.string().optional(),
 })
 
 type AssetFormValues = z.infer<typeof assetFormSchema>
@@ -346,16 +331,9 @@ export default function AssetManagementPage() {
   const form = useForm<AssetFormValues>({
     resolver: zodResolver(assetFormSchema),
     defaultValues: {
-      parentResource: "",
-      name: "",
-      code: "",
-      category: "",
-      description: "",
-      status: "",
-      locationTag: "",
-      unit: "",
-      department: "",
-      attachments: []
+      asset_name: "",
+      asset_type: "forklift" as any,
+      location_tag_id: undefined,
     },
   })
 
@@ -385,16 +363,9 @@ export default function AssetManagementPage() {
     setFilterDepartment(departmentDetails)
     setFormMode("edit")
     form.reset({
-      parentResource: asset.resourceId,
-      name: asset.name,
-      code: asset.code,
-      category: asset.categoryId,
-      description: asset.description,
-      status: asset.statusId,
-      locationTag: asset.locationId,
-      unit: asset.unitId,
-      department: asset.departmentId,
-      attachments: asset.attachments
+      asset_name: asset.asset_name ?? asset.name ?? "",
+      asset_type: asset.asset_type ?? asset.type ?? "forklift",
+      location_tag_id: asset.location_tag_id ?? asset.locationId ?? undefined,
     })
     setIsEditAssetOpen(true)
   }
@@ -409,16 +380,9 @@ export default function AssetManagementPage() {
   const handleAddAsset = () => {
     setFormMode("add")
     form.reset({
-      parentResource: "",
-      name: "",
-      code: "",
-      category: "",
-      description: "",
-      status: "",
-      locationTag: "",
-      unit: "",
-      department: "",
-      attachments: []
+      asset_name: "",
+      asset_type: "forklift" as any,
+      location_tag_id: undefined,
     })
     setFilterDepartment(departmentDetails)
     setIsAddAssetOpen(true)
@@ -430,17 +394,24 @@ export default function AssetManagementPage() {
     if (formMode === "add") {
       setIsSubmitting(true);
       try {
+        if (!departmentFilter || departmentFilter === "000000000000000000000000") {
+          notification.error("Department is required by the current backend. Please select a Department filter.")
+          return
+        }
+        const locationTagId = data.location_tag_id || undefined;
         const reqBody = {
-          resourceId: data.parentResource,
-          name: data.name.trim(),
-          code: data.code.trim(),
-          categoryId: data.category,
-          description: data.description ? data.description.trim() : undefined,
-          statusId: data.status,
-          locationId: data.locationTag,
-          unitId: data.unit,
-          departmentId: data.department,
-          attachments: data.attachments ? data.attachments : undefined,
+          asset_name: data.asset_name,
+          asset_type: data.asset_type,
+          location_tag_id: locationTagId,
+
+          name: data.asset_name,
+          type: data.asset_type,
+          locationId: locationTagId,
+
+          departmentId: departmentFilter,
+          unitId: unitFilter || undefined,
+          categoryId: categoryFilter || undefined,
+          statusId: statusFilter || undefined,
         };
 
         const response = await apiService.post({
@@ -461,26 +432,46 @@ export default function AssetManagementPage() {
         } else {
           notification.error(response.data.message);
         }
-      } catch (error) {
-        notification.error("Something went wrong. Please try again.");
+      } catch (error: any) {
+        const hasResponse = !!error?.response
+        const serverMessage =
+          error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          error?.message ||
+          (hasResponse
+            ? "Something went wrong. Please try again."
+            : "Network error: unable to reach API. Check internet/VPN and backend CORS settings.");
+        console.warn("Add asset failed", {
+          error,
+          response: error?.response?.data,
+          status: error?.response?.status,
+        })
+        notification.error(serverMessage)
       } finally {
         setIsSubmitting(false);
       }
     } else if (formMode === "edit") {
       setIsSubmitting(true);
       try {
+        if (!departmentFilter || departmentFilter === "000000000000000000000000") {
+          notification.error("Department is required by the current backend. Please select a Department filter.")
+          return
+        }
+        const locationTagId = data.location_tag_id || undefined;
         const reqBody = {
           id: selectedAsset.id,
-          resourceId: data.parentResource,
-          name: data.name.trim(),
-          code: data.code.trim(),
-          categoryId: data.category,
-          description: data.description ? data.description.trim() : undefined,
-          statusId: data.status,
-          locationId: data.locationTag,
-          unitId: data.unit,
-          departmentId: data.department,
-          attachments: data.attachments ? data.attachments : undefined
+          asset_name: data.asset_name,
+          asset_type: data.asset_type,
+          location_tag_id: locationTagId,
+
+          name: data.asset_name,
+          type: data.asset_type,
+          locationId: locationTagId,
+
+          departmentId: departmentFilter,
+          unitId: unitFilter || undefined,
+          categoryId: categoryFilter || undefined,
+          statusId: statusFilter || undefined,
         };
 
         const response = await apiService.put({
@@ -501,8 +492,21 @@ export default function AssetManagementPage() {
         } else {
           notification.error(response.data.message);
         }
-      } catch (error) {
-        notification.error("Something went wrong while updating the asset.");
+      } catch (error: any) {
+        const hasResponse = !!error?.response
+        const serverMessage =
+          error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          error?.message ||
+          (hasResponse
+            ? "Something went wrong while updating the asset."
+            : "Network error: unable to reach API. Check internet/VPN and backend CORS settings.");
+        console.warn("Update asset failed", {
+          error,
+          response: error?.response?.data,
+          status: error?.response?.status,
+        })
+        notification.error(serverMessage)
       } finally {
         setIsSubmitting(false);
       }
@@ -553,7 +557,7 @@ export default function AssetManagementPage() {
   };
 
   if (isAuthLoading || !isAuthenticated) return null;
-
+  
   return (
     <div className="h-[calc(100vh-3rem)] overflow-hidden">
       <div className="asset-management h-full flex flex-col gap-2">
@@ -750,15 +754,10 @@ export default function AssetManagementPage() {
                 <>
                   <TableHeader className="bg-gray-100 text-black dark:bg-slate-950 dark:hover:bg-slate-950">
                     <TableRow>
-                      <TableHead className="text-black font-semibold whitespace-nowrap">Parent Resource</TableHead>
-                      <TableHead className="text-black font-semibold whitespace-nowrap min-w-[150px]">Asset Name</TableHead>
+                      <TableHead className="text-black font-semibold whitespace-nowrap min-w-[200px]">Asset Name</TableHead>
+                      <TableHead className="text-black font-semibold whitespace-nowrap">Asset Type</TableHead>
                       <TableHead className="text-black font-semibold whitespace-nowrap">Location Tag</TableHead>
-                      <TableHead className="text-black font-semibold whitespace-nowrap min-w-[150px]">Asset Code</TableHead>
-                      <TableHead className="text-black font-semibold whitespace-nowrap min-w-[150px]">Org Unit</TableHead>
-                      <TableHead className="text-black font-semibold whitespace-nowrap">Department</TableHead>
-                      <TableHead className="text-black font-semibold whitespace-nowrap">Category</TableHead>
-                      <TableHead className="text-black font-semibold whitespace-nowrap">Asset Status</TableHead>
-                      <TableHead className="text-black font-semibold whitespace-nowrap">Description</TableHead>
+                      <TableHead className="text-black font-semibold whitespace-nowrap text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -769,20 +768,35 @@ export default function AssetManagementPage() {
                           onDoubleClick={() => handleRowDoubleClick(asset)}
                           className="cursor-pointer bg-muted/30"
                         >
-                          <TableCell className="p-4 md:p-6">{getParentResourcesNameById(asset.resourceId)}</TableCell>
-                          <TableCell className="p-4 md:p-6">{asset.name}</TableCell>
-                          <TableCell className="p-4 md:p-6">{getLocationTagNameById(asset.locationId)}</TableCell>
-                          <TableCell className="p-4 md:p-6">{asset.code}</TableCell>
-                          <TableCell className="p-4 md:p-6">{getUnitNameById(asset.unitId)}</TableCell>
-                          <TableCell className="p-4 md:p-6">{getDepartmentsNameById(asset.departmentId)}</TableCell>
-                          <TableCell className="p-4 md:p-6">{getCategoriesNameById(asset.categoryId)}</TableCell>
-                          <TableCell className="p-4 md:p-6 whitespace-nowrap">
-                            <Badge className={getStatusBadgeColor(getStatusesNameById(asset.statusId))}>
-                              {getStatusesNameById(asset.statusId)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="p-4 md:p-6 max-w-[200px] truncate" title={asset.description}>
-                            {asset.description ? asset.description : "-"}
+                          <TableCell className="p-4 md:p-6">{asset.asset_name ?? asset.name ?? "-"}</TableCell>
+                          <TableCell className="p-4 md:p-6">{asset.asset_type ?? asset.type ?? "-"}</TableCell>
+                          <TableCell className="p-4 md:p-6">{getLocationTagNameById(asset.location_tag_id ?? asset.locationId)}</TableCell>
+                          <TableCell className="p-4 md:p-6 text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditAsset(asset);
+                                }}
+                              >
+                                <Edit className="h-3 w-3 mr-1" />
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteAsset(asset);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Delete
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -805,56 +819,10 @@ export default function AssetManagementPage() {
                 <div className="h-full space-y-4 flex-grow-1 overflow-y-auto px-2 md:px-6 dark:[&::-webkit-scrollbar-thumb]:bg-slate-500  dark:[&::-webkit-scrollbar]:w-[4px] pt-4 z-0">
                   <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="h-full space-y-4">
-                      {/* Parent Resource and Category */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-2">
-                        <FormField control={form.control} name="parentResource"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium leading-none">Parent Resource <span className="text-destructive">*</span></FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="h-12 rounded-md border border-input">
-                                    <SelectValue placeholder="Select Parent Resource" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent className="max-h-[300px]">
-                                  {parentResources.map((resource) => (
-                                    <SelectItem key={resource.value} value={resource.value} className="py-2.5">
-                                      {resource.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField control={form.control} name="category"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium leading-none">Category <span className="text-destructive">*</span></FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="h-12 rounded-md border border-input">
-                                    <SelectValue placeholder="Select Category" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {categories.map((category) => (
-                                    <SelectItem key={category.value} value={category.value}>
-                                      {category.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      {/* Assets Name and Code  */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-2">
-                        <FormField control={form.control} name="name"
+                        <FormField
+                          control={form.control}
+                          name="asset_name"
                           render={({ field }) => (
                             <FormItem className="space-y-0 mt-0">
                               <FormLabel className="text-sm font-medium leading-none">Asset Name <span className="text-destructive">*</span></FormLabel>
@@ -865,58 +833,22 @@ export default function AssetManagementPage() {
                             </FormItem>
                           )}
                         />
-                        <FormField control={form.control} name="code"
-                          render={({ field }) => (
-                            <FormItem className="space-y-0 mt-0">
-                              <FormLabel className="text-sm font-medium leading-none">Asset Code <span className="text-destructive">*</span></FormLabel>
-                              <FormControl>
-                                <Input className="h-12 rounded-md border border-input" placeholder="Enter Asset Code" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      {/* Status and Location Tag */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField control={form.control} name="status"
+                        <FormField
+                          control={form.control}
+                          name="asset_type"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-sm font-medium leading-none">Asset Status <span className="text-destructive">*</span></FormLabel>
+                              <FormLabel className="text-sm font-medium leading-none">Asset Type <span className="text-destructive">*</span></FormLabel>
                               <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
                                   <SelectTrigger className="h-12 rounded-md border border-input">
-                                    <SelectValue placeholder="Select Status" />
+                                    <SelectValue placeholder="Select Asset Type" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  {statuses.map((status) => (
-                                    <SelectItem key={status.value} value={status.value}>
-                                      {status.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField control={form.control} name="locationTag"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium leading-none">Location Tag <span className="text-destructive">*</span></FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="h-12 rounded-md border border-input">
-                                    <SelectValue placeholder="Select Location Tag" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {locationTags.map((location) => (
-                                    <SelectItem key={location.value} value={location.value}>
-                                      {location.label}
-                                    </SelectItem>
-                                  ))}
+                                  <SelectItem value="forklift">forklift</SelectItem>
+                                  <SelectItem value="pallet_jack">pallet_jack</SelectItem>
+                                  <SelectItem value="scanner">scanner</SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -924,98 +856,36 @@ export default function AssetManagementPage() {
                           )}
                         />
                       </div>
-                      {/* Unit and Department */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField control={form.control} name="unit"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium leading-none">Org Unit <span className="text-destructive">*</span></FormLabel>
-                              <Select
-                                value={field.value}
-                                onValueChange={(value) => {
-                                  field.onChange(value); // <-- ✅ call it here!
-                                  if (value === "000000000000000000000000") {
-                                    setFilterDepartment(departmentDetails);
-                                  } else {
-                                    const matched = departmentDetails.filter(
-                                      (dept) => dept.detail.unitId === value
-                                    );
-                                    setFilterDepartment(matched);
-                                  }
-                                }}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className="h-12 rounded-md border border-input">
-                                    <SelectValue placeholder="Select Org Unit" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {units.map((unit) => (
-                                    <SelectItem key={unit.value} value={unit.value}>
-                                      {unit.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField control={form.control} name="department"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-medium leading-none">Department <span className="text-destructive">*</span></FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="h-12 rounded-md border border-input">
-                                    <SelectValue placeholder="Select Department" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {filterDepartment.length === 0 ? (
-                                    <div className="p-2 text-sm text-muted-foreground">No departments found</div>
-                                  ) : (
-                                    filterDepartment.map((d) => (
-                                      <SelectItem key={d.id} value={d.id}>
-                                        {d.detail.name}
-                                      </SelectItem>
-                                    ))
-                                  )}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      {/* Description */}
-                      <FormField control={form.control} name="description"
+
+                      <FormField
+                        control={form.control}
+                        name="location_tag_id"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-sm font-medium leading-none">Asset Specification</FormLabel>
-                            <FormControl>
-                              <Textarea className="h-12 rounded-md border border-input" placeholder="Enter Asset Specification" {...field} />
-                            </FormControl>
+                            <FormLabel className="text-sm font-medium leading-none">Location Tag</FormLabel>
+                            <Select
+                              onValueChange={(val) => field.onChange(val === LOCATION_TAG_NONE_VALUE ? undefined : val)}
+                              value={field.value || LOCATION_TAG_NONE_VALUE}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="h-12 rounded-md border border-input">
+                                  <SelectValue placeholder="Select Location Tag" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value={LOCATION_TAG_NONE_VALUE}>None</SelectItem>
+                                {locationTags.map((location) => (
+                                  <SelectItem key={location.value} value={location.value}>
+                                    {location.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                      {/* Attechments */}
-                      <FormField control={form.control} name="attachments"
-                        render={({ field }) => (
-                          <FileUploadBox
-                            label="Upload Attachments"
-                            uploadUrl={api_url.mediaService.dpvmu}
-                            uploadType="multiple"
-                            accept=".jpg,.jpeg,.png,.pdf"
-                            maxFileSizeMB={5}
-                            value={field.value}
-                            onChange={field.onChange}
-                            onUploadError={onUploadError}
-                            onUploadSuccess= {onUploadSuccess}
-                          />
-                        )}
-                      />
+
                       <DialogFooter className="py-4 gap-2">
                         <Button type="button" variant="outline"
                           onClick={() => {
@@ -1045,70 +915,18 @@ export default function AssetManagementPage() {
               <div className="h-full space-y-4 flex-grow-1 overflow-y-auto px-2 md:px-6 dark:[&::-webkit-scrollbar-thumb]:bg-slate-500  dark:[&::-webkit-scrollbar]:w-[4px] pt-4 z-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Parent Resource</Label>
-                    <p className="text-sm">{getParentResourcesNameById(selectedAsset.resourceId)}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Category</Label>
-                    <p className="text-sm">{getCategoriesNameById(selectedAsset.categoryId)}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
                     <Label className="text-sm font-medium text-muted-foreground">Asset Name</Label>
-                    <p className="text-sm">{selectedAsset.name}</p>
+                    <p className="text-sm">{selectedAsset.asset_name ?? selectedAsset.name ?? "-"}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Asset Code</Label>
-                    <p className="text-sm">{selectedAsset.code}</p>
+                    <Label className="text-sm font-medium text-muted-foreground">Asset Type</Label>
+                    <p className="text-sm">{selectedAsset.asset_type ?? selectedAsset.type ?? "-"}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Status</Label>
-                    <div>
-                      <Badge className={getStatusBadgeColor(getStatusesNameById(selectedAsset.statusId))}>
-                        {getStatusesNameById(selectedAsset.statusId)}
-                      </Badge>
-                    </div>
-                  </div>
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">Location Tag</Label>
-                    <p className="text-sm">{getLocationTagNameById(selectedAsset.locationId)}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Org Unit</Label>
-                    <p className="text-sm">{getUnitNameById(selectedAsset.unitId)}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Department</Label>
-                    <p className="text-sm">{getDepartmentsNameById(selectedAsset.departmentId)}</p>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Description</Label>
-                  <p className="text-sm">{selectedAsset.description || "No description provided."}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Attachments</Label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedAsset.attachments && selectedAsset.attachments.length > 0 ? (
-                      selectedAsset.attachments.map((url: string, index: number) => (
-                        <a key={index} href={url} target="_blank" rel="noopener noreferrer">
-                          <div className="w-24 h-24 max-h-24 min-h-24 min-w-24 max-w-24 rounded-xl border hover:opacity-80">
-                            <img
-                              src={url}
-                              alt={`Attachment ${index + 1}`}
-                              className="h-full w-full object-cover rounded-xl"
-                            />
-                          </div>
-                        </a>
-                      ))
-                    ) : (
-                      <span className="text-sm">N/A</span>
-                    )}
+                    <p className="text-sm">{getLocationTagNameById(selectedAsset.location_tag_id ?? selectedAsset.locationId)}</p>
                   </div>
                 </div>
               </div>
@@ -1143,118 +961,36 @@ export default function AssetManagementPage() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="h-full space-y-4 flex-grow-1 overflow-y-auto px-2 md:px-6 dark:[&::-webkit-scrollbar-thumb]:bg-slate-500  dark:[&::-webkit-scrollbar]:w-[4px] pt-4 z-0">
-                {/* Parent Resource and Category */}
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="parentResource"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="">Parent Resource <span className="text-destructive">*</span></FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-12 rounded-md border border-input bg-white/100 dark:bg-slate-800/80 dark:border-slate-700">
-                              <SelectValue placeholder="Select Parent Resource" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="max-h-[300px]">
-                            {parentResources.map((resource) => (
-                              <SelectItem key={resource.value} value={resource.value} className="py-2.5">
-                                {resource.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField control={form.control} name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Category <span className="text-destructive">*</span></FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-12 rounded-md border border-input bg-white/100 dark:bg-slate-800/80 dark:border-slate-700">
-                              <SelectValue placeholder="Select Category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {categories.map((category) => (
-                              <SelectItem key={category.value} value={category.value}>
-                                {category.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                {/* Asset Name and Code */}
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="name"
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="asset_name"
                     render={({ field }) => (
                       <FormItem className="space-y-0 mt-0">
                         <FormLabel>Asset Name <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
-                          <Input disabled={!!selectedAsset} className="h-12 rounded-md border border-input bg-white/100 dark:bg-slate-800/80 dark:border-slate-700" placeholder="Enter Asset Name" {...field} />
+                          <Input className="h-12 rounded-md border border-input" placeholder="Enter Asset Name" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <FormField control={form.control} name="code"
-                    render={({ field }) => (
-                      <FormItem className="space-y-0 mt-0">
-                        <FormLabel className="text-sm font-medium leading-none">Asset Code <span className="text-destructive">*</span></FormLabel>
-                        <FormControl>
-                          <Input disabled={!!selectedAsset} className="h-12 rounded-md border border-input" placeholder="Enter Asset Code" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                {/* Status and Location Tag */}
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="status"
+                  <FormField
+                    control={form.control}
+                    name="asset_type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Asset Status <span className="text-destructive">*</span></FormLabel>
+                        <FormLabel>Asset Type <span className="text-destructive">*</span></FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger className="h-12 rounded-md border border-input bg-white/100 dark:bg-slate-800/80 dark:border-slate-700">
-                              <SelectValue placeholder="Select Asset Status" />
+                            <SelectTrigger className="h-12 rounded-md border border-input">
+                              <SelectValue placeholder="Select Asset Type" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {statuses.map((status) => (
-                              <SelectItem key={status.value} value={status.value}>
-                                {status.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField control={form.control} name="locationTag"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Location Tag <span className="text-destructive">*</span></FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-12 rounded-md border border-input bg-white/100 dark:bg-slate-800/80 dark:border-slate-700">
-                              <SelectValue placeholder="Select Location Tag" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {locationTags.map((location) => (
-                              <SelectItem key={location.value} value={location.value}>
-                                {location.label}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="forklift">forklift</SelectItem>
+                            <SelectItem value="pallet_jack">pallet_jack</SelectItem>
+                            <SelectItem value="scanner">scanner</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1262,90 +998,33 @@ export default function AssetManagementPage() {
                     )}
                   />
                 </div>
-                {/* Unit and Department */}
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="unit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Org Unit <span className="text-destructive">*</span></FormLabel>
-                        <Select  defaultValue={field.value} onValueChange={(value) => {
-                            field.onChange;
-                            // Filter departments that belong to this org unit
-                            if (value === "000000000000000000000000") {
-                              setFilterDepartment(departmentDetails);
-                            } else {
-                              const matched = departmentDetails.filter(
-                                (dept) => dept.detail.unitId === value
-                              );
-                              setFilterDepartment(matched);
-                            }
-                          }}>
-                          <FormControl>
-                            <SelectTrigger className="h-12 rounded-md border border-input bg-white/100 dark:bg-slate-800/80 dark:border-slate-700">
-                              <SelectValue placeholder="Select Org Unit" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {units.map((unit) => (
-                              <SelectItem key={unit.value} value={unit.value}>
-                                {unit.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField control={form.control} name="department"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Department <span className="text-destructive">*</span></FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-12 rounded-md border border-input bg-white/100 dark:bg-slate-800/80 dark:border-slate-700">
-                              <SelectValue placeholder="Select Department" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {filterDepartment.map((d) => (
-                              <SelectItem key={d.id} value={d.id}>
-                                {d.detail.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                {/* Description */}
-                <FormField control={form.control} name="description"
+
+                <FormField
+                  control={form.control}
+                  name="location_tag_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Asset Specification</FormLabel>
-                      <FormControl>
-                        <Textarea className="h-12 rounded-md border border-input bg-white/100 dark:bg-slate-800/80 dark:border-slate-700" placeholder="Enter Asset Specification" {...field} />
-                      </FormControl>
+                      <FormLabel>Location Tag</FormLabel>
+                      <Select
+                        onValueChange={(val) => field.onChange(val === LOCATION_TAG_NONE_VALUE ? undefined : val)}
+                        value={field.value || LOCATION_TAG_NONE_VALUE}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-12 rounded-md border border-input">
+                            <SelectValue placeholder="Select Location Tag" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={LOCATION_TAG_NONE_VALUE}>None</SelectItem>
+                          {locationTags.map((location) => (
+                            <SelectItem key={location.value} value={location.value}>
+                              {location.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
-                  )}
-                />
-                {/* Attechments */}
-                <FormField control={form.control} name="attachments"
-                  render={({ field }) => (
-                    <FileUploadBox
-                      label="Upload Attachments"
-                      uploadUrl={api_url.mediaService.dpvmu}
-                      uploadType="multiple"
-                      accept=".jpg,.jpeg,.png,.pdf"
-                      maxFileSizeMB={5}
-                      value={field.value}
-                      onChange={field.onChange}
-                      onUploadError={onUploadError}
-                      onUploadSuccess= {onUploadSuccess}
-                    />
                   )}
                 />
                 <DialogFooter className="py-4 gap-2">
@@ -1371,7 +1050,7 @@ export default function AssetManagementPage() {
             {selectedAsset && (
               <div className="py-4">
                 <p className="mb-2">
-                  You are about to delete: <strong>{selectedAsset.name}</strong>
+                  You are about to delete: <strong>{selectedAsset.asset_name ?? selectedAsset.name}</strong>
                 </p>
                 <p className="text-destructive">This will permanently remove the asset and all associated records.</p>
               </div>

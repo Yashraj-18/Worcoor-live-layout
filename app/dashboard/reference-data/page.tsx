@@ -213,7 +213,7 @@ export default function InventoryManagementPage() {
                 asChild
                 className="w-full mt-16 mx-2 px-6 py-3 border border-slate-200/50 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white shadow-sm hover:shadow-md transition-all duration-200 rounded-lg"
               >
-                <Link href="/dashboard/reference-data/asset-management/assets" className="flex items-center justify-center gap-2">
+                <Link href="/dashboard/asset-management" className="flex items-center justify-center gap-2">
                   Manage Assets
                   <ArrowRight className="h-4 w-4" />
                 </Link>

@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Upload, FileText, Database, Package, ArrowRight, CheckCircle, AlertCircle, Loader2, RefreshCw, Plus, Edit, Trash2 } from "lucide-react"
+import { Upload, FileText, Database, Package, ArrowRight, CheckCircle, AlertCircle, Loader2, RefreshCw, Plus, Edit, Trash2, Building, Save, X } from "lucide-react"
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
+import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,17 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 
 // Types
 interface OrgUnit {
-  id: string
-  name: string
-  type: "Warehouse" | "Production" | "Office"
-  status: "active" | "inactive"
-  location: string
+  unit_name: string
+  unit_type: "warehouse" | "production" | "office"
+  status: "LIVE" | "OFFLINE" | "MAINTENANCE" | "PLANNING"
   description?: string
-  createdAt: string
-  updatedAt: string
+  organization_id: string
 }
 
 type CrudOperation = "create" | "update" | "delete"
@@ -52,7 +51,11 @@ export default function BulkUploadPage() {
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([])
   const [selectedOrgUnit, setSelectedOrgUnit] = useState<string>("")
   const [crudOperation, setCrudOperation] = useState<CrudOperation>("create")
-  const [cleanExistingData, setCleanExistingData] = useState(false)
+  const [isCreatingOrgUnit, setIsCreatingOrgUnit] = useState(false)
+  const [newOrgUnitName, setNewOrgUnitName] = useState("")
+  const [newOrgUnitType, setNewOrgUnitType] = useState<"warehouse" | "production" | "office">("warehouse")
+  const [newOrgUnitDescription, setNewOrgUnitDescription] = useState("")
+  const [newOrgUnitOrganizationId, setNewOrgUnitOrganizationId] = useState("")
 
   // Load org units on component mount
   useEffect(() => {
@@ -61,16 +64,46 @@ export default function BulkUploadPage() {
       try {
         const parsedUnits = JSON.parse(storedUnits)
         setOrgUnits(parsedUnits)
-        // Auto-select first active org unit
-        const activeUnit = parsedUnits.find((unit: OrgUnit) => unit.status === "active")
+        // Auto-select first LIVE org unit
+        const activeUnit = parsedUnits.find((unit: OrgUnit) => unit.status === "LIVE")
         if (activeUnit) {
-          setSelectedOrgUnit(activeUnit.id)
+          setSelectedOrgUnit(activeUnit.unit_name)
         }
       } catch (error) {
         console.error("Error parsing stored org units:", error)
       }
     }
   }, [])
+
+  const handleCreateOrgUnit = () => {
+    if (!newOrgUnitName.trim() || !newOrgUnitOrganizationId.trim()) return
+
+    try {
+      const newOrgUnit: OrgUnit = {
+        unit_name: newOrgUnitName.trim(),
+        unit_type: newOrgUnitType,
+        status: "LIVE",
+        description: newOrgUnitDescription.trim(),
+        organization_id: newOrgUnitOrganizationId.trim()
+      }
+
+      const updatedOrgUnits = [...orgUnits, newOrgUnit]
+      setOrgUnits(updatedOrgUnits)
+      localStorageService.setItem("worcoor-org-units", updatedOrgUnits)
+      
+      // Auto-select the newly created org unit
+      setSelectedOrgUnit(newOrgUnit.unit_name)
+      
+      // Reset form
+      setNewOrgUnitName("")
+      setNewOrgUnitType("warehouse")
+      setNewOrgUnitDescription("")
+      setNewOrgUnitOrganizationId("")
+      setIsCreatingOrgUnit(false)
+    } catch (error) {
+      console.error("Error creating org unit:", error)
+    }
+  }
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -107,14 +140,14 @@ export default function BulkUploadPage() {
         Papa.parse(file, {
           header: true,
           skipEmptyLines: true,
-          complete: (results) => {
+          complete: (results: any) => {
             if (results.errors.length > 0) {
-              reject(new Error(`CSV parsing errors: ${results.errors.map(e => e.message).join(', ')}`))
+              reject(new Error(`CSV parsing errors: ${results.errors.map((e: any) => e.message).join(', ')}`))
             } else {
               resolve(results.data)
             }
           },
-          error: (error) => reject(error)
+          error: (error: any) => reject(error)
         })
       } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
         const reader = new FileReader()
@@ -238,7 +271,7 @@ export default function BulkUploadPage() {
     return { valid, errors }
   }
 
-  const importSkus = async (data: any[], orgUnitId: string, operation: CrudOperation, cleanData: boolean): Promise<{ imported: number; failed: number; errors: string[] }> => {
+  const importSkus = async (data: any[], orgUnitId: string, operation: CrudOperation): Promise<{ imported: number; failed: number; errors: string[] }> => {
     const errors: string[] = []
     let imported = 0
     let failed = 0
@@ -247,10 +280,6 @@ export default function BulkUploadPage() {
 
     try {
       let existingSkus = localStorageService.getItem<any[]>(storageKey) || []
-
-      if (cleanData && operation === 'create') {
-        existingSkus = []
-      }
 
       if (operation === 'delete') {
         // For delete operation, remove records by sku_id
@@ -365,7 +394,7 @@ export default function BulkUploadPage() {
     return { imported, failed, errors }
   }
 
-  const importLocations = async (data: any[], orgUnitId: string, operation: CrudOperation, cleanData: boolean): Promise<{ imported: number; failed: number; errors: string[] }> => {
+  const importLocations = async (data: any[], orgUnitId: string, operation: CrudOperation): Promise<{ imported: number; failed: number; errors: string[] }> => {
     const errors: string[] = []
     let imported = 0
     let failed = 0
@@ -374,10 +403,6 @@ export default function BulkUploadPage() {
 
     try {
       let existingLocations = localStorageService.getItem<any[]>(storageKey) || []
-
-      if (cleanData && operation === 'create') {
-        existingLocations = []
-      }
 
       if (operation === 'delete') {
         // For delete operation, remove records by location_id
@@ -453,7 +478,7 @@ export default function BulkUploadPage() {
     return { imported, failed, errors }
   }
 
-  const importAssets = async (data: any[], orgUnitId: string, operation: CrudOperation, cleanData: boolean): Promise<{ imported: number; failed: number; errors: string[] }> => {
+  const importAssets = async (data: any[], orgUnitId: string, operation: CrudOperation): Promise<{ imported: number; failed: number; errors: string[] }> => {
     const errors: string[] = []
     let imported = 0
     let failed = 0
@@ -462,10 +487,6 @@ export default function BulkUploadPage() {
 
     try {
       let existingAssets = localStorageService.getItem<any[]>(storageKey) || []
-
-      if (cleanData && operation === 'create') {
-        existingAssets = []
-      }
 
       if (operation === 'delete') {
         // For delete operation, remove records by asset_id
@@ -566,13 +587,13 @@ export default function BulkUploadPage() {
 
       switch (uploadType) {
         case 'skus':
-          results = await importSkus(parsedData, selectedOrgUnit, crudOperation, cleanExistingData)
+          results = await importSkus(parsedData, selectedOrgUnit, crudOperation)
           break
         case 'locations':
-          results = await importLocations(parsedData, selectedOrgUnit, crudOperation, cleanExistingData)
+          results = await importLocations(parsedData, selectedOrgUnit, crudOperation)
           break
         case 'assets':
-          results = await importAssets(parsedData, selectedOrgUnit, crudOperation, cleanExistingData)
+          results = await importAssets(parsedData, selectedOrgUnit, crudOperation)
           break
         default:
           results = { imported: 0, failed: parsedData.length, errors: ['Unknown upload type'] }
@@ -658,29 +679,104 @@ export default function BulkUploadPage() {
       />
 
       {/* Configuration Section */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Org Unit Selection */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">Target Org Unit</CardTitle>
           </CardHeader>
           <CardContent>
-            <Select value={selectedOrgUnit} onValueChange={setSelectedOrgUnit}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select org unit" />
-              </SelectTrigger>
-              <SelectContent>
-                {orgUnits.filter(unit => unit.status === "active").map((unit) => (
-                  <SelectItem key={unit.id} value={unit.id}>
-                    {unit.name} ({unit.id})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {orgUnits.length === 0 && (
-              <p className="text-sm text-muted-foreground mt-2">
-                No org units available. Please create one first.
-              </p>
+            {!isCreatingOrgUnit ? (
+              <div className="space-y-3">
+                <Select value={selectedOrgUnit} onValueChange={setSelectedOrgUnit}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select org unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {orgUnits.filter(unit => unit.status === "LIVE").map((unit, index) => (
+                      <SelectItem key={index} value={unit.unit_name}>
+                        {unit.unit_name} ({unit.unit_type})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsCreatingOrgUnit(true)}
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create New Org Unit
+                </Button>
+                {orgUnits.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No org units available. Create one to get started.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">Create New Org Unit</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setIsCreatingOrgUnit(false)
+                      setNewOrgUnitName("")
+                      setNewOrgUnitType("warehouse")
+                      setNewOrgUnitDescription("")
+                      setNewOrgUnitOrganizationId("")
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Input
+                  placeholder="Org Unit Name"
+                  value={newOrgUnitName}
+                  onChange={(e) => setNewOrgUnitName(e.target.value)}
+                  className="w-full"
+                />
+                <Input
+                  placeholder="Organization ID"
+                  value={newOrgUnitOrganizationId}
+                  onChange={(e) => setNewOrgUnitOrganizationId(e.target.value)}
+                  className="w-full"
+                />
+                <Input
+                  placeholder="Description (optional)"
+                  value={newOrgUnitDescription}
+                  onChange={(e) => setNewOrgUnitDescription(e.target.value)}
+                  className="w-full"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleCreateOrgUnit}
+                    disabled={!newOrgUnitName.trim() || !newOrgUnitOrganizationId.trim()}
+                    className="flex-1"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setIsCreatingOrgUnit(false)
+                      setNewOrgUnitName("")
+                      setNewOrgUnitType("warehouse")
+                      setNewOrgUnitDescription("")
+                      setNewOrgUnitOrganizationId("")
+                    }}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -719,30 +815,6 @@ export default function BulkUploadPage() {
           </CardContent>
         </Card>
 
-        {/* Clean Data Option */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Data Management</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="clean-data"
-                checked={cleanExistingData}
-                onChange={(e) => setCleanExistingData(e.target.checked)}
-                className="rounded"
-              />
-              <label htmlFor="clean-data" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Clean existing data
-              </label>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Replace all existing data for this org unit
-            </p>
-          </CardContent>
-        </Card>
-
         {/* Operation Summary */}
         <Card>
           <CardHeader className="pb-3">
@@ -753,7 +825,7 @@ export default function BulkUploadPage() {
               <div className="flex justify-between text-sm">
                 <span>Unit:</span>
                 <Badge variant="outline">
-                  {orgUnits.find(u => u.id === selectedOrgUnit)?.name || "None"}
+                  {selectedOrgUnit || "None"}
                 </Badge>
               </div>
               <div className="flex justify-between text-sm">
@@ -768,12 +840,6 @@ export default function BulkUploadPage() {
                   {crudOperation}
                 </Badge>
               </div>
-              {cleanExistingData && (
-                <div className="flex justify-between text-sm">
-                  <span>Clean:</span>
-                  <Badge variant="destructive">Enabled</Badge>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -1116,271 +1182,258 @@ export default function BulkUploadPage() {
               </ul>
             </div>
             
-            {/* Demo Headers Section */}
+            {/* Demo Tables Section */}
             <div className="space-y-6">
               <div className="text-center">
                 <h4 className="font-medium text-xl text-gray-900">Demo Tables & Data Structure</h4>
                 <p className="text-sm text-gray-600 mt-1">Copy these tables to create properly formatted CSV/Excel files</p>
               </div>
               
-              {/* SKUs Demo Table */}
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-10 w-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                    <Package className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-lg text-blue-900">SKUs Demo Table</h5>
-                    <p className="text-sm text-blue-700">Stock Keeping Units - Complete data structure</p>
-                  </div>
-                </div>
-                
-                <div className="bg-white rounded-lg p-4 border border-blue-200 overflow-x-auto">
-                  <table className="min-w-full text-xs">
-                    <thead className="bg-blue-50 border-b border-blue-200">
-                      <tr>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">sku_id</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">name</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">description</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">category</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">type</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">available_quantity</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">min_quantity</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">unit_cost</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">currency</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">unit_weight</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">weight_unit</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">quality_rating</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">quality_check_done</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">location</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">department</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">brand</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">sku_code</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">procured_date</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">wastage_quantity</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">tagged_for_production</th>
-                        <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">total_procured</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-blue-100">
-                      <tr className="hover:bg-blue-50">
-                        <td className="px-3 py-2 text-gray-700 font-mono">SKU-001</td>
-                        <td className="px-3 py-2 text-gray-700">Oak Wood Panel</td>
-                        <td className="px-3 py-2 text-gray-700">High-quality oak wood panel for furniture</td>
-                        <td className="px-3 py-2 text-gray-700">Wood</td>
-                        <td className="px-3 py-2 text-gray-700">Primary</td>
-                        <td className="px-3 py-2 text-gray-700">150</td>
-                        <td className="px-3 py-2 text-gray-700">20</td>
-                        <td className="px-3 py-2 text-gray-700">45.50</td>
-                        <td className="px-3 py-2 text-gray-700">USD</td>
-                        <td className="px-3 py-2 text-gray-700">2.5</td>
-                        <td className="px-3 py-2 text-gray-700">kg</td>
-                        <td className="px-3 py-2 text-gray-700">A</td>
-                        <td className="px-3 py-2 text-gray-700">true</td>
-                        <td className="px-3 py-2 text-gray-700">U1-W1-Z2-R3</td>
-                        <td className="px-3 py-2 text-gray-700">Materials</td>
-                        <td className="px-3 py-2 text-gray-700">Premium Woods Co.</td>
-                        <td className="px-3 py-2 text-gray-700">OWP-001</td>
-                        <td className="px-3 py-2 text-gray-700">2024-01-15</td>
-                        <td className="px-3 py-2 text-gray-700">5</td>
-                        <td className="px-3 py-2 text-gray-700">30</td>
-                        <td className="px-3 py-2 text-gray-700">180</td>
-                      </tr>
-                      <tr className="hover:bg-blue-50">
-                        <td className="px-3 py-2 text-gray-700 font-mono">SKU-002</td>
-                        <td className="px-3 py-2 text-gray-700">Steel Beam</td>
-                        <td className="px-3 py-2 text-gray-700">Structural steel beam for construction</td>
-                        <td className="px-3 py-2 text-gray-700">Metal</td>
-                        <td className="px-3 py-2 text-gray-700">Primary</td>
-                        <td className="px-3 py-2 text-gray-700">75</td>
-                        <td className="px-3 py-2 text-gray-700">10</td>
-                        <td className="px-3 py-2 text-gray-700">120.00</td>
-                        <td className="px-3 py-2 text-gray-700">USD</td>
-                        <td className="px-3 py-2 text-gray-700">15.0</td>
-                        <td className="px-3 py-2 text-gray-700">kg</td>
-                        <td className="px-3 py-2 text-gray-700">A</td>
-                        <td className="px-3 py-2 text-gray-700">true</td>
-                        <td className="px-3 py-2 text-gray-700">U2-W1-Z1-R1</td>
-                        <td className="px-3 py-2 text-gray-700">Construction</td>
-                        <td className="px-3 py-2 text-gray-700">Steel Works Inc.</td>
-                        <td className="px-3 py-2 text-gray-700">SB-001</td>
-                        <td className="px-3 py-2 text-gray-700">2024-01-10</td>
-                        <td className="px-3 py-2 text-gray-700">2</td>
-                        <td className="px-3 py-2 text-gray-700">15</td>
-                        <td className="px-3 py-2 text-gray-700">90</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Locations Demo Table */}
-              <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-6 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-10 w-10 bg-green-500 rounded-lg flex items-center justify-center">
-                    <Database className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-lg text-green-900">Locations Demo Table</h5>
-                    <p className="text-sm text-green-700">Location Tags & Categories - Complete data structure</p>
-                  </div>
-                </div>
-                
-                <div className="bg-white rounded-lg p-4 border border-green-200 overflow-x-auto">
-                  <table className="min-w-full text-xs">
-                    <thead className="bg-green-50 border-b border-green-200">
-                      <tr>
-                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">location_id</th>
-                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">name</th>
-                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">description</th>
-                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">category</th>
-                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">capacity</th>
-                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">unit</th>
-                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">zone</th>
-                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">type</th>
-                        <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-green-100">
-                      <tr className="hover:bg-green-50">
-                        <td className="px-3 py-2 text-gray-700 font-mono">LOC-001</td>
-                        <td className="px-3 py-2 text-gray-700">Warehouse Zone A</td>
-                        <td className="px-3 py-2 text-gray-700">Main storage area for finished goods</td>
-                        <td className="px-3 py-2 text-gray-700">Storage</td>
-                        <td className="px-3 py-2 text-gray-700">1000</td>
-                        <td className="px-3 py-2 text-gray-700">pieces</td>
-                        <td className="px-3 py-2 text-gray-700">Zone A</td>
-                        <td className="px-3 py-2 text-gray-700">Storage</td>
-                        <td className="px-3 py-2 text-gray-700">Active</td>
-                      </tr>
-                      <tr className="hover:bg-green-50">
-                        <td className="px-3 py-2 text-gray-700 font-mono">LOC-002</td>
-                        <td className="px-3 py-2 text-gray-700">Cold Storage Unit</td>
-                        <td className="px-3 py-2 text-gray-700">Temperature-controlled storage for perishables</td>
-                        <td className="px-3 py-2 text-gray-700">Cold Storage</td>
-                        <td className="px-3 py-2 text-gray-700">500</td>
-                        <td className="px-3 py-2 text-gray-700">boxes</td>
-                        <td className="px-3 py-2 text-gray-700">Zone B</td>
-                        <td className="px-3 py-2 text-gray-700">Cold Storage</td>
-                        <td className="px-3 py-2 text-gray-700">Active</td>
-                      </tr>
-                      <tr className="hover:bg-green-50">
-                        <td className="px-3 py-2 text-gray-700 font-mono">LOC-003</td>
-                        <td className="px-3 py-2 text-gray-700">Hazardous Materials Area</td>
-                        <td className="px-3 py-2 text-gray-700">Secure storage for hazardous chemicals</td>
-                        <td className="px-3 py-2 text-gray-700">Hazardous</td>
-                        <td className="px-3 py-2 text-gray-700">200</td>
-                        <td className="px-3 py-2 text-gray-700">containers</td>
-                        <td className="px-3 py-2 text-gray-700">Zone C</td>
-                        <td className="px-3 py-2 text-gray-700">Hazardous Storage</td>
-                        <td className="px-3 py-2 text-gray-700">Active</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Assets Demo Table */}
-              <div className="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-6 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-10 w-10 bg-purple-500 rounded-lg flex items-center justify-center">
-                    <FileText className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-lg text-purple-900">Assets Demo Table</h5>
-                    <p className="text-sm text-purple-700">Asset & Equipment Management - Complete data structure</p>
-                  </div>
-                </div>
-                
-                <div className="bg-white rounded-lg p-4 border border-purple-200 overflow-x-auto">
-                  <table className="min-w-full text-xs">
-                    <thead className="bg-purple-50 border-b border-purple-200">
-                      <tr>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">asset_id</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">name</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">description</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">category</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">type</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">location</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">serial_number</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">manufacturer</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">model</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">purchase_cost</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">currency</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">purchase_date</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">status</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">maintenance_schedule</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">last_maintenance</th>
-                        <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">next_maintenance</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-purple-100">
-                      <tr className="hover:bg-purple-50">
-                        <td className="px-3 py-2 text-gray-700 font-mono">ASSET-001</td>
-                        <td className="px-3 py-2 text-gray-700">Forklift Machine</td>
-                        <td className="px-3 py-2 text-gray-700">Industrial forklift for warehouse operations</td>
-                        <td className="px-3 py-2 text-gray-700">Equipment</td>
-                        <td className="px-3 py-2 text-gray-700">Lifting Machine</td>
-                        <td className="px-3 py-2 text-gray-700">Warehouse A</td>
-                        <td className="px-3 py-2 text-gray-700">FL-001</td>
-                        <td className="px-3 py-2 text-gray-700">Caterpillar</td>
-                        <td className="px-3 py-2 text-gray-700">CF500</td>
-                        <td className="px-3 py-2 text-gray-700">25000.00</td>
-                        <td className="px-3 py-2 text-gray-700">USD</td>
-                        <td className="px-3 py-2 text-gray-700">2023-01-15</td>
-                        <td className="px-3 py-2 text-gray-700">Active</td>
-                        <td className="px-3 py-2 text-gray-700">Quarterly</td>
-                        <td className="px-3 py-2 text-gray-700">2024-12-01</td>
-                        <td className="px-3 py-2 text-gray-700">2025-03-01</td>
-                      </tr>
-                      <tr className="hover:bg-purple-50">
-                        <td className="px-3 py-2 text-gray-700 font-mono">ASSET-002</td>
-                        <td className="px-3 py-2 text-gray-700">Conveyor Belt System</td>
-                        <td className="px-3 py-2 text-gray-700">Automated conveyor for material handling</td>
-                        <td className="px-3 py-2 text-gray-700">Equipment</td>
-                        <td className="px-3 py-2 text-gray-700">Conveyor</td>
-                        <td className="px-3 py-2 text-gray-700">Production Line 1</td>
-                        <td className="px-3 py-2 text-gray-700">CV-001</td>
-                        <td className="px-3 py-2 text-gray-700">FlexLink</td>
-                        <td className="px-3 py-2 text-gray-700">X-250</td>
-                        <td className="px-3 py-2 text-gray-700">45000.00</td>
-                        <td className="px-3 py-2 text-gray-700">USD</td>
-                        <td className="px-3 py-2 text-gray-700">2023-06-20</td>
-                        <td className="px-3 py-2 text-gray-700">Active</td>
-                        <td className="px-3 py-2 text-gray-700">Monthly</td>
-                        <td className="px-3 py-2 text-gray-700">2024-12-15</td>
-                        <td className="px-3 py-2 text-gray-700">2025-01-15</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Important Notes */}
-              <div className="bg-gradient-to-r from-amber-50 to-orange-100 border border-amber-200 rounded-xl p-6 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <div className="h-8 w-8 bg-amber-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-                    <AlertCircle className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-lg text-amber-900 mb-3">Important Notes</h5>
-                    <div className="space-y-2 text-sm text-amber-800">
-                      <div className="flex items-start gap-2">
-                        <div className="h-1.5 w-1.5 bg-amber-600 rounded-full mt-1.5 flex-shrink-0"></div>
-                        <p><strong>Update Operations:</strong> Include the ID field (sku_id, location_id, or asset_id) to identify existing records that need updating.</p>
+              {/* Conditional Demo Tables */}
+              {uploadType === 'skus' && (
+                <>
+                  {/* SKUs Demo Table */}
+                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="h-10 w-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                        <Package className="h-5 w-5 text-white" />
                       </div>
-                      <div className="flex items-start gap-2">
-                        <div className="h-1.5 w-1.5 bg-amber-600 rounded-full mt-1.5 flex-shrink-0"></div>
-                        <p><strong>Delete Operations:</strong> Only the ID field is required to remove records from the system.</p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <div className="h-1.5 w-1.5 bg-amber-600 rounded-full mt-1.5 flex-shrink-0"></div>
-                        <p><strong>Create Operations:</strong> All fields are optional except name. The system will auto-generate IDs if not provided.</p>
+                      <div>
+                        <h5 className="font-bold text-lg text-blue-900">SKUs Demo Table</h5>
+                        <p className="text-sm text-blue-700">Stock Keeping Units - Complete data structure</p>
                       </div>
                     </div>
+                    
+                    <div className="bg-white rounded-lg p-4 border border-blue-200 overflow-x-auto">
+                      <table className="min-w-full text-xs">
+                        <thead className="bg-blue-50 border-b border-blue-200">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">sku_id</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">name</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">description</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">category</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">type</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">available_quantity</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">min_quantity</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">unit_cost</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">currency</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">unit_weight</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">weight_unit</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">quality_rating</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">quality_check_done</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">location</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">department</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">brand</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">sku_code</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">procured_date</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">wastage_quantity</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">tagged_for_production</th>
+                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">total_procured</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-blue-100">
+                          <tr className="hover:bg-blue-50">
+                            <td className="px-3 py-2 text-gray-700 font-mono">SKU-001</td>
+                            <td className="px-3 py-2 text-gray-700">Oak Wood Panel</td>
+                            <td className="px-3 py-2 text-gray-700">High-quality oak wood panel for furniture</td>
+                            <td className="px-3 py-2 text-gray-700">Wood</td>
+                            <td className="px-3 py-2 text-gray-700">Primary</td>
+                            <td className="px-3 py-2 text-gray-700">150</td>
+                            <td className="px-3 py-2 text-gray-700">20</td>
+                            <td className="px-3 py-2 text-gray-700">45.50</td>
+                            <td className="px-3 py-2 text-gray-700">USD</td>
+                            <td className="px-3 py-2 text-gray-700">2.5</td>
+                            <td className="px-3 py-2 text-gray-700">kg</td>
+                            <td className="px-3 py-2 text-gray-700">A</td>
+                            <td className="px-3 py-2 text-gray-700">true</td>
+                            <td className="px-3 py-2 text-gray-700">U1-W1-Z2-R3</td>
+                            <td className="px-3 py-2 text-gray-700">Materials</td>
+                            <td className="px-3 py-2 text-gray-700">Premium Woods Co.</td>
+                            <td className="px-3 py-2 text-gray-700">OWP-001</td>
+                            <td className="px-3 py-2 text-gray-700">2024-01-15</td>
+                            <td className="px-3 py-2 text-gray-700">5</td>
+                            <td className="px-3 py-2 text-gray-700">30</td>
+                            <td className="px-3 py-2 text-gray-700">180</td>
+                          </tr>
+                          <tr className="hover:bg-blue-50">
+                            <td className="px-3 py-2 text-gray-700 font-mono">SKU-002</td>
+                            <td className="px-3 py-2 text-gray-700">Steel Beam</td>
+                            <td className="px-3 py-2 text-gray-700">Structural steel beam for construction</td>
+                            <td className="px-3 py-2 text-gray-700">Metal</td>
+                            <td className="px-3 py-2 text-gray-700">Primary</td>
+                            <td className="px-3 py-2 text-gray-700">75</td>
+                            <td className="px-3 py-2 text-gray-700">10</td>
+                            <td className="px-3 py-2 text-gray-700">120.00</td>
+                            <td className="px-3 py-2 text-gray-700">USD</td>
+                            <td className="px-3 py-2 text-gray-700">15.0</td>
+                            <td className="px-3 py-2 text-gray-700">kg</td>
+                            <td className="px-3 py-2 text-gray-700">A</td>
+                            <td className="px-3 py-2 text-gray-700">true</td>
+                            <td className="px-3 py-2 text-gray-700">U2-W1-Z1-R1</td>
+                            <td className="px-3 py-2 text-gray-700">Construction</td>
+                            <td className="px-3 py-2 text-gray-700">Steel Works Inc.</td>
+                            <td className="px-3 py-2 text-gray-700">SB-001</td>
+                            <td className="px-3 py-2 text-gray-700">2024-01-10</td>
+                            <td className="px-3 py-2 text-gray-700">2</td>
+                            <td className="px-3 py-2 text-gray-700">15</td>
+                            <td className="px-3 py-2 text-gray-700">90</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
+              
+              {uploadType === 'locations' && (
+                <>
+                  {/* Locations Demo Table */}
+                  <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="h-10 w-10 bg-green-500 rounded-lg flex items-center justify-center">
+                        <Database className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h5 className="font-bold text-lg text-green-900">Locations Demo Table</h5>
+                        <p className="text-sm text-green-700">Location Tags & Categories - Complete data structure</p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white rounded-lg p-4 border border-green-200 overflow-x-auto">
+                      <table className="min-w-full text-xs">
+                        <thead className="bg-green-50 border-b border-green-200">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">location_id</th>
+                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">name</th>
+                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">description</th>
+                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">category</th>
+                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">capacity</th>
+                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">unit</th>
+                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">zone</th>
+                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">type</th>
+                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-green-100">
+                          <tr className="hover:bg-green-50">
+                            <td className="px-3 py-2 text-gray-700 font-mono">LOC-001</td>
+                            <td className="px-3 py-2 text-gray-700">Warehouse Zone A</td>
+                            <td className="px-3 py-2 text-gray-700">Main storage area for finished goods</td>
+                            <td className="px-3 py-2 text-gray-700">Storage</td>
+                            <td className="px-3 py-2 text-gray-700">1000</td>
+                            <td className="px-3 py-2 text-gray-700">pieces</td>
+                            <td className="px-3 py-2 text-gray-700">Zone A</td>
+                            <td className="px-3 py-2 text-gray-700">Storage</td>
+                            <td className="px-3 py-2 text-gray-700">Active</td>
+                          </tr>
+                          <tr className="hover:bg-green-50">
+                            <td className="px-3 py-2 text-gray-700 font-mono">LOC-002</td>
+                            <td className="px-3 py-2 text-gray-700">Cold Storage Unit</td>
+                            <td className="px-3 py-2 text-gray-700">Temperature-controlled storage for perishables</td>
+                            <td className="px-3 py-2 text-gray-700">Cold Storage</td>
+                            <td className="px-3 py-2 text-gray-700">500</td>
+                            <td className="px-3 py-2 text-gray-700">boxes</td>
+                            <td className="px-3 py-2 text-gray-700">Zone B</td>
+                            <td className="px-3 py-2 text-gray-700">Cold Storage</td>
+                            <td className="px-3 py-2 text-gray-700">Active</td>
+                          </tr>
+                          <tr className="hover:bg-green-50">
+                            <td className="px-3 py-2 text-gray-700 font-mono">LOC-003</td>
+                            <td className="px-3 py-2 text-gray-700">Hazardous Materials Area</td>
+                            <td className="px-3 py-2 text-gray-700">Secure storage for hazardous chemicals</td>
+                            <td className="px-3 py-2 text-gray-700">Hazardous</td>
+                            <td className="px-3 py-2 text-gray-700">200</td>
+                            <td className="px-3 py-2 text-gray-700">containers</td>
+                            <td className="px-3 py-2 text-gray-700">Zone C</td>
+                            <td className="px-3 py-2 text-gray-700">Hazardous Storage</td>
+                            <td className="px-3 py-2 text-gray-700">Active</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+              
+              {uploadType === 'assets' && (
+                <>
+                  {/* Assets Demo Table */}
+                  <div className="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="h-10 w-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                        <FileText className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h5 className="font-bold text-lg text-purple-900">Assets Demo Table</h5>
+                        <p className="text-sm text-purple-700">Asset & Equipment Management - Complete data structure</p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white rounded-lg p-4 border border-purple-200 overflow-x-auto">
+                      <table className="min-w-full text-xs">
+                        <thead className="bg-purple-50 border-b border-purple-200">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">asset_id</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">name</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">description</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">category</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">type</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">location</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">serial_number</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">manufacturer</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">model</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">purchase_cost</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">currency</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">purchase_date</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">status</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">maintenance_schedule</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">last_maintenance</th>
+                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">next_maintenance</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-purple-100">
+                          <tr className="hover:bg-purple-50">
+                            <td className="px-3 py-2 text-gray-700 font-mono">ASSET-001</td>
+                            <td className="px-3 py-2 text-gray-700">Forklift Machine</td>
+                            <td className="px-3 py-2 text-gray-700">Industrial forklift for warehouse operations</td>
+                            <td className="px-3 py-2 text-gray-700">Equipment</td>
+                            <td className="px-3 py-2 text-gray-700">Lifting Machine</td>
+                            <td className="px-3 py-2 text-gray-700">Warehouse A</td>
+                            <td className="px-3 py-2 text-gray-700">FL-001</td>
+                            <td className="px-3 py-2 text-gray-700">Caterpillar</td>
+                            <td className="px-3 py-2 text-gray-700">CF500</td>
+                            <td className="px-3 py-2 text-gray-700">25000.00</td>
+                            <td className="px-3 py-2 text-gray-700">USD</td>
+                            <td className="px-3 py-2 text-gray-700">2023-01-15</td>
+                            <td className="px-3 py-2 text-gray-700">Active</td>
+                            <td className="px-3 py-2 text-gray-700">Quarterly</td>
+                            <td className="px-3 py-2 text-gray-700">2024-12-01</td>
+                            <td className="px-3 py-2 text-gray-700">2025-03-01</td>
+                          </tr>
+                          <tr className="hover:bg-purple-50">
+                            <td className="px-3 py-2 text-gray-700 font-mono">ASSET-002</td>
+                            <td className="px-3 py-2 text-gray-700">Conveyor Belt System</td>
+                            <td className="px-3 py-2 text-gray-700">Automated conveyor for material handling</td>
+                            <td className="px-3 py-2 text-gray-700">Equipment</td>
+                            <td className="px-3 py-2 text-gray-700">Conveyor</td>
+                            <td className="px-3 py-2 text-gray-700">Production Line 1</td>
+                            <td className="px-3 py-2 text-gray-700">CV-001</td>
+                            <td className="px-3 py-2 text-gray-700">FlexLink</td>
+                            <td className="px-3 py-2 text-gray-700">X-250</td>
+                            <td className="px-3 py-2 text-gray-700">45000.00</td>
+                            <td className="px-3 py-2 text-gray-700">USD</td>
+                            <td className="px-3 py-2 text-gray-700">2023-06-20</td>
+                            <td className="px-3 py-2 text-gray-700">Active</td>
+                            <td className="px-3 py-2 text-gray-700">Monthly</td>
+                            <td className="px-3 py-2 text-gray-700">2024-12-15</td>
+                            <td className="px-3 py-2 text-gray-700">2025-01-15</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </CardContent>

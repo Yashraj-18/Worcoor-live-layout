@@ -30,20 +30,10 @@ export function DashboardSidebar({ isOpen, toggle }: SidebarProps) {
 
   const logout = async (e: React.FormEvent) => {
     try {
-      const response = await apiService.post({
-        path: api_url.authServices.logout,
-        isAuth: true,
-        refreshToken: true
-      })
-
-      if(response.data.status == "OK") {
-        notification.success('Logout Successful');
-        authLogout()
-        router.replace('/login')
-      } else {
-        const msg = response.data.message;
-        notification.error(msg);
-      }
+      // ✅ Mock logout - no external API call needed
+      notification.success('Logout Successful');
+      authLogout();
+      router.replace('/login');
     } catch (error: any) {
       notification.error("Something went wrong. Please try again.");
     }

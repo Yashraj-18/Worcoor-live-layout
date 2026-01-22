@@ -47,14 +47,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -64,28 +62,15 @@ import { toast } from "@/components/ui/use-toast"
 
 // Types
 interface LocationTag {
-  id: string
-  name: string
-  orgUnit: string
-  type: "Storage" | "Operation" | "Quality" | "Production" | "Shipping"
-  status: "active" | "inactive"
-  description?: string
-  createdAt: string
-  updatedAt: string
+  location_tag_name: string
+  capacity: number
+  current_items: number
 }
 
 // Form schema
 const locationTagSchema = z.object({
-  id: z.string().min(1, "Location ID is required").max(50, "ID must be less than 50 characters").regex(/^[A-Za-z0-9_-]+$/, "ID can only contain letters, numbers, underscores, and hyphens"),
-  name: z.string().min(1, "Location Name is required").max(100, "Name must be less than 100 characters"),
-  orgUnit: z.string().min(1, "Organizational Unit is required"),
-  type: z.enum(["Storage", "Operation", "Quality", "Production", "Shipping"], {
-    required_error: "Please select a location type",
-  }),
-  status: z.enum(["active", "inactive"], {
-    required_error: "Please select a status",
-  }),
-  description: z.string().optional(),
+  location_tag_name: z.string().min(1, "Location Tag Name is required").max(100, "Name must be less than 100 characters"),
+  capacity: z.coerce.number().int("Capacity must be an integer").min(0, "Capacity must be 0 or greater"),
 })
 
 type LocationTagFormValues = z.infer<typeof locationTagSchema>
@@ -93,34 +78,19 @@ type LocationTagFormValues = z.infer<typeof locationTagSchema>
 // Default data
 const defaultLocationTags: LocationTag[] = [
   {
-    id: "WH-A-RK1",
-    name: "Warehouse A - Rack 1",
-    orgUnit: "WH-001",
-    type: "Storage",
-    status: "active",
-    description: "Primary storage rack in Warehouse A",
-    createdAt: "2025-01-01T00:00:00Z",
-    updatedAt: "2025-01-07T14:32:00Z",
+    location_tag_name: "Warehouse A - Rack 1",
+    capacity: 100,
+    current_items: 0,
   },
   {
-    id: "WH-A-DOCK",
-    name: "Warehouse A - Loading Dock",
-    orgUnit: "WH-001",
-    type: "Operation",
-    status: "active",
-    description: "Main loading and unloading area",
-    createdAt: "2025-01-01T00:00:00Z",
-    updatedAt: "2025-01-06T09:15:00Z",
+    location_tag_name: "Warehouse A - Loading Dock",
+    capacity: 50,
+    current_items: 0,
   },
   {
-    id: "WH-B-QC",
-    name: "Warehouse B - Quality Check",
-    orgUnit: "WH-002",
-    type: "Quality",
-    status: "inactive",
-    description: "Quality inspection and testing area",
-    createdAt: "2025-01-01T00:00:00Z",
-    updatedAt: "2025-01-05T16:45:00Z",
+    location_tag_name: "Warehouse B - Quality Check",
+    capacity: 25,
+    current_items: 0,
   },
 ]
 
@@ -130,11 +100,7 @@ const ORG_UNITS_STORAGE_KEY = "worcoor-org-units"
 
 export default function LocationTagsPage() {
   const [locationTags, setLocationTags] = useState<LocationTag[]>([])
-  const [orgUnits, setOrgUnits] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterType, setFilterType] = useState<string>("all")
-  const [filterStatus, setFilterStatus] = useState<string>("all")
-  const [filterOrgUnit, setFilterOrgUnit] = useState<string>("all")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingTag, setEditingTag] = useState<LocationTag | null>(null)
@@ -145,12 +111,8 @@ export default function LocationTagsPage() {
   const form = useForm<LocationTagFormValues>({
     resolver: zodResolver(locationTagSchema),
     defaultValues: {
-      id: "",
-      name: "",
-      orgUnit: "",
-      type: "Storage",
-      status: "active",
-      description: "",
+      location_tag_name: "",
+      capacity: 0,
     },
   })
 
@@ -174,31 +136,6 @@ export default function LocationTagsPage() {
       localStorage.setItem(LOCATION_TAGS_STORAGE_KEY, JSON.stringify(defaultLocationTags))
     }
 
-    // Load org units
-    const storedOrgUnits = localStorage.getItem(ORG_UNITS_STORAGE_KEY)
-    if (storedOrgUnits) {
-      try {
-        const parsedOrgUnits = JSON.parse(storedOrgUnits)
-        setOrgUnits(parsedOrgUnits)
-      } catch (error) {
-        console.error("Error parsing stored org units:", error)
-        // Fallback to default org units
-        const defaultOrgUnits = [
-          { id: "WH-001", name: "Warehouse 1", type: "Warehouse", status: "active" },
-          { id: "PROD-001", name: "Production Line 1", type: "Production", status: "active" },
-          { id: "OFF-001", name: "Office Floor 1", type: "Office", status: "inactive" }
-        ]
-        setOrgUnits(defaultOrgUnits)
-      }
-    } else {
-      // Fallback to default org units
-      const defaultOrgUnits = [
-        { id: "WH-001", name: "Warehouse 1", type: "Warehouse", status: "active" },
-        { id: "PROD-001", name: "Production Line 1", type: "Production", status: "active" },
-        { id: "OFF-001", name: "Office Floor 1", type: "Office", status: "inactive" }
-      ]
-      setOrgUnits(defaultOrgUnits)
-    }
   }, [])
 
   // Save to localStorage whenever locationTags changes
@@ -210,47 +147,29 @@ export default function LocationTagsPage() {
 
   // Filter tags based on search and filters
   const filteredTags = locationTags.filter((tag) => {
-    const matchesSearch =
-      tag.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tag.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tag.orgUnit.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tag.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    const search = searchTerm.toLowerCase()
+    const tagName = (tag.location_tag_name ?? (tag as any).name ?? "").toString().toLowerCase()
 
-    const matchesType = filterType === "all" || tag.type === filterType
-    const matchesStatus = filterStatus === "all" || tag.status === filterStatus
-    const matchesOrgUnit = filterOrgUnit === "all" || tag.orgUnit === filterOrgUnit
+    const matchesSearch = tagName.includes(search)
 
-    return matchesSearch && matchesType && matchesStatus && matchesOrgUnit
+    return matchesSearch
   })
 
-  // Get unique org units for filter
-  const uniqueOrgUnits = Array.from(new Set(locationTags.map(tag => tag.orgUnit)))
+  const getUtilizationPercentage = (tag: LocationTag) => {
+    const cap = Number(tag.capacity) || 0
+    const cur = Number(tag.current_items) || 0
+    if (cap <= 0) return 0
+    return Math.round((cur / cap) * 100)
+  }
 
   // Handle add new tag
   const handleAddTag = (data: LocationTagFormValues) => {
     setIsSubmitting(true)
 
-    // Check if ID is unique
-    const existingTag = locationTags.find(tag => tag.id === data.id)
-    if (existingTag) {
-      toast({
-        title: "Validation Error",
-        description: `Location ID "${data.id}" already exists. Please choose a different ID.`,
-        variant: "destructive",
-      })
-      setIsSubmitting(false)
-      return
-    }
-
     const newTag: LocationTag = {
-      id: data.id,
-      name: data.name,
-      orgUnit: data.orgUnit,
-      type: data.type,
-      status: data.status,
-      description: data.description,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      location_tag_name: data.location_tag_name,
+      capacity: Number(data.capacity),
+      current_items: 0,
     }
 
     setLocationTags((prev) => [...prev, newTag])
@@ -259,7 +178,7 @@ export default function LocationTagsPage() {
 
     toast({
       title: "Location tag created",
-      description: `${newTag.name} (ID: ${newTag.id}) has been added successfully.`,
+      description: `${newTag.location_tag_name} has been added successfully.`,
     })
 
     setIsSubmitting(false)
@@ -271,31 +190,15 @@ export default function LocationTagsPage() {
 
     setIsSubmitting(true)
 
-    // Check if ID is unique (excluding current tag)
-    const existingTag = locationTags.find(tag => tag.id === data.id && tag.id !== editingTag.id)
-    if (existingTag) {
-      toast({
-        title: "Validation Error",
-        description: `Location ID "${data.id}" already exists. Please choose a different ID.`,
-        variant: "destructive",
-      })
-      setIsSubmitting(false)
-      return
-    }
-
     const updatedTag: LocationTag = {
       ...editingTag,
-      id: data.id,
-      name: data.name,
-      orgUnit: data.orgUnit,
-      type: data.type,
-      status: data.status,
-      description: data.description,
-      updatedAt: new Date().toISOString(),
+      location_tag_name: data.location_tag_name,
+      capacity: Number(data.capacity),
+      current_items: editingTag.current_items,
     }
 
     setLocationTags((prev) =>
-      prev.map((tag) => (tag.id === editingTag.id ? updatedTag : tag))
+      prev.map((tag) => (tag === editingTag ? updatedTag : tag))
     )
     setIsEditDialogOpen(false)
     setEditingTag(null)
@@ -303,7 +206,7 @@ export default function LocationTagsPage() {
 
     toast({
       title: "Location tag updated",
-      description: `${updatedTag.name} (ID: ${updatedTag.id}) has been updated successfully.`,
+      description: `${updatedTag.location_tag_name} has been updated successfully.`,
     })
 
     setIsSubmitting(false)
@@ -313,11 +216,11 @@ export default function LocationTagsPage() {
   const handleDeleteTag = () => {
     if (!deleteTag) return
 
-    setLocationTags((prev) => prev.filter((tag) => tag.id !== deleteTag.id))
+    setLocationTags((prev) => prev.filter((tag) => tag !== deleteTag))
 
     toast({
       title: "Location tag deleted",
-      description: `${deleteTag.name} has been deleted successfully.`,
+      description: `${deleteTag.location_tag_name} has been deleted successfully.`,
       variant: "destructive",
     })
 
@@ -328,12 +231,8 @@ export default function LocationTagsPage() {
   const handleEditClick = (tag: LocationTag) => {
     setEditingTag(tag)
     form.reset({
-      id: tag.id,
-      name: tag.name,
-      orgUnit: tag.orgUnit,
-      type: tag.type,
-      status: tag.status,
-      description: tag.description || "",
+      location_tag_name: tag.location_tag_name,
+      capacity: tag.capacity,
     })
     setIsEditDialogOpen(true)
   }
@@ -386,82 +285,27 @@ export default function LocationTagsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Select value={filterOrgUnit} onValueChange={setFilterOrgUnit}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Org Unit" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Units</SelectItem>
-                {orgUnits.map((unit) => (
-                  <SelectItem key={unit.id} value={unit.id}>
-                    {unit.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="Storage">Storage</SelectItem>
-                <SelectItem value="Operation">Operation</SelectItem>
-                <SelectItem value="Quality">Quality</SelectItem>
-                <SelectItem value="Production">Production</SelectItem>
-                <SelectItem value="Shipping">Shipping</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Location ID</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Org Unit</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Updated</TableHead>
+                <TableHead>Location Tag Name</TableHead>
+                <TableHead>Capacity</TableHead>
+                <TableHead>Current Items</TableHead>
+                <TableHead>Utilization %</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredTags.length > 0 ? (
-                filteredTags.map((tag) => (
-                  <TableRow key={tag.id}>
-                    <TableCell className="font-medium">{tag.id}</TableCell>
-                    <TableCell>{tag.name}</TableCell>
-                    <TableCell>{orgUnits.find(unit => unit.id === tag.orgUnit)?.name || tag.orgUnit}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="capitalize">
-                        {tag.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`h-2 w-2 rounded-full ${
-                            tag.status === "active" ? "bg-green-500" : "bg-gray-400"
-                          }`}
-                        />
-                        <span className="capitalize">{tag.status}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(tag.updatedAt).toLocaleDateString()}
-                    </TableCell>
+                filteredTags.map((tag, idx) => (
+                  <TableRow key={`${tag.location_tag_name}-${idx}`}>
+                    <TableCell className="font-medium">{tag.location_tag_name}</TableCell>
+                    <TableCell>{tag.capacity}</TableCell>
+                    <TableCell>{tag.current_items}</TableCell>
+                    <TableCell>{getUtilizationPercentage(tag)}%</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -489,7 +333,7 @@ export default function LocationTagsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center">
                     {locationTags.length === 0
                       ? "No location tags found. Add your first location to get started."
                       : "No locations match your current filters."}
@@ -525,33 +369,12 @@ export default function LocationTagsPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="id"
+                name="location_tag_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Location ID</FormLabel>
+                    <FormLabel>Location Tag Name</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Enter unique ID (e.g., WH-A-RK1)"
-                        {...field}
-                        disabled={!!editingTag}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Unique identifier for this location. Cannot be changed after creation.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter location name" {...field} />
+                      <Input placeholder="Enter location tag name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -560,94 +383,30 @@ export default function LocationTagsPage() {
 
               <FormField
                 control={form.control}
-                name="orgUnit"
+                name="capacity"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Organizational Unit</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select org unit" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {orgUnits.map((unit) => (
-                          <SelectItem key={unit.id} value={unit.id}>
-                            {unit.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>Select the organizational unit this location belongs to.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select location type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Storage">Storage</SelectItem>
-                        <SelectItem value="Operation">Operation</SelectItem>
-                        <SelectItem value="Quality">Quality</SelectItem>
-                        <SelectItem value="Production">Production</SelectItem>
-                        <SelectItem value="Shipping">Shipping</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormLabel>Capacity</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Enter a description for this location"
-                        className="resize-none"
-                        {...field}
-                      />
+                      <Input type="number" step={1} placeholder="Enter capacity" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              {editingTag && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Current Items</Label>
+                    <p className="text-sm">{editingTag.current_items}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Utilization Percentage</Label>
+                    <p className="text-sm">{getUtilizationPercentage(editingTag)}%</p>
+                  </div>
+                </div>
+              )}
 
               <DialogFooter>
                 <Button
@@ -678,7 +437,7 @@ export default function LocationTagsPage() {
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the location tag
-              "{deleteTag?.name}" and remove all associated data.
+              "{deleteTag?.location_tag_name}" and remove all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

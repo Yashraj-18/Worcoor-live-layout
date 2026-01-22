@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { ShoppingCart, ReceiptText, FilePlus, BarChart3, Bell, ChevronRight, Database, FileText, LayoutDashboard, Layers, Truck, ChevronLeft, LineChart, Trash, Activity, PackageSearch } from "lucide-react"
+import { ShoppingCart, ReceiptText, FilePlus, BarChart3, Bell, ChevronRight, Database, FileText, LayoutDashboard, Layers, Truck, ChevronLeft, LineChart, Trash, Activity, PackageSearch, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { ThemeSwitcher } from "@/components/theme-switcher"
@@ -122,6 +122,12 @@ export function DashboardSidebar({ isOpen, toggle }: SidebarProps) {
       title: "Asset Management",
       href: "/dashboard/reference-data/asset-management",
       icon: Database,
+      parent: "Reference Data Management",
+    },
+    {
+      title: "Bulk Upload",
+      href: "/dashboard/reference-data/bulk-upload",
+      icon: Upload,
       parent: "Reference Data Management",
     },
     // {

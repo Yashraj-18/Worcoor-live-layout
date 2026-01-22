@@ -58,46 +58,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const refreshAccessToken = async (refreshToken: string) => {
+    // ✅ Mock token refresh - no external API call
+    console.log('Mock: Token refresh skipped (using mock authentication)');
+    
     const authData = localStorageService.getItem<AuthData>('authData');
     if (!authData?._id) return;
-
-    try {
-      const res = await apiService.put({
-        path: `${api_url.authServices.refreshToken}?id=${authData._id}`,
-        isAuth: true,
-        refreshToken: true,
-      });
-
-      if (res.data.status === 'OK') {
-        const { accessToken } = res.data.data;
-        const storedAuth = localStorageService.getItem<AuthData>('authData');
-        if (storedAuth) {
-          const updatedAuth = { ...storedAuth, accessToken };
-          localStorageService.setItem('authData', updatedAuth);
-          // 👇 update AuthContext state too
-          setUserData(updatedAuth.userData);
-          setIsAuthenticated(true);
-          apiService.setAuthToken(accessToken);
-
-          scheduleTokenRefresh(accessToken, storedAuth.refreshToken);
-        }
-
-        if (retryInterval.current) {
-          clearInterval(retryInterval.current);
-          retryInterval.current = null;
-        }
-      } else {
-        console.warn('Token refresh failed:', res.data.message);
-        authLogout();
-      }
-    } catch (err: any) {
-      if (err?.response?.status === 401) {
-        console.warn('Unauthorized – logging out user');
-        authLogout();
-      } else {
-        console.warn('Network/server error while refreshing token, will retry...', err.message);
-        startRetry(refreshToken);
-      }
+    const newAccessToken = authData.accessToken;
+    const storedAuth = localStorageService.getItem<AuthData>('authData');
+    if (storedAuth) {
+      const updatedAuth = { ...storedAuth, accessToken: newAccessToken };
+      localStorageService.setItem('authData', updatedAuth);
+      setUserData(updatedAuth.userData);
+      setIsAuthenticated(true);
+      apiService.setAuthToken(newAccessToken);
+      scheduleTokenRefresh(newAccessToken, storedAuth.refreshToken);
+    }
+    if (retryInterval.current) {
+      clearInterval(retryInterval.current);
+      retryInterval.current = null;
     }
   };
 

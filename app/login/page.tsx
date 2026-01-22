@@ -1,4 +1,5 @@
 'use client'
+import { mockAuthService } from "@/src/services/mockAuthService";
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -35,10 +36,8 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const response = await apiService.post({
-        path: api_url.authServices.login,
-        data: { detail: username, password },
-      })
+      const response = await mockAuthService.login(username, password);
+  
       if(response.data.status == "OK") {
         const { accessToken, refreshToken, fullName, maskEmail, maskContactNo } = response.data.data
         const decoded = decodeToken(accessToken);

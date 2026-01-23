@@ -437,12 +437,12 @@ export const WAREHOUSE_COMPONENTS = [
         borderWidth: 2,
         borderStyle: "solid",
         containerLevel: 2,
-        snapToGrid: true,
-        gridAligned: true,
+        snapToGrid: false, // Allow free positioning
+        gridAligned: false, // No grid alignment required
         resizable: true,
-        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
-        maxSize: { width: 600, height: 600 }, // Maximum 10×10 grid blocks
-        gridStep: 60
+        minSize: { width: 60, height: 60 }, // Minimum size
+        maxSize: { width: 1200, height: 1200 }, // Maximum size
+        gridStep: 10 // Resize in 10px increments
       },
       {
         type: COMPONENT_TYPES.DOTTED_BOUNDARY,
@@ -457,12 +457,12 @@ export const WAREHOUSE_COMPONENTS = [
         borderWidth: 2,
         borderStyle: "dotted",
         containerLevel: 2,
-        snapToGrid: true,
-        gridAligned: true,
+        snapToGrid: false, // Allow free positioning
+        gridAligned: false, // No grid alignment required
         resizable: true,
-        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
-        maxSize: { width: 600, height: 600 }, // Maximum 10×10 grid blocks
-        gridStep: 60
+        minSize: { width: 60, height: 60 }, // Minimum size
+        maxSize: { width: 1200, height: 1200 }, // Maximum size
+        gridStep: 10 // Resize in 10px increments
       }
     ]
   },

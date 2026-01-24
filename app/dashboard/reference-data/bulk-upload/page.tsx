@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Upload, FileText, Database, Package, ArrowRight, CheckCircle, AlertCircle, Loader2, RefreshCw, Plus, Edit, Trash2, Building, Save, X } from "lucide-react"
+import { Upload, FileText, Database, Package, ArrowRight, CheckCircle, AlertCircle, Loader2, RefreshCw, Plus, Edit, Trash2, Building, Save, X, Download } from "lucide-react"
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
 import Link from "next/link"
@@ -20,7 +20,116 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 
-// Types
+// Backend schema definitions
+const BACKEND_SCHEMAS = {
+  skus: {
+    fields: ['id', 'organization_id', 'sku_name', 'sku_category', 'sku_unit', 'quantity', 'effective_date', 'expiry_date', 'location_tag_id', 'created_at'],
+    required: ['sku_name', 'organization_id'],
+    types: {
+      id: 'uuid4',
+      organization_id: 'uuid4',
+      sku_name: 'varchar',
+      sku_category: 'varchar',
+      sku_unit: 'varchar',
+      quantity: 'numeric',
+      effective_date: 'date',
+      expiry_date: 'date',
+      location_tag_id: 'uuid4',
+      created_at: 'timestamptz'
+    }
+  },
+  location_tags: {
+    fields: ['id', 'organization_id', 'location_tag_name', 'capacity', 'created_at', 'unit_id'],
+    required: ['location_tag_name', 'organization_id'],
+    types: {
+      id: 'uuid4',
+      organization_id: 'uuid4',
+      location_tag_name: 'varchar',
+      capacity: 'int4',
+      created_at: 'timestamptz',
+      unit_id: 'uuid4'
+    }
+  },
+  assets: {
+    fields: ['id', 'organization_id', 'asset_name', 'asset_type', 'location_tag_id', 'created_at'],
+    required: ['asset_name', 'organization_id'],
+    types: {
+      id: 'uuid4',
+      organization_id: 'uuid4',
+      asset_name: 'varchar',
+      asset_type: 'varchar',
+      location_tag_id: 'uuid4',
+      created_at: 'timestamptz'
+    }
+  }
+}
+
+// Demo data for each type
+const DEMO_DATA = {
+  skus: [
+    {
+      id: '123e4567-e89b-12d3-a456-426614174001',
+      organization_id: '223e4567-e89b-12d3-a456-426614174000',
+      sku_name: 'Oak Wood Panel',
+      sku_category: 'Raw Materials',
+      sku_unit: 'pieces',
+      quantity: '150.5',
+      effective_date: '2024-01-15',
+      expiry_date: '2025-01-15',
+      location_tag_id: '323e4567-e89b-12d3-a456-426614174000',
+      created_at: '2024-01-23T10:30:00Z'
+    },
+    {
+      id: '123e4567-e89b-12d3-a456-426614174002',
+      organization_id: '223e4567-e89b-12d3-a456-426614174000',
+      sku_name: 'Steel Beam',
+      sku_category: 'Construction',
+      sku_unit: 'units',
+      quantity: '75',
+      effective_date: '2024-01-10',
+      expiry_date: '2025-01-10',
+      location_tag_id: '323e4567-e89b-12d3-a456-426614174001',
+      created_at: '2024-01-23T10:30:00Z'
+    }
+  ],
+  location_tags: [
+    {
+      id: '423e4567-e89b-12d3-a456-426614174000',
+      organization_id: '223e4567-e89b-12d3-a456-426614174000',
+      location_tag_name: 'Warehouse Zone A',
+      capacity: '1000',
+      created_at: '2024-01-23T10:30:00Z',
+      unit_id: '523e4567-e89b-12d3-a456-426614174000'
+    },
+    {
+      id: '423e4567-e89b-12d3-a456-426614174001',
+      organization_id: '223e4567-e89b-12d3-a456-426614174000',
+      location_tag_name: 'Cold Storage Unit',
+      capacity: '500',
+      created_at: '2024-01-23T10:30:00Z',
+      unit_id: '523e4567-e89b-12d3-a456-426614174001'
+    }
+  ],
+  assets: [
+    {
+      id: '623e4567-e89b-12d3-a456-426614174000',
+      organization_id: '223e4567-e89b-12d3-a456-426614174000',
+      asset_name: 'Forklift Machine',
+      asset_type: 'Equipment',
+      location_tag_id: '423e4567-e89b-12d3-a456-426614174000',
+      created_at: '2024-01-23T10:30:00Z'
+    },
+    {
+      id: '623e4567-e89b-12d3-a456-426614174001',
+      organization_id: '223e4567-e89b-12d3-a456-426614174000',
+      asset_name: 'Conveyor Belt System',
+      asset_type: 'Automation',
+      location_tag_id: '423e4567-e89b-12d3-a456-426614174001',
+      created_at: '2024-01-23T10:30:00Z'
+    }
+  ]
+}
+
 interface OrgUnit {
   unit_name: string
   unit_type: "warehouse" | "production" | "office"
@@ -56,15 +165,35 @@ export default function BulkUploadPage() {
   const [newOrgUnitType, setNewOrgUnitType] = useState<"warehouse" | "production" | "office">("warehouse")
   const [newOrgUnitDescription, setNewOrgUnitDescription] = useState("")
   const [newOrgUnitOrganizationId, setNewOrgUnitOrganizationId] = useState("")
+  const [displayedData, setDisplayedData] = useState<any[]>([])
 
-  // Load org units on component mount
+  // Load displayed data whenever uploadType or selectedOrgUnit changes
+  useEffect(() => {
+    loadDisplayedData()
+  }, [uploadType, selectedOrgUnit])
+
+  const loadDisplayedData = () => {
+    if (!selectedOrgUnit) {
+      setDisplayedData(DEMO_DATA[uploadType as keyof typeof DEMO_DATA])
+      return
+    }
+
+    const storageKey = `${uploadType}_${selectedOrgUnit}`
+    const storedData = localStorageService.getItem<any[]>(storageKey)
+    
+    if (storedData && storedData.length > 0) {
+      setDisplayedData(storedData)
+    } else {
+      setDisplayedData(DEMO_DATA[uploadType as keyof typeof DEMO_DATA])
+    }
+  }
+
   useEffect(() => {
     const storedUnits = localStorage.getItem("worcoor-org-units")
     if (storedUnits) {
       try {
         const parsedUnits = JSON.parse(storedUnits)
         setOrgUnits(parsedUnits)
-        // Auto-select first LIVE org unit
         const activeUnit = parsedUnits.find((unit: OrgUnit) => unit.status === "LIVE")
         if (activeUnit) {
           setSelectedOrgUnit(activeUnit.unit_name)
@@ -74,6 +203,78 @@ export default function BulkUploadPage() {
       }
     }
   }, [])
+
+  const validateDataType = (value: any, type: string, fieldName: string): { valid: boolean; error?: string } => {
+    if (value === null || value === undefined || value === '') {
+      return { valid: true }
+    }
+
+    switch (type) {
+      case 'uuid4':
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+        if (!uuidRegex.test(String(value))) {
+          return { valid: false, error: `${fieldName} must be a valid UUID` }
+        }
+        break
+      case 'varchar':
+        if (typeof value !== 'string') {
+          return { valid: false, error: `${fieldName} must be a string` }
+        }
+        break
+      case 'int4':
+        const intValue = parseInt(String(value))
+        if (isNaN(intValue) || !Number.isInteger(intValue)) {
+          return { valid: false, error: `${fieldName} must be an integer` }
+        }
+        break
+      case 'numeric':
+        const numValue = parseFloat(String(value))
+        if (isNaN(numValue)) {
+          return { valid: false, error: `${fieldName} must be a number` }
+        }
+        break
+      case 'date':
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+        if (!dateRegex.test(String(value))) {
+          return { valid: false, error: `${fieldName} must be in YYYY-MM-DD format` }
+        }
+        break
+      case 'timestamptz':
+        const timestamp = new Date(String(value))
+        if (isNaN(timestamp.getTime())) {
+          return { valid: false, error: `${fieldName} must be a valid timestamp` }
+        }
+        break
+    }
+    return { valid: true }
+  }
+
+  const downloadErrorReport = () => {
+    if (!uploadResults || uploadResults.errors.length === 0) return
+
+    const errorReport = [
+      'Error Report - Bulk Upload',
+      `Date: ${new Date().toLocaleString()}`,
+      `Upload Type: ${uploadType}`,
+      `Total Rows: ${uploadResults.total}`,
+      `Valid Rows: ${uploadResults.success}`,
+      `Errors Found: ${uploadResults.errors.length}`,
+      '',
+      'Detailed Errors:',
+      '-------------------',
+      ...uploadResults.errors
+    ].join('\n')
+
+    const blob = new Blob([errorReport], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `error-report-${uploadType}-${Date.now()}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   const handleCreateOrgUnit = () => {
     if (!newOrgUnitName.trim() || !newOrgUnitOrganizationId.trim()) return
@@ -91,10 +292,8 @@ export default function BulkUploadPage() {
       setOrgUnits(updatedOrgUnits)
       localStorageService.setItem("worcoor-org-units", updatedOrgUnits)
       
-      // Auto-select the newly created org unit
       setSelectedOrgUnit(newOrgUnit.unit_name)
       
-      // Reset form
       setNewOrgUnitName("")
       setNewOrgUnitType("warehouse")
       setNewOrgUnitDescription("")
@@ -159,7 +358,6 @@ export default function BulkUploadPage() {
             const worksheet = workbook.Sheets[sheetName]
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
 
-            // Convert to object format with first row as headers
             const headers = jsonData[0] as string[]
             const rows = jsonData.slice(1) as any[][]
             const objects = rows.map(row => {
@@ -187,80 +385,60 @@ export default function BulkUploadPage() {
     const errors: string[] = []
     const valid: any[] = []
 
-    // Get existing data for validation
+    const schema = BACKEND_SCHEMAS[type as keyof typeof BACKEND_SCHEMAS]
+    if (!schema) {
+      errors.push(`Unknown upload type: ${type}`)
+      return { valid: [], errors }
+    }
+
     const storageKey = `${type}_${orgUnitId}`
     const existingData = localStorageService.getItem<any[]>(storageKey) || []
 
     data.forEach((row, index) => {
       let isValid = true
+      const rowErrors: string[] = []
 
-      if (operation === 'delete') {
-        // For delete, only need the ID field
-        const idField = type === 'skus' ? 'sku_id' : type === 'locations' ? 'location_id' : 'asset_id'
+      const rowFields = Object.keys(row)
+      const invalidFields = rowFields.filter(field => !schema.fields.includes(field))
+      if (invalidFields.length > 0) {
+        rowErrors.push(`Invalid fields: ${invalidFields.join(', ')}. Expected fields: ${schema.fields.join(', ')}`)
+        isValid = false
+      }
+
+      for (const requiredField of schema.required) {
+        if (!row[requiredField] || String(row[requiredField]).trim() === '') {
+          rowErrors.push(`Missing required field: ${requiredField}`)
+          isValid = false
+        }
+      }
+
+      for (const field of schema.fields) {
+        if (row[field] !== null && row[field] !== undefined && row[field] !== '') {
+          const fieldType = schema.types[field as keyof typeof schema.types]
+          const typeValidation = validateDataType(row[field], fieldType, field)
+          if (!typeValidation.valid) {
+            rowErrors.push(typeValidation.error!)
+            isValid = false
+          }
+        }
+      }
+
+      if (operation === 'delete' || operation === 'update') {
+        const idField = 'id'
         if (!row[idField]) {
-          errors.push(`Row ${index + 1}: Missing ${idField} for delete operation`)
+          rowErrors.push(`Missing ${idField} for ${operation} operation`)
           isValid = false
         } else {
-          // Check if record exists
           const exists = existingData.some(item => item.id === row[idField])
           if (!exists) {
-            errors.push(`Row ${index + 1}: ${idField} ${row[idField]} not found for delete operation`)
+            rowErrors.push(`Record with ${idField} ${row[idField]} not found for ${operation} operation`)
             isValid = false
           }
         }
-      } else if (operation === 'update') {
-        // For update, need ID and at least one field to update
-        const idField = type === 'skus' ? 'sku_id' : type === 'locations' ? 'location_id' : 'asset_id'
-        if (!row[idField]) {
-          errors.push(`Row ${index + 1}: Missing ${idField} for update operation`)
-          isValid = false
-        } else {
-          // Check if record exists
-          const exists = existingData.some(item => item.id === row[idField])
-          if (!exists) {
-            errors.push(`Row ${index + 1}: ${idField} ${row[idField]} not found for update operation`)
-            isValid = false
-          }
-        }
-      } else if (operation === 'create') {
-        // For create, validate required fields
-        if (type === 'skus') {
-          if (!row.sku_id && !row.name) {
-            errors.push(`Row ${index + 1}: Missing required fields (sku_id or name) for create operation`)
-            isValid = false
-          } else if (row.sku_id) {
-            // Check for duplicate SKU ID
-            const duplicate = existingData.find(sku => sku.id === row.sku_id)
-            if (duplicate) {
-              errors.push(`Row ${index + 1}: SKU ID ${row.sku_id} already exists`)
-              isValid = false
-            }
-          }
-        } else if (type === 'locations') {
-          if (!row.location_id && !row.name) {
-            errors.push(`Row ${index + 1}: Missing required fields (location_id or name) for create operation`)
-            isValid = false
-          } else if (row.location_id) {
-            // Check for duplicate location ID
-            const duplicate = existingData.find(location => location.id === row.location_id)
-            if (duplicate) {
-              errors.push(`Row ${index + 1}: Location ID ${row.location_id} already exists`)
-              isValid = false
-            }
-          }
-        } else if (type === 'assets') {
-          if (!row.asset_id && !row.name) {
-            errors.push(`Row ${index + 1}: Missing required fields (asset_id or name) for create operation`)
-            isValid = false
-          } else if (row.asset_id) {
-            // Check for duplicate asset ID
-            const duplicate = existingData.find(asset => asset.id === row.asset_id)
-            if (duplicate) {
-              errors.push(`Row ${index + 1}: Asset ID ${row.asset_id} already exists`)
-              isValid = false
-            }
-          }
-        }
+      }
+
+      if (rowErrors.length > 0) {
+        errors.push(`Row ${index + 1}: ${rowErrors.join('; ')}`)
       }
 
       if (isValid) {
@@ -271,305 +449,82 @@ export default function BulkUploadPage() {
     return { valid, errors }
   }
 
-  const importSkus = async (data: any[], orgUnitId: string, operation: CrudOperation): Promise<{ imported: number; failed: number; errors: string[] }> => {
+  const importData = async (data: any[], type: string, orgUnitId: string, operation: CrudOperation): Promise<{ imported: number; failed: number; errors: string[] }> => {
     const errors: string[] = []
     let imported = 0
     let failed = 0
 
-    const storageKey = `skus_${orgUnitId}`
+    const storageKey = `${type}_${orgUnitId}`
+    console.log("Import starting with storageKey:", storageKey)
 
     try {
-      let existingSkus = localStorageService.getItem<any[]>(storageKey) || []
+      let existingData = localStorageService.getItem<any[]>(storageKey) || []
+      console.log("Existing data count:", existingData.length)
+
+      // Add demo data if this is the first time
+      if (existingData.length === 0 && DEMO_DATA[type as keyof typeof DEMO_DATA]) {
+        existingData = [...DEMO_DATA[type as keyof typeof DEMO_DATA]]
+        console.log("Added demo data, new count:", existingData.length)
+      }
 
       if (operation === 'delete') {
-        // For delete operation, remove records by sku_id
-        const initialCount = existingSkus.length
-        existingSkus = existingSkus.filter(sku => {
-          const shouldDelete = data.some(row => row.sku_id === sku.id)
+        const initialCount = existingData.length
+        existingData = existingData.filter(item => {
+          const shouldDelete = data.some(row => row.id === item.id)
           if (shouldDelete) imported++
           return !shouldDelete
         })
         failed = data.length - imported
       } else if (operation === 'update') {
-        // For update operation, update existing records
         for (const row of data) {
-          const existingIndex = existingSkus.findIndex(sku => sku.id === row.sku_id)
+          const existingIndex = existingData.findIndex(item => item.id === row.id)
           if (existingIndex >= 0) {
-            existingSkus[existingIndex] = {
-              ...existingSkus[existingIndex],
-              parentResource: row.parent_resource || row.category || existingSkus[existingIndex].parentResource,
-              name: row.name || existingSkus[existingIndex].name,
-              brand: row.brand || existingSkus[existingIndex].brand,
-              procuredDate: row.procured_date || existingSkus[existingIndex].procuredDate,
-              location: row.location || existingSkus[existingIndex].location,
-              skuCode: row.sku_code || existingSkus[existingIndex].skuCode,
-              availableQuantity: parseInt(row.available_quantity) || existingSkus[existingIndex].availableQuantity,
-              skuUnit: row.sku_unit || row.unit || existingSkus[existingIndex].skuUnit,
-              unit: row.unit || existingSkus[existingIndex].unit,
-              department: row.department || existingSkus[existingIndex].department,
-              wastageQuantity: row.wastage_quantity || existingSkus[existingIndex].wastageQuantity,
-              description: row.description || existingSkus[existingIndex].description,
-              minQuantity: parseInt(row.min_quantity) || existingSkus[existingIndex].minQuantity,
-              type: row.type || existingSkus[existingIndex].type,
-              category: row.category || existingSkus[existingIndex].category,
-              unitCost: parseFloat(row.unit_cost) || existingSkus[existingIndex].unitCost,
-              currency: row.currency || existingSkus[existingIndex].currency,
-              unitWeight: parseFloat(row.unit_weight) || existingSkus[existingIndex].unitWeight,
-              weightUnit: row.weight_unit || existingSkus[existingIndex].weightUnit,
-              quantityUnit: row.quantity_unit || existingSkus[existingIndex].quantityUnit,
-              qualityRating: row.quality_rating || existingSkus[existingIndex].qualityRating,
-              qualityCheckDone: row.quality_check_done === 'true' || existingSkus[existingIndex].qualityCheckDone,
-              qualityCheckDate: row.quality_check_date || existingSkus[existingIndex].qualityCheckDate,
-              qualityCheckNotes: row.quality_check_notes || existingSkus[existingIndex].qualityCheckNotes,
-              taggedForProduction: parseInt(row.tagged_for_production) || existingSkus[existingIndex].taggedForProduction,
-              wastage: parseInt(row.wastage) || existingSkus[existingIndex].wastage,
-              totalProcured: parseInt(row.total_procured) || existingSkus[existingIndex].totalProcured,
+            existingData[existingIndex] = {
+              ...existingData[existingIndex],
+              ...row,
+              updated_at: new Date().toISOString()
             }
             imported++
           } else {
-            errors.push(`SKU ID ${row.sku_id} not found for update`)
+            errors.push(`Record with ID ${row.id} not found for update`)
             failed++
           }
         }
       } else if (operation === 'create') {
-        // For create operation, add new records
+        console.log("Creating new records, count:", data.length)
         for (const row of data) {
           try {
-            // Generate SKU ID if not provided
-            const skuId = row.sku_id || `SKU-${String(existingSkus.length + imported + 1).padStart(3, '0')}`
+            const newRecord = {
+              ...row,
+              id: row.id || crypto.randomUUID(),
+              created_at: row.created_at || new Date().toISOString()
+            }
+            console.log("Creating record:", newRecord.id)
 
-            // Check for duplicate SKU ID
-            const duplicate = existingSkus.find(sku => sku.id === skuId)
+            const duplicate = existingData.find(item => item.id === newRecord.id)
             if (duplicate) {
-              errors.push(`SKU ID ${skuId} already exists`)
+              errors.push(`Record with ID ${newRecord.id} already exists`)
               failed++
               continue
             }
 
-            const newSku = {
-              id: skuId,
-              parentResource: row.parent_resource || row.category || 'Unknown',
-              name: row.name || 'Unnamed SKU',
-              brand: row.brand || '',
-              procuredDate: row.procured_date || new Date().toISOString().split('T')[0],
-              location: row.location || '',
-              skuCode: row.sku_code || skuId,
-              availableQuantity: parseInt(row.available_quantity) || 0,
-              skuUnit: row.sku_unit || row.unit || 'Count',
-              unit: row.unit || '',
-              department: row.department || '',
-              wastageQuantity: row.wastage_quantity || '',
-              description: row.description || '',
-              minQuantity: parseInt(row.min_quantity) || 0,
-              type: row.type || 'Primary',
-              category: row.category || 'General',
-              unitCost: parseFloat(row.unit_cost) || 0,
-              currency: row.currency || 'USD',
-              unitWeight: parseFloat(row.unit_weight) || 0,
-              weightUnit: row.weight_unit || 'kg',
-              quantityUnit: row.quantity_unit || 'pieces',
-              qualityRating: row.quality_rating || 'A',
-              qualityCheckDone: row.quality_check_done === 'true' || false,
-              qualityCheckDate: row.quality_check_date || '',
-              qualityCheckNotes: row.quality_check_notes || '',
-              taggedForProduction: parseInt(row.tagged_for_production) || 0,
-              wastage: parseInt(row.wastage) || 0,
-              totalProcured: parseInt(row.total_procured) || 0,
-            }
-
-            existingSkus.push(newSku)
+            existingData.push(newRecord)
             imported++
           } catch (error) {
-            errors.push(`Failed to import SKU: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            errors.push(`Failed to import record: ${error instanceof Error ? error.message : 'Unknown error'}`)
             failed++
           }
         }
+        console.log("After create - imported:", imported, "failed:", failed)
       }
 
-      localStorageService.setItem(storageKey, existingSkus)
+      console.log("Saving to localStorage, total records:", existingData.length)
+      localStorageService.setItem(storageKey, existingData)
+      console.log("Updating displayedData state")
+      setDisplayedData([...existingData])
+      console.log("Import complete")
     } catch (error) {
-      errors.push(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    }
-
-    return { imported, failed, errors }
-  }
-
-  const importLocations = async (data: any[], orgUnitId: string, operation: CrudOperation): Promise<{ imported: number; failed: number; errors: string[] }> => {
-    const errors: string[] = []
-    let imported = 0
-    let failed = 0
-
-    const storageKey = `locations_${orgUnitId}`
-
-    try {
-      let existingLocations = localStorageService.getItem<any[]>(storageKey) || []
-
-      if (operation === 'delete') {
-        // For delete operation, remove records by location_id
-        const initialCount = existingLocations.length
-        existingLocations = existingLocations.filter(location => {
-          const shouldDelete = data.some(row => row.location_id === location.id)
-          if (shouldDelete) imported++
-          return !shouldDelete
-        })
-        failed = data.length - imported
-      } else if (operation === 'update') {
-        // For update operation, update existing records
-        for (const row of data) {
-          const existingIndex = existingLocations.findIndex(location => location.id === row.location_id)
-          if (existingIndex >= 0) {
-            existingLocations[existingIndex] = {
-              ...existingLocations[existingIndex],
-              name: row.name || existingLocations[existingIndex].name,
-              category: row.category || existingLocations[existingIndex].category,
-              description: row.description || existingLocations[existingIndex].description,
-              capacity: parseInt(row.capacity) || existingLocations[existingIndex].capacity,
-              unit: row.unit || existingLocations[existingIndex].unit,
-              zone: row.zone || existingLocations[existingIndex].zone,
-              type: row.type || existingLocations[existingIndex].type,
-              status: row.status || existingLocations[existingIndex].status,
-            }
-            imported++
-          } else {
-            errors.push(`Location ID ${row.location_id} not found for update`)
-            failed++
-          }
-        }
-      } else if (operation === 'create') {
-        // For create operation, add new records
-        for (const row of data) {
-          try {
-            const locationId = row.location_id || `LOC-${String(existingLocations.length + imported + 1).padStart(3, '0')}`
-
-            // Check for duplicate location ID
-            const duplicate = existingLocations.find(location => location.id === locationId)
-            if (duplicate) {
-              errors.push(`Location ID ${locationId} already exists`)
-              failed++
-              continue
-            }
-
-            const newLocation = {
-              id: locationId,
-              name: row.name || locationId,
-              category: row.category || 'General',
-              description: row.description || '',
-              capacity: parseInt(row.capacity) || 0,
-              unit: row.unit || '',
-              zone: row.zone || '',
-              type: row.type || 'Storage',
-              status: row.status || 'Active',
-            }
-
-            existingLocations.push(newLocation)
-            imported++
-          } catch (error) {
-            errors.push(`Failed to import location: ${error instanceof Error ? error.message : 'Unknown error'}`)
-            failed++
-          }
-        }
-      }
-
-      localStorageService.setItem(storageKey, existingLocations)
-    } catch (error) {
-      errors.push(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    }
-
-    return { imported, failed, errors }
-  }
-
-  const importAssets = async (data: any[], orgUnitId: string, operation: CrudOperation): Promise<{ imported: number; failed: number; errors: string[] }> => {
-    const errors: string[] = []
-    let imported = 0
-    let failed = 0
-
-    const storageKey = `assets_${orgUnitId}`
-
-    try {
-      let existingAssets = localStorageService.getItem<any[]>(storageKey) || []
-
-      if (operation === 'delete') {
-        // For delete operation, remove records by asset_id
-        const initialCount = existingAssets.length
-        existingAssets = existingAssets.filter(asset => {
-          const shouldDelete = data.some(row => row.asset_id === asset.id)
-          if (shouldDelete) imported++
-          return !shouldDelete
-        })
-        failed = data.length - imported
-      } else if (operation === 'update') {
-        // For update operation, update existing records
-        for (const row of data) {
-          const existingIndex = existingAssets.findIndex(asset => asset.id === row.asset_id)
-          if (existingIndex >= 0) {
-            existingAssets[existingIndex] = {
-              ...existingAssets[existingIndex],
-              name: row.name || existingAssets[existingIndex].name,
-              category: row.category || existingAssets[existingIndex].category,
-              type: row.type || existingAssets[existingIndex].type,
-              location: row.location || existingAssets[existingIndex].location,
-              serialNumber: row.serial_number || existingAssets[existingIndex].serialNumber,
-              manufacturer: row.manufacturer || existingAssets[existingIndex].manufacturer,
-              model: row.model || existingAssets[existingIndex].model,
-              purchaseDate: row.purchase_date || existingAssets[existingIndex].purchaseDate,
-              purchaseCost: parseFloat(row.purchase_cost) || existingAssets[existingIndex].purchaseCost,
-              currency: row.currency || existingAssets[existingIndex].currency,
-              status: row.status || existingAssets[existingIndex].status,
-              description: row.description || existingAssets[existingIndex].description,
-              maintenanceSchedule: row.maintenance_schedule || existingAssets[existingIndex].maintenanceSchedule,
-              lastMaintenance: row.last_maintenance || existingAssets[existingIndex].lastMaintenance,
-              nextMaintenance: row.next_maintenance || existingAssets[existingIndex].nextMaintenance,
-            }
-            imported++
-          } else {
-            errors.push(`Asset ID ${row.asset_id} not found for update`)
-            failed++
-          }
-        }
-      } else if (operation === 'create') {
-        // For create operation, add new records
-        for (const row of data) {
-          try {
-            const assetId = row.asset_id || `ASSET-${String(existingAssets.length + imported + 1).padStart(3, '0')}`
-
-            // Check for duplicate asset ID
-            const duplicate = existingAssets.find(asset => asset.id === assetId)
-            if (duplicate) {
-              errors.push(`Asset ID ${assetId} already exists`)
-              failed++
-              continue
-            }
-
-            const newAsset = {
-              id: assetId,
-              name: row.name || 'Unnamed Asset',
-              category: row.category || 'Equipment',
-              type: row.type || 'General',
-              location: row.location || '',
-              serialNumber: row.serial_number || '',
-              manufacturer: row.manufacturer || '',
-              model: row.model || '',
-              purchaseDate: row.purchase_date || '',
-              purchaseCost: parseFloat(row.purchase_cost) || 0,
-              currency: row.currency || 'USD',
-              status: row.status || 'Active',
-              description: row.description || '',
-              maintenanceSchedule: row.maintenance_schedule || '',
-              lastMaintenance: row.last_maintenance || '',
-              nextMaintenance: row.next_maintenance || '',
-            }
-
-            existingAssets.push(newAsset)
-            imported++
-          } catch (error) {
-            errors.push(`Failed to import asset: ${error instanceof Error ? error.message : 'Unknown error'}`)
-            failed++
-          }
-        }
-      }
-
-      localStorageService.setItem(storageKey, existingAssets)
-    } catch (error) {
+      console.error("Import error:", error)
       errors.push(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
 
@@ -577,74 +532,71 @@ export default function BulkUploadPage() {
   }
 
   const handleImport = async () => {
-    if (parsedData.length === 0 || !selectedOrgUnit) return
+    if (parsedData.length === 0 || !selectedOrgUnit) {
+      console.log("Import blocked: parsedData empty or no org unit selected")
+      return
+    }
+
+    console.log("Starting import with:", {
+      dataCount: parsedData.length,
+      uploadType,
+      selectedOrgUnit,
+      operation: crudOperation
+    })
 
     setIsImporting(true)
     setImportResults(null)
 
     try {
-      let results: { imported: number; failed: number; errors: string[] }
-
-      switch (uploadType) {
-        case 'skus':
-          results = await importSkus(parsedData, selectedOrgUnit, crudOperation)
-          break
-        case 'locations':
-          results = await importLocations(parsedData, selectedOrgUnit, crudOperation)
-          break
-        case 'assets':
-          results = await importAssets(parsedData, selectedOrgUnit, crudOperation)
-          break
-        default:
-          results = { imported: 0, failed: parsedData.length, errors: ['Unknown upload type'] }
-      }
-
+      const results = await importData(parsedData, uploadType, selectedOrgUnit, crudOperation)
+      console.log("Import results:", results)
       setImportResults(results)
 
       if (results.imported > 0) {
-        // Reset form on successful import
+        console.log("Import successful, clearing form")
         setSelectedFile(null)
         setParsedData([])
         setUploadResults(null)
       }
     } catch (error) {
+      console.error("Import error:", error)
       setImportResults({
         imported: 0,
         failed: parsedData.length,
         errors: [error instanceof Error ? error.message : 'Import failed']
-      });
+      })
     } finally {
-      setIsImporting(false);
+      setIsImporting(false)
     }
-  };
+  }
 
   const handleUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile) return
 
-    setIsUploading(true);
-    setParsedData([]);
-    setUploadResults(null);
+    setIsUploading(true)
+    setParsedData([])
+    setUploadResults(null)
 
     try {
-      const data = await parseFile(selectedFile);
-      const { valid, errors } = validateData(data, uploadType, crudOperation, selectedOrgUnit);
+      const data = await parseFile(selectedFile)
+      const { valid, errors } = validateData(data, uploadType, crudOperation, selectedOrgUnit)
 
-      setParsedData(valid);
+      setParsedData(valid)
       setUploadResults({
         success: valid.length,
         errors,
         total: data.length
-      });
+      })
     } catch (error) {
       setUploadResults({
         success: 0,
         errors: [error instanceof Error ? error.message : 'Unknown error occurred'],
         total: 0
-      });
+      })
     } finally {
-      setIsUploading(false);
+      setIsUploading(false)
     }
-  };
+  }
 
   const uploadTypes = [
     {
@@ -655,10 +607,10 @@ export default function BulkUploadPage() {
       color: "blue"
     },
     {
-      id: "locations",
-      name: "Locations",
+      id: "location_tags",
+      name: "Location Tags",
       icon: Database,
-      description: "Upload location tags and categories",
+      description: "Upload location tags data",
       color: "green"
     },
     {
@@ -670,6 +622,19 @@ export default function BulkUploadPage() {
     }
   ]
 
+  const getTableTitle = () => {
+    switch (uploadType) {
+      case 'skus':
+        return 'SKUs Data'
+      case 'location_tags':
+        return 'Location Tags Data'
+      case 'assets':
+        return 'Assets Data'
+      default:
+        return 'Data'
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -678,9 +643,7 @@ export default function BulkUploadPage() {
         icon={Upload}
       />
 
-      {/* Configuration Section */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Org Unit Selection */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">Target Org Unit</CardTitle>
@@ -781,7 +744,6 @@ export default function BulkUploadPage() {
           </CardContent>
         </Card>
 
-        {/* CRUD Operation Selection */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">Operation</CardTitle>
@@ -815,7 +777,6 @@ export default function BulkUploadPage() {
           </CardContent>
         </Card>
 
-        {/* Operation Summary */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">Operation Summary</CardTitle>
@@ -845,7 +806,6 @@ export default function BulkUploadPage() {
         </Card>
       </div>
 
-      {/* Upload Type Selection */}
       <div className="grid gap-4 md:grid-cols-3">
         {uploadTypes.map((type) => (
           <Card
@@ -873,7 +833,6 @@ export default function BulkUploadPage() {
         ))}
       </div>
 
-      {/* File Upload Area */}
       <Card>
         <CardHeader>
           <CardTitle>File Upload</CardTitle>
@@ -959,7 +918,6 @@ export default function BulkUploadPage() {
         </CardContent>
       </Card>
 
-      {/* Upload Results */}
       {uploadResults && (
         <Card>
           <CardHeader>
@@ -994,7 +952,7 @@ export default function BulkUploadPage() {
             {uploadResults.errors.length > 0 && (
               <div className="mb-6">
                 <h4 className="font-medium text-red-700 mb-2">Errors Found:</h4>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-h-32 overflow-y-auto">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-h-64 overflow-y-auto">
                   <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
                     {uploadResults.errors.map((error, index) => (
                       <li key={index}>{error}</li>
@@ -1042,37 +1000,39 @@ export default function BulkUploadPage() {
                     </p>
                   )}
                 </div>
-
-                {uploadResults.success > 0 && (
-                  <div className="mt-6 flex gap-4">
-                    <Button
-                      className="bg-green-600 hover:bg-green-700"
-                      onClick={handleImport}
-                      disabled={isImporting}
-                    >
-                      {isImporting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Importing...
-                        </>
-                      ) : (
-                        <>
-                          Import {uploadResults.success} Valid Records
-                        </>
-                      )}
-                    </Button>
-                    <Button variant="outline">
-                      Download Error Report
-                    </Button>
-                  </div>
-                )}
               </div>
             )}
+
+            <div className="mt-6 flex gap-4">
+              <Button
+                className="bg-green-600 hover:bg-green-700"
+                onClick={handleImport}
+                disabled={isImporting || uploadResults.success === 0}
+              >
+                {isImporting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    Import {uploadResults.success} Valid Records
+                  </>
+                )}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={downloadErrorReport} 
+                disabled={uploadResults.errors.length === 0}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Error Report
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Import Results */}
       {importResults && (
         <Card>
           <CardHeader>
@@ -1124,7 +1084,7 @@ export default function BulkUploadPage() {
                   <h4 className="font-medium text-green-700">Import Successful!</h4>
                 </div>
                 <p className="text-sm text-green-700">
-                  {importResults.imported} {uploadTypes.find(t => t.id === uploadType)?.name} records have been successfully imported and are now available in the system.
+                  {importResults.imported} {uploadTypes.find(t => t.id === uploadType)?.name} records have been successfully imported and added to the data table below.
                 </p>
                 <div className="mt-4 flex gap-4">
                   <Button
@@ -1133,7 +1093,7 @@ export default function BulkUploadPage() {
                     size="sm"
                     className="border-green-300 text-green-700 hover:bg-green-100"
                   >
-                    <Link href={`/dashboard/reference-data/${uploadType === 'skus' ? 'skus' : uploadType === 'locations' ? 'location-tags' : 'assets'}`}>
+                    <Link href={`/dashboard/reference-data/${uploadType}`}>
                       View Imported Data
                     </Link>
                   </Button>
@@ -1156,286 +1116,54 @@ export default function BulkUploadPage() {
         </Card>
       )}
 
-      {/* Instructions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload Instructions</CardTitle>
+      <Card className="shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 border-b">
+          <CardTitle className="text-xl">{getTableTitle()}</CardTitle>
+          <CardDescription>
+            {displayedData.length > 2 
+              ? `Showing ${displayedData.length} records (including 2 demo records)` 
+              : 'Demo sample data - your imported data will appear below'}
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            <div>
-              <h4 className="font-medium mb-2">CSV Format Requirements:</h4>
-              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                <li>Use UTF-8 encoding</li>
-                <li>Include headers in the first row</li>
-                <li>Use commas as separators</li>
-                <li>Ensure date fields are in YYYY-MM-DD format</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium mb-2">Excel Format Requirements:</h4>
-              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                <li>Use .xlsx or .xls format</li>
-                <li>Data should start from cell A1</li>
-                <li>Include clear column headers</li>
-                <li>Avoid merged cells and complex formatting</li>
-              </ul>
-            </div>
-            
-            {/* Demo Tables Section */}
-            <div className="space-y-6">
-              <div className="text-center">
-                <h4 className="font-medium text-xl text-gray-900">Demo Tables & Data Structure</h4>
-                <p className="text-sm text-gray-600 mt-1">Copy these tables to create properly formatted CSV/Excel files</p>
-              </div>
-              
-              {/* Conditional Demo Tables */}
-              {uploadType === 'skus' && (
-                <>
-                  {/* SKUs Demo Table */}
-                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6 shadow-sm">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="h-10 w-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                        <Package className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <h5 className="font-bold text-lg text-blue-900">SKUs Demo Table</h5>
-                        <p className="text-sm text-blue-700">Stock Keeping Units - Complete data structure</p>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-white rounded-lg p-4 border border-blue-200 overflow-x-auto">
-                      <table className="min-w-full text-xs">
-                        <thead className="bg-blue-50 border-b border-blue-200">
-                          <tr>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">sku_id</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">name</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">description</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">category</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">type</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">available_quantity</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">min_quantity</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">unit_cost</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">currency</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">unit_weight</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">weight_unit</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">quality_rating</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">quality_check_done</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">location</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">department</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">brand</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">sku_code</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">procured_date</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">wastage_quantity</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">tagged_for_production</th>
-                            <th className="px-3 py-2 text-left font-semibold text-blue-900 whitespace-nowrap">total_procured</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-blue-100">
-                          <tr className="hover:bg-blue-50">
-                            <td className="px-3 py-2 text-gray-700 font-mono">SKU-001</td>
-                            <td className="px-3 py-2 text-gray-700">Oak Wood Panel</td>
-                            <td className="px-3 py-2 text-gray-700">High-quality oak wood panel for furniture</td>
-                            <td className="px-3 py-2 text-gray-700">Wood</td>
-                            <td className="px-3 py-2 text-gray-700">Primary</td>
-                            <td className="px-3 py-2 text-gray-700">150</td>
-                            <td className="px-3 py-2 text-gray-700">20</td>
-                            <td className="px-3 py-2 text-gray-700">45.50</td>
-                            <td className="px-3 py-2 text-gray-700">USD</td>
-                            <td className="px-3 py-2 text-gray-700">2.5</td>
-                            <td className="px-3 py-2 text-gray-700">kg</td>
-                            <td className="px-3 py-2 text-gray-700">A</td>
-                            <td className="px-3 py-2 text-gray-700">true</td>
-                            <td className="px-3 py-2 text-gray-700">U1-W1-Z2-R3</td>
-                            <td className="px-3 py-2 text-gray-700">Materials</td>
-                            <td className="px-3 py-2 text-gray-700">Premium Woods Co.</td>
-                            <td className="px-3 py-2 text-gray-700">OWP-001</td>
-                            <td className="px-3 py-2 text-gray-700">2024-01-15</td>
-                            <td className="px-3 py-2 text-gray-700">5</td>
-                            <td className="px-3 py-2 text-gray-700">30</td>
-                            <td className="px-3 py-2 text-gray-700">180</td>
-                          </tr>
-                          <tr className="hover:bg-blue-50">
-                            <td className="px-3 py-2 text-gray-700 font-mono">SKU-002</td>
-                            <td className="px-3 py-2 text-gray-700">Steel Beam</td>
-                            <td className="px-3 py-2 text-gray-700">Structural steel beam for construction</td>
-                            <td className="px-3 py-2 text-gray-700">Metal</td>
-                            <td className="px-3 py-2 text-gray-700">Primary</td>
-                            <td className="px-3 py-2 text-gray-700">75</td>
-                            <td className="px-3 py-2 text-gray-700">10</td>
-                            <td className="px-3 py-2 text-gray-700">120.00</td>
-                            <td className="px-3 py-2 text-gray-700">USD</td>
-                            <td className="px-3 py-2 text-gray-700">15.0</td>
-                            <td className="px-3 py-2 text-gray-700">kg</td>
-                            <td className="px-3 py-2 text-gray-700">A</td>
-                            <td className="px-3 py-2 text-gray-700">true</td>
-                            <td className="px-3 py-2 text-gray-700">U2-W1-Z1-R1</td>
-                            <td className="px-3 py-2 text-gray-700">Construction</td>
-                            <td className="px-3 py-2 text-gray-700">Steel Works Inc.</td>
-                            <td className="px-3 py-2 text-gray-700">SB-001</td>
-                            <td className="px-3 py-2 text-gray-700">2024-01-10</td>
-                            <td className="px-3 py-2 text-gray-700">2</td>
-                            <td className="px-3 py-2 text-gray-700">15</td>
-                            <td className="px-3 py-2 text-gray-700">90</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </>
-              )}
-              
-              {uploadType === 'locations' && (
-                <>
-                  {/* Locations Demo Table */}
-                  <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-6 shadow-sm">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="h-10 w-10 bg-green-500 rounded-lg flex items-center justify-center">
-                        <Database className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <h5 className="font-bold text-lg text-green-900">Locations Demo Table</h5>
-                        <p className="text-sm text-green-700">Location Tags & Categories - Complete data structure</p>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-white rounded-lg p-4 border border-green-200 overflow-x-auto">
-                      <table className="min-w-full text-xs">
-                        <thead className="bg-green-50 border-b border-green-200">
-                          <tr>
-                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">location_id</th>
-                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">name</th>
-                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">description</th>
-                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">category</th>
-                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">capacity</th>
-                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">unit</th>
-                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">zone</th>
-                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">type</th>
-                            <th className="px-3 py-2 text-left font-semibold text-green-900 whitespace-nowrap">status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-green-100">
-                          <tr className="hover:bg-green-50">
-                            <td className="px-3 py-2 text-gray-700 font-mono">LOC-001</td>
-                            <td className="px-3 py-2 text-gray-700">Warehouse Zone A</td>
-                            <td className="px-3 py-2 text-gray-700">Main storage area for finished goods</td>
-                            <td className="px-3 py-2 text-gray-700">Storage</td>
-                            <td className="px-3 py-2 text-gray-700">1000</td>
-                            <td className="px-3 py-2 text-gray-700">pieces</td>
-                            <td className="px-3 py-2 text-gray-700">Zone A</td>
-                            <td className="px-3 py-2 text-gray-700">Storage</td>
-                            <td className="px-3 py-2 text-gray-700">Active</td>
-                          </tr>
-                          <tr className="hover:bg-green-50">
-                            <td className="px-3 py-2 text-gray-700 font-mono">LOC-002</td>
-                            <td className="px-3 py-2 text-gray-700">Cold Storage Unit</td>
-                            <td className="px-3 py-2 text-gray-700">Temperature-controlled storage for perishables</td>
-                            <td className="px-3 py-2 text-gray-700">Cold Storage</td>
-                            <td className="px-3 py-2 text-gray-700">500</td>
-                            <td className="px-3 py-2 text-gray-700">boxes</td>
-                            <td className="px-3 py-2 text-gray-700">Zone B</td>
-                            <td className="px-3 py-2 text-gray-700">Cold Storage</td>
-                            <td className="px-3 py-2 text-gray-700">Active</td>
-                          </tr>
-                          <tr className="hover:bg-green-50">
-                            <td className="px-3 py-2 text-gray-700 font-mono">LOC-003</td>
-                            <td className="px-3 py-2 text-gray-700">Hazardous Materials Area</td>
-                            <td className="px-3 py-2 text-gray-700">Secure storage for hazardous chemicals</td>
-                            <td className="px-3 py-2 text-gray-700">Hazardous</td>
-                            <td className="px-3 py-2 text-gray-700">200</td>
-                            <td className="px-3 py-2 text-gray-700">containers</td>
-                            <td className="px-3 py-2 text-gray-700">Zone C</td>
-                            <td className="px-3 py-2 text-gray-700">Hazardous Storage</td>
-                            <td className="px-3 py-2 text-gray-700">Active</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </>
-              )}
-              
-              {uploadType === 'assets' && (
-                <>
-                  {/* Assets Demo Table */}
-                  <div className="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-6 shadow-sm">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="h-10 w-10 bg-purple-500 rounded-lg flex items-center justify-center">
-                        <FileText className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <h5 className="font-bold text-lg text-purple-900">Assets Demo Table</h5>
-                        <p className="text-sm text-purple-700">Asset & Equipment Management - Complete data structure</p>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-white rounded-lg p-4 border border-purple-200 overflow-x-auto">
-                      <table className="min-w-full text-xs">
-                        <thead className="bg-purple-50 border-b border-purple-200">
-                          <tr>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">asset_id</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">name</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">description</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">category</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">type</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">location</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">serial_number</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">manufacturer</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">model</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">purchase_cost</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">currency</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">purchase_date</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">status</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">maintenance_schedule</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">last_maintenance</th>
-                            <th className="px-3 py-2 text-left font-semibold text-purple-900 whitespace-nowrap">next_maintenance</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-purple-100">
-                          <tr className="hover:bg-purple-50">
-                            <td className="px-3 py-2 text-gray-700 font-mono">ASSET-001</td>
-                            <td className="px-3 py-2 text-gray-700">Forklift Machine</td>
-                            <td className="px-3 py-2 text-gray-700">Industrial forklift for warehouse operations</td>
-                            <td className="px-3 py-2 text-gray-700">Equipment</td>
-                            <td className="px-3 py-2 text-gray-700">Lifting Machine</td>
-                            <td className="px-3 py-2 text-gray-700">Warehouse A</td>
-                            <td className="px-3 py-2 text-gray-700">FL-001</td>
-                            <td className="px-3 py-2 text-gray-700">Caterpillar</td>
-                            <td className="px-3 py-2 text-gray-700">CF500</td>
-                            <td className="px-3 py-2 text-gray-700">25000.00</td>
-                            <td className="px-3 py-2 text-gray-700">USD</td>
-                            <td className="px-3 py-2 text-gray-700">2023-01-15</td>
-                            <td className="px-3 py-2 text-gray-700">Active</td>
-                            <td className="px-3 py-2 text-gray-700">Quarterly</td>
-                            <td className="px-3 py-2 text-gray-700">2024-12-01</td>
-                            <td className="px-3 py-2 text-gray-700">2025-03-01</td>
-                          </tr>
-                          <tr className="hover:bg-purple-50">
-                            <td className="px-3 py-2 text-gray-700 font-mono">ASSET-002</td>
-                            <td className="px-3 py-2 text-gray-700">Conveyor Belt System</td>
-                            <td className="px-3 py-2 text-gray-700">Automated conveyor for material handling</td>
-                            <td className="px-3 py-2 text-gray-700">Equipment</td>
-                            <td className="px-3 py-2 text-gray-700">Conveyor</td>
-                            <td className="px-3 py-2 text-gray-700">Production Line 1</td>
-                            <td className="px-3 py-2 text-gray-700">CV-001</td>
-                            <td className="px-3 py-2 text-gray-700">FlexLink</td>
-                            <td className="px-3 py-2 text-gray-700">X-250</td>
-                            <td className="px-3 py-2 text-gray-700">45000.00</td>
-                            <td className="px-3 py-2 text-gray-700">USD</td>
-                            <td className="px-3 py-2 text-gray-700">2023-06-20</td>
-                            <td className="px-3 py-2 text-gray-700">Active</td>
-                            <td className="px-3 py-2 text-gray-700">Monthly</td>
-                            <td className="px-3 py-2 text-gray-700">2024-12-15</td>
-                            <td className="px-3 py-2 text-gray-700">2025-01-15</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  {BACKEND_SCHEMAS[uploadType as keyof typeof BACKEND_SCHEMAS].fields.map((field) => (
+                    <th
+                      key={field}
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r last:border-r-0"
+                    >
+                      {field}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {displayedData.map((row, index) => (
+                  <tr 
+                    key={index} 
+                    className={`hover:bg-gray-50 ${index < 2 ? 'bg-blue-50/30' : ''}`}
+                  >
+                    {BACKEND_SCHEMAS[uploadType as keyof typeof BACKEND_SCHEMAS].fields.map((field) => (
+                      <td
+                        key={field}
+                        className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 border-r last:border-r-0"
+                      >
+                        {(row as any)[field] || '-'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+          {displayedData.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              No data available. Upload a file to get started.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

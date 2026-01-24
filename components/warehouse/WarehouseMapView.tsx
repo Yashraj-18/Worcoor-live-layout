@@ -85,9 +85,10 @@ interface FacilityData {
 interface WarehouseMapViewProps {
   facilityData?: FacilityData;
   initialSelectedLayoutId?: string | null;
+  onModalClose?: () => void;
 }
 
-const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initialSelectedLayoutId }) => {
+const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initialSelectedLayoutId, onModalClose }) => {
   const router = useRouter();
   const [selectedZone, setSelectedZone] = useState<any>(null);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
@@ -1370,7 +1371,12 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                     </button>
                   )}
                   {!isFullscreen && (
-                    <button className="demo-map-close-btn" onClick={() => setShowDemoMapModal(false)}>×</button>
+                    <button className="demo-map-close-btn" onClick={() => {
+                      setShowDemoMapModal(false);
+                      if (onModalClose) {
+                        onModalClose();
+                      }
+                    }}>×</button>
                   )}
                 </div>
               </div>

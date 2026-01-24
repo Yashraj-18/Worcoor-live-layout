@@ -24,17 +24,6 @@ const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({
   const [selectedLocationId, setSelectedLocationId] = useState('');
   const [customLocationId, setCustomLocationId] = useState('');
   const [useCustom, setUseCustom] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('storage');
-
-  // Available categories
-  const categories = [
-    { value: 'storage', label: 'Storage' },
-    { value: 'dry_storage', label: 'Dry Storage' },
-    { value: 'cold_storage', label: 'Cold Storage' },
-    { value: 'hazardous', label: 'Hazardous Materials' },
-    { value: 'fragile', label: 'Fragile Items' },
-    { value: 'bulk', label: 'Bulk Storage' }
-  ];
 
   // Generate available Location IDs (LOC-001 to LOC-999)
   // Check against both existingLocationIds (local) and global cache
@@ -79,11 +68,8 @@ const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({
     // Add the new ID to the global cache
     globalIdCache.addId(finalLocationId);
 
-    if (showCategories) {
-      onSave({ locationId: finalLocationId, category: selectedCategory });
-    } else {
-      onSave(finalLocationId); // Return just the Location ID for Horizontal Storage Racks
-    }
+    // Always return just the Location ID
+    onSave(finalLocationId);
   };
 
   const handleClose = () => {
@@ -149,27 +135,6 @@ const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({
                 </div>
               )}
             </div>
-
-            {/* Category Selection - Only for Storage Units */}
-            {showCategories && (
-              <div className="space-y-3 pt-2">
-                <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <span>📦</span>
-                  <span>Storage Category</span>
-                </label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 hover:border-input/80"
-                >
-                  {categories.map(category => (
-                    <option key={category.value} value={category.value}>
-                      {category.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
 
             {/* Custom Location ID - Only available for Storage Units */}
             {allowCustomIds && (

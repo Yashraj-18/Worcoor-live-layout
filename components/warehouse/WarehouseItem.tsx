@@ -775,9 +775,9 @@ const WarehouseItem = ({
     : null;
   const spareUnitTextColor = isSpareUnit ? getContrastColorForHex(spareUnitColor) : null;
   const storageUnitColor = item.type === 'storage_unit'
-    ? (item.customColor || item.color || '#4CAF50')
+    ? 'transparent'  // Transparent - Fresh start with no color
     : null;
-  const storageUnitTextColor = storageUnitColor ? getContrastColorForHex(storageUnitColor) : '#FFFFFF';
+  const storageUnitTextColor = storageUnitColor ? '#000000' : '#FFFFFF'; // Black text for transparent background
   const hasHighlightedCompartments = Array.isArray(highlightedCompartments) && highlightedCompartments.length > 0;
   
   // Get status-based styling
@@ -804,7 +804,7 @@ const WarehouseItem = ({
         width: item.width,
         height: item.height,
         backgroundColor: item.isHollow ? 'transparent' : 
-          (item.type === 'storage_unit' ? storageUnitColor : 
+          (item.type === 'storage_unit' ? 'transparent' : 
            item.type === 'sku_holder' ? (item.showCompartments ? 'transparent' : '#2196F3') :
            item.type === 'vertical_sku_holder' ? (item.showCompartments ? 'transparent' : '#FF9800') :
            isSpareUnit ? spareUnitColor :

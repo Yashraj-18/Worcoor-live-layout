@@ -148,12 +148,12 @@ export function DashboardSidebar({ isOpen, toggle }: SidebarProps) {
       href: "/dashboard/warehouse-management",
       icon: Layers,
     },
-    {
-      title: "Warehouse Map",
-      href: "/dashboard/warehouse-management/warehouse-map",
-      icon: Layers,
-      parent: "Warehouse Management",
-    },
+    // {
+    //   title: "Warehouse Map",
+    //   href: "/dashboard/warehouse-management/warehouse-map",
+    //   icon: Layers,
+    //   parent: "Warehouse Management",
+    // },
     {
       title: "Layout Builder",
       href: "/dashboard/warehouse-management/layout-builder",

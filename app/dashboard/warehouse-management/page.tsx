@@ -16,7 +16,7 @@ export default function WarehouseManagementPage() {
   const [totalLayouts, setTotalLayouts] = useState(0);
   const [activeWarehouses, setActiveWarehouses] = useState(0);
   const [savedLayouts, setSavedLayouts] = useState<any[]>([]);
-  const [showMapView, setShowMapView] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
 
   // Load saved layouts from localStorage
@@ -84,6 +84,12 @@ export default function WarehouseManagementPage() {
     });
   };
 
+  const handleViewLive = (layoutId: string) => {
+    // Use local modal state instead of navigation
+    setSelectedLayoutId(layoutId);
+    setShowMapModal(true);
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <PageTitle
@@ -91,63 +97,6 @@ export default function WarehouseManagementPage() {
         description="Manage your warehouse layouts and operational maps"
         icon={Warehouse}
       />
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Warehouse Map Card */}
-        <button
-          onClick={() => setShowMapView(true)}
-          className="text-left w-full"
-        >
-          <Card className="group relative overflow-hidden border border-slate-200 bg-white/80 backdrop-blur-sm shadow-soft hover:shadow-medium transition-all duration-300 h-full cursor-pointer">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="rounded-lg bg-primary/10 p-3">
-                  <Map className="h-6 w-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-2 text-slate-900 dark:text-slate-50">Warehouse Map</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-200">
-                    View and manage operational warehouse layouts. Access live warehouse maps, 
-                    search locations, track inventory, and monitor warehouse operations in real-time.
-                  </p>
-                  <div className="mt-4 flex items-center text-sm text-primary font-medium">
-                    Open Warehouse Map
-                    <svg className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </button>
-
-        {/* Layout Builder Card */}
-        <Link href="/dashboard/warehouse-management/layout-builder">
-          <Card className="group relative overflow-hidden border border-slate-200 bg-white/80 backdrop-blur-sm shadow-soft hover:shadow-medium transition-all duration-300 h-full cursor-pointer">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="rounded-lg bg-primary/10 p-3">
-                  <LayoutDashboard className="h-6 w-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-2 text-slate-900 dark:text-slate-50">Layout Builder</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-200">
-                    Design and create warehouse layouts. Use drag-and-drop tools to build storage zones, 
-                    add racks, define boundaries, and create professional warehouse floor plans.
-                  </p>
-                  <div className="mt-4 flex items-center text-sm text-primary font-medium">
-                    Open Layout Builder
-                    <svg className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
 
       {/* Quick Stats */}
       <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -260,10 +209,7 @@ export default function WarehouseManagementPage() {
                   variant="outline" 
                   size="sm" 
                   className="w-full justify-center"
-                  onClick={() => {
-                    setSelectedLayoutId(layout.id);
-                    setShowMapView(true);
-                  }}
+                  onClick={() => handleViewLive(layout.id)}
                 >
                   View Live <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -291,35 +237,17 @@ export default function WarehouseManagementPage() {
         </div>
       )}
 
-      {/* Warehouse Map View Modal */}
-      {showMapView && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => {
-            setShowMapView(false);
-            setSelectedLayoutId(null);
-          }}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-xl w-full h-full max-w-[95vw] max-h-[95vh] overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-xl font-bold">Warehouse Maps</h2>
-              <button 
-                onClick={() => {
-                  setShowMapView(false);
-                  setSelectedLayoutId(null);
-                }}
-                className="text-2xl hover:text-red-600 transition-colors"
-              >
-                ×
-              </button>
-            </div>
-            <div className="h-[calc(100%-64px)] overflow-auto">
-              <WarehouseMapView facilityData={{}} initialSelectedLayoutId={selectedLayoutId} />
-            </div>
-          </div>
+      {/* Warehouse Map Modal */}
+      {showMapModal && selectedLayoutId && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
+          <WarehouseMapView 
+            facilityData={{}} 
+            initialSelectedLayoutId={selectedLayoutId}
+            onModalClose={() => {
+              setShowMapModal(false);
+              setSelectedLayoutId(null);
+            }}
+          />
         </div>
       )}
     </div>

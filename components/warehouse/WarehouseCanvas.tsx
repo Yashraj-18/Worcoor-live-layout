@@ -297,6 +297,17 @@ const WarehouseCanvas = ({
             itemName = `${draggedItem.name} ${zoneLabel}`;
           }
 
+          // 🐛 DEBUG: Storage Unit Creation
+          if (draggedItem.type === 'storage_unit') {
+            console.group('🎨 STORAGE UNIT COLOR DEBUG - WarehouseCanvas.tsx (Creation)');
+            console.log('DraggedItem Type:', draggedItem.type);
+            console.log('DraggedItem Color:', draggedItem.color);
+            console.log('DraggedItem Category:', draggedItem.category);
+            console.log('getComponentColor Result:', getComponentColor(draggedItem.type, draggedItem.category));
+            console.log('Final Color Will Be:', draggedItem.color || getComponentColor(draggedItem.type, draggedItem.category) || '#e3f2fd');
+            console.groupEnd();
+          }
+
           const newItem = {
             id: uuidv4(),
             type: draggedItem.type,
@@ -305,7 +316,7 @@ const WarehouseCanvas = ({
             y: finalY,
             width: draggedItem.defaultSize?.width || 50,
             height: draggedItem.defaultSize?.height || 50,
-            color: getComponentColor(draggedItem.type, draggedItem.category) || draggedItem.color || '#e3f2fd',
+            color: draggedItem.color || getComponentColor(draggedItem.type, draggedItem.category) || '#e3f2fd',
             label: draggedItem.autoLabel && draggedItem.zoneType ? hierarchicalManager.generateZoneLabel(draggedItem.zoneType) : '',
             icon: draggedItem.icon,
             isShape: draggedItem.isShape || false,

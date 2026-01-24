@@ -1991,7 +1991,9 @@ code {
 }
 
 .warehouse-item[data-type="spare_unit"]::before,
-.warehouse-item[data-type="spare_unit"]::after {
+.warehouse-item[data-type="spare_unit"]::after,
+.warehouse-item[data-type="storage_unit"]::before,
+.warehouse-item[data-type="storage_unit"]::after {
   display: none;
 }
 
@@ -2089,10 +2091,9 @@ div.warehouse-item[data-type="sku_holder"]:hover * {
   background: #2196F3 !important;
 }
 
-/* Storage Unit - Clean appearance with consistent green color */
+/* Storage Unit - Clean appearance */
 .warehouse-item[data-type="storage_unit"] {
   border: none !important;
-  background: #4CAF50 !important;
   box-shadow: none !important;
   border-radius: 0px !important;
   backdrop-filter: none !important;
@@ -2163,8 +2164,7 @@ div.warehouse-item[data-type="vertical_sku_holder"]:hover * {
 
 .warehouse-item[data-type="storage_unit"].selected {
   border: none !important;
-  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.5) !important;
-  background: #4CAF50 !important;
+  box-shadow: none !important;
 }
 
 /* Override hover effects for storage components - keep them realistic */

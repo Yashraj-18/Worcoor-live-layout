@@ -156,12 +156,18 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
           centerOffset: { x: offsetX, y: offsetY }
         });
         
-        // Apply centering to all items
-        const centeredItems = items.map(item => ({
-          ...item,
-          x: (item.x || 0) + offsetX,
-          y: (item.y || 0) + offsetY
-        }));
+        // Apply centering to all items AND force storage_unit to green
+        const centeredItems = items.map(item => {
+          const finalColor = item.type === 'storage_unit' ? 'transparent' : item.color;
+          
+          return {
+            ...item,
+            x: (item.x || 0) + offsetX,
+            y: (item.y || 0) + offsetY,
+            // Force storage_unit to always be transparent
+            color: finalColor
+          };
+        });
         
         setWarehouseItems(centeredItems);
         
@@ -302,6 +308,83 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     setLastRefresh(Date.now());
   }, []);
 
+  // Create enhanced warehouse item - Reusable function for all component types
+  const createEnhancedWarehouseItem = useCallback((
+    newItem: any,
+    existingItems: any[],
+    facilityContext: any
+  ) => {
+    const isSpareUnit = newItem.type === COMPONENT_TYPES.SPARE_UNIT;
+    const isStorageUnit = newItem.type === COMPONENT_TYPES.STORAGE_UNIT;
+    
+    // Generate location code
+    const locationCode = generateLocationCode(
+      newItem.type,
+      existingItems,
+      newItem.x,
+      newItem.y,
+      facilityContext
+    );
+    
+    // Generate inventory data
+    const inventoryData = generateMockInventoryData(locationCode, newItem.type);
+    
+    // Assign random occupancy status and storage orientation
+    const occupancyStatuses = Object.values(OCCUPANCY_STATUS);
+    const storageOrientations = Object.values(STORAGE_ORIENTATION);
+    
+    // Debug logging for Storage Unit
+    if (isStorageUnit) {
+      console.group('🏷️ STORAGE UNIT DEBUG');
+      console.log('📦 Component Type:', newItem.type);
+      console.log('📝 Custom Label (if any):', newItem.label || 'none');
+      console.log('📛 Component Name:', newItem.name);
+      console.log('---');
+      console.log('Note: Auto-generated labels (SU-001) have been removed');
+      console.log('Only user-provided labels or component names will be used');
+      console.groupEnd();
+    }
+    
+    // Determine base color - force Storage Units to transparent
+    const baseColor = isStorageUnit
+      ? 'transparent'
+      : isSpareUnit
+        ? (newItem.customColor || newItem.color || '#8D6E63')
+        : (newItem.color || getComponentColor(newItem.type, newItem.category));
+    
+    // Create enhanced item
+    const enhancedItem = {
+      ...newItem,
+      locationCode,
+      inventoryData,
+      occupancyStatus: occupancyStatuses[Math.floor(Math.random() * occupancyStatuses.length)],
+      storageOrientation: storageOrientations[Math.floor(Math.random() * storageOrientations.length)],
+      facilityId: selectedFacility?.id,
+      color: baseColor,
+      ...(isSpareUnit ? { customColor: baseColor } : {}),
+      // Set label based on component type
+      label: newItem.label || (isStorageUnit ? 'Storage Unit-test' : newItem.name)
+    };
+    
+    // Debug logging for final Storage Unit item
+    if (isStorageUnit) {
+      console.group('✅ FINAL STORAGE UNIT ITEM');
+      console.log('Complete Item Object:', enhancedItem);
+      console.log('---');
+      console.log('Key Properties:');
+      console.log('  • id:', enhancedItem.id);
+      console.log('  • type:', enhancedItem.type);
+      console.log('  • label:', enhancedItem.label);
+      console.log('  • color:', enhancedItem.color);
+      console.log('  • locationCode:', enhancedItem.locationCode);
+      console.log('---');
+      console.log('Note: No autoLabel property - auto-generation removed');
+      console.groupEnd();
+    }
+    
+    return enhancedItem;
+  }, [selectedFacility]);
+
   // Undo/Redo functionality - Define these first
   const saveToUndoStack = useCallback((items) => {
     setUndoStack(prev => {
@@ -330,7 +413,6 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
   }, [redoStack, warehouseItems]);
 
   const handleAddItem = useCallback((newItem: any) => {
-    const isSpareUnit = newItem.type === COMPONENT_TYPES.SPARE_UNIT;
     // If no org unit is selected, user needs to select one from the navbar dropdown first
     if (!selectedOrgUnit) {
       console.log('No org unit selected, showing warning popup');
@@ -342,77 +424,19 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     saveToUndoStack(warehouseItems);
     
     setWarehouseItems(prev => {
-      // Generate location code with facility context if available
+      // Generate facility context if available
       const facilityContext = selectedFacility ? {
         zoneId: selectedFacility.id,
         dimensions: { width: newItem.width, height: newItem.height }
       } : null;
       
-      const locationCode = generateLocationCode(
-        newItem.type, 
-        prev, 
-        newItem.x, 
-        newItem.y, 
-        facilityContext
-      );
-      const inventoryData = generateMockInventoryData(locationCode, newItem.type);
-      
-      // Assign random occupancy status and storage orientation
-      const occupancyStatuses = Object.values(OCCUPANCY_STATUS);
-      const storageOrientations = Object.values(STORAGE_ORIENTATION);
-      
-      // 🐛 DEBUG: Storage Unit Implementation (No auto-generated labels)
-      if (newItem.type === 'storage_unit') {
-        console.group('🏷️ STORAGE UNIT DEBUG');
-        console.log('📦 Component Type:', newItem.type);
-        console.log('📂 Category:', newItem.category || 'none');
-        console.log('📝 Custom Label (if any):', newItem.label || 'none');
-        console.log('📛 Component Name:', newItem.name);
-        console.log('---');
-        console.log('Note: Auto-generated labels (SU-001) have been removed');
-        console.log('Only user-provided labels or component names will be used');
-        console.groupEnd();
-      }
-
-      const baseColor = isSpareUnit
-        ? (newItem.customColor || newItem.color || '#8D6E63')
-        : getComponentColor(newItem.type, newItem.category);
-
-      const enhancedItem = {
-        ...newItem,
-        locationCode,
-        inventoryData,
-        occupancyStatus: occupancyStatuses[Math.floor(Math.random() * occupancyStatuses.length)],
-        storageOrientation: storageOrientations[Math.floor(Math.random() * storageOrientations.length)],
-        facilityId: selectedFacility?.id,
-        // Ensure color respects component behaviour
-        color: baseColor,
-        ...(isSpareUnit ? { customColor: baseColor } : {}),
-        // Only set label if user provides one
-        label: newItem.label || (newItem.type === 'storage_unit' ? 'Storage Unit-test' : newItem.name)
-      };
-      
-      // 🐛 DEBUG: Show final enhanced item for Storage Unit
-      if (newItem.type === 'storage_unit') {
-        console.group('✅ FINAL STORAGE UNIT ITEM');
-        console.log('Complete Item Object:', enhancedItem);
-        console.log('---');
-        console.log('Key Properties:');
-        console.log('  • id:', enhancedItem.id);
-        console.log('  • type:', enhancedItem.type);
-        console.log('  • label:', enhancedItem.label);
-        console.log('  • category:', enhancedItem.category || 'none');
-        console.log('  • color:', enhancedItem.color);
-        console.log('  • locationCode:', enhancedItem.locationCode);
-        console.log('---');
-        console.log('Note: No autoLabel property - auto-generation removed');
-        console.groupEnd();
-      }
+      // Use the reusable function to create enhanced item
+      const enhancedItem = createEnhancedWarehouseItem(newItem, prev, facilityContext);
       
       return [...prev, enhancedItem];
     });
     setSelectedItemId(newItem.id);
-  }, [warehouseItems, selectedFacility, saveToUndoStack, layoutNameSet, selectedOrgUnit]);
+  }, [warehouseItems, selectedFacility, saveToUndoStack, selectedOrgUnit, createEnhancedWarehouseItem]);
 
   const handleMoveItem = useCallback((itemId: string, x: number, y: number) => {
     setWarehouseItems(prev => {

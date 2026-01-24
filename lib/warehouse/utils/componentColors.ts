@@ -1,4 +1,4 @@
-import { COMPONENT_COLORS, STORAGE_CATEGORY_COLORS } from '../constants/warehouseComponents';
+import { getComponentPanelColor } from '../config/componentPanelColors';
 
 interface WarehouseItem {
   id?: string;
@@ -20,17 +20,8 @@ interface ColorLegendItem {
  * @returns The fixed color hex code
  */
 export const getComponentColor = (componentType: string, category: string | null = null): string => {
-  // For storage units, always return the base green color unless a specific category is assigned
-  if (componentType === 'storage_unit') {
-    // If a category is specified and exists in STORAGE_CATEGORY_COLORS, use it
-    if (category && STORAGE_CATEGORY_COLORS[category]) {
-      return STORAGE_CATEGORY_COLORS[category];
-    }
-    // Otherwise, always return the fixed base green color for storage units
-    return COMPONENT_COLORS[componentType] || '#4CAF50';
-  }
-  
-  const color = COMPONENT_COLORS[componentType] || '#607D8B'; // Default to blue-gray if not found
+  // Use the centralized color system
+  const color = getComponentPanelColor(componentType);
   
   // Debug log for vertical storage racks
   if (componentType === 'vertical_sku_holder') {
@@ -69,12 +60,10 @@ export const ensureFixedColors = (items: WarehouseItem[]): WarehouseItem[] => {
 export const forceRefreshStorageUnitColors = (items: WarehouseItem[]): WarehouseItem[] => {
   return items.map(item => {
     if (item.type === 'storage_unit') {
-      // Force storage units to use base green color unless they have a specific category
-      const correctedColor = item.category && STORAGE_CATEGORY_COLORS[item.category] 
-        ? STORAGE_CATEGORY_COLORS[item.category] 
-        : COMPONENT_COLORS[item.type] || '#4CAF50';
+      // Force Storage Units to always be transparent
+      const correctedColor = 'transparent';
       
-      console.log(`Force refreshing storage unit ${item.id}: ${item.color} -> ${correctedColor} (category: ${item.category || 'none'})`);
+      console.log(`Force refreshing storage unit ${item.id}: ${item.color} -> ${correctedColor}`);
       
       return {
         ...item,

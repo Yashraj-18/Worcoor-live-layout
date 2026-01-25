@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Upload, FileText, Database, Package, ArrowRight, CheckCircle, AlertCircle, Loader2, RefreshCw, Plus, Edit, Trash2, Building, Save, X, Download } from "lucide-react"
+import { Upload, FileText, Database, Package, ArrowRight, CheckCircle, AlertCircle, Loader2, RefreshCw, Plus, Edit, Trash2, Building, Save, X, Download, Clock } from "lucide-react"
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
 import Link from "next/link"
@@ -161,6 +161,7 @@ export default function BulkUploadPage() {
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([])
   const [selectedOrgUnit, setSelectedOrgUnit] = useState<string>("")
   const [crudOperation, setCrudOperation] = useState<CrudOperation>("create")
+  const [isOperationConfirmed, setIsOperationConfirmed] = useState(false)
   const [isCreatingOrgUnit, setIsCreatingOrgUnit] = useState(false)
   const [newOrgUnitName, setNewOrgUnitName] = useState("")
   const [newOrgUnitType, setNewOrgUnitType] = useState<"warehouse" | "production" | "office">("warehouse")
@@ -172,6 +173,11 @@ export default function BulkUploadPage() {
   useEffect(() => {
     loadDisplayedData()
   }, [uploadType, selectedOrgUnit])
+
+  // Reset operation confirmation when org unit or operation changes
+  useEffect(() => {
+    setIsOperationConfirmed(false)
+  }, [selectedOrgUnit, crudOperation])
 
   const loadDisplayedData = () => {
     if (!selectedOrgUnit) {
@@ -812,6 +818,39 @@ export default function BulkUploadPage() {
                 </SelectItem>
               </SelectContent>
             </Select>
+            <div className="mt-4 pt-4 border-t">
+              <Button 
+                className={`w-full ${isOperationConfirmed ? "bg-green-600 hover:bg-green-700" : ""}`}
+                onClick={() => {
+                  // Confirm operation - could trigger validation or proceed to next step
+                  if (!selectedOrgUnit) {
+                    alert('Please select an organizational unit first.')
+                    return
+                  }
+                  if (!isOperationConfirmed) {
+                    setIsOperationConfirmed(true)
+                    console.log('Operation confirmed:', {
+                      unit: selectedOrgUnit,
+                      type: uploadType,
+                      operation: crudOperation
+                    })
+                  }
+                }}
+                disabled={!selectedOrgUnit}
+              >
+                {isOperationConfirmed ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Configuration Confirmed
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Confirm Configuration
+                  </>
+                )}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -837,6 +876,22 @@ export default function BulkUploadPage() {
                 <span>Operation:</span>
                 <Badge variant={crudOperation === "delete" ? "destructive" : "default"} className="capitalize">
                   {crudOperation}
+                </Badge>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Status:</span>
+                <Badge variant={isOperationConfirmed ? "default" : "secondary"} className={isOperationConfirmed ? "bg-green-100 text-green-800 border-green-200" : ""}>
+                  {isOperationConfirmed ? (
+                    <>
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Confirmed
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="h-3 w-3 mr-1" />
+                      Pending
+                    </>
+                  )}
                 </Badge>
               </div>
             </div>

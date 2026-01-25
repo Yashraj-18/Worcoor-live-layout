@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import localStorageService from "@/src/services/localStorageService"
 import {
   Select,
@@ -635,6 +636,43 @@ export default function BulkUploadPage() {
     }
   }
 
+  const formatCellValue = (value: any, field: string): string => {
+    if (value === null || value === undefined || value === '') {
+      return '-'
+    }
+
+    // Format dates
+    if (field.includes('date') || field.includes('created_at') || field.includes('updated_at')) {
+      if (typeof value === 'string') {
+        const date = new Date(value)
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          })
+        }
+      }
+    }
+
+    // Format UUIDs (show shorter version for display)
+    if (field.includes('id') && typeof value === 'string' && value.length > 20) {
+      return `${value.substring(0, 8)}...${value.substring(value.length - 4)}`
+    }
+
+    // Format numbers
+    if (field.includes('quantity') || field.includes('capacity')) {
+      const num = parseFloat(value)
+      if (!isNaN(num)) {
+        return num.toLocaleString()
+      }
+    }
+
+    // Default: convert to string and truncate if too long
+    const stringValue = String(value)
+    return stringValue.length > 50 ? `${stringValue.substring(0, 47)}...` : stringValue
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -897,20 +935,33 @@ export default function BulkUploadPage() {
           </div>
 
           {selectedFile && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-sm text-gray-700 mb-2">File Details:</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Name:</span> {selectedFile.name}
+            <div className="mt-6 h-full grow rounded-2xl border-0 sm:border border-slate-200 backdrop-blur-sm shadow-soft dark:border-slate-700 dark:bg-slate-800/80 p-0 sm:p-6 overflow-y-auto">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">File Details</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Information about the uploaded file
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Name:</span>
+                    <span className="text-sm text-gray-900 dark:text-gray-100 font-medium">{selectedFile.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Size:</span>
+                    <span className="text-sm text-gray-900 dark:text-gray-100 font-medium">{(selectedFile.size / 1024).toFixed(1)} KB</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-medium">Size:</span> {(selectedFile.size / 1024).toFixed(1)} KB
-                </div>
-                <div>
-                  <span className="font-medium">Type:</span> {selectedFile.type || "Unknown"}
-                </div>
-                <div>
-                  <span className="font-medium">Upload Type:</span> {uploadTypes.find(t => t.id === uploadType)?.name}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Type:</span>
+                    <span className="text-sm text-gray-900 dark:text-gray-100 font-medium">{selectedFile.type || "Unknown"}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Upload Type:</span>
+                    <span className="text-sm text-gray-900 dark:text-gray-100 font-medium">{uploadTypes.find(t => t.id === uploadType)?.name}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -919,118 +970,112 @@ export default function BulkUploadPage() {
       </Card>
 
       {uploadResults && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <div className="h-full grow rounded-2xl border-0 sm:border border-slate-200 backdrop-blur-sm shadow-soft dark:border-slate-700 dark:bg-slate-800/80 p-0 sm:p-6 overflow-y-auto">
+          <div className="mb-6">
+            <div className="flex items-center gap-3">
               {uploadResults.errors.length === 0 ? (
-                <CheckCircle className="h-5 w-5 text-green-500" />
+                <CheckCircle className="h-6 w-6 text-green-500" />
               ) : (
-                <AlertCircle className="h-5 w-5 text-amber-500" />
+                <AlertCircle className="h-6 w-6 text-amber-500" />
               )}
-              Upload Results
-            </CardTitle>
-            <CardDescription>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Upload Results</h3>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               Processing completed for {uploadResults.total} rows
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{uploadResults.success}</div>
-                <div className="text-sm text-green-700">Valid Rows</div>
-              </div>
-              <div className="text-center p-4 bg-red-50 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">{uploadResults.errors.length}</div>
-                <div className="text-sm text-red-700">Errors</div>
-              </div>
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{uploadResults.total}</div>
-                <div className="text-sm text-blue-700">Total Rows</div>
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="text-center p-6 bg-green-50/50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+              <div className="text-3xl font-bold text-green-600 dark:text-green-400">{uploadResults.success}</div>
+              <div className="text-sm text-green-700 dark:text-green-300 font-medium">Valid Rows</div>
+            </div>
+            <div className="text-center p-6 bg-red-50/50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+              <div className="text-3xl font-bold text-red-600 dark:text-red-400">{uploadResults.errors.length}</div>
+              <div className="text-sm text-red-700 dark:text-red-300 font-medium">Errors</div>
+            </div>
+            <div className="text-center p-6 bg-blue-50/50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+              <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{uploadResults.total}</div>
+              <div className="text-sm text-blue-700 dark:text-blue-300 font-medium">Total Rows</div>
+            </div>
+          </div>
+
+          {uploadResults.errors.length > 0 && (
+            <div className="mb-6">
+              <h4 className="text-lg font-semibold text-red-700 dark:text-red-300 mb-3">Errors Found</h4>
+              <div className="bg-red-50/50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 max-h-64 overflow-y-auto">
+                <ul className="list-disc list-inside space-y-2 text-sm text-red-700 dark:text-red-300">
+                  {uploadResults.errors.map((error, index) => (
+                    <li key={index} className="leading-relaxed">{error}</li>
+                  ))}
+                </ul>
               </div>
             </div>
+          )}
 
-            {uploadResults.errors.length > 0 && (
-              <div className="mb-6">
-                <h4 className="font-medium text-red-700 mb-2">Errors Found:</h4>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-h-64 overflow-y-auto">
-                  <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                    {uploadResults.errors.map((error, index) => (
-                      <li key={index}>{error}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {parsedData.length > 0 && (
-              <div>
-                <h4 className="font-medium text-gray-700 mb-2">Data Preview (first 5 rows):</h4>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        {Object.keys(parsedData[0]).map((key) => (
-                          <th
-                            key={key}
-                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            {key}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {parsedData.slice(0, 5).map((row, index) => (
-                        <tr key={index}>
-                          {Object.values(row).map((value: any, cellIndex) => (
-                            <td
-                              key={cellIndex}
-                              className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
-                            >
-                              {String(value || '')}
-                            </td>
-                          ))}
-                        </tr>
+          {parsedData.length > 0 && (
+            <div className="mb-6">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Data Preview (first 5 rows)</h4>
+              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {Object.keys(parsedData[0]).map((key) => (
+                        <TableHead key={key}>
+                          {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </TableHead>
                       ))}
-                    </tbody>
-                  </table>
-                  {parsedData.length > 5 && (
-                    <p className="text-sm text-gray-500 mt-2">
-                      ... and {parsedData.length - 5} more rows
-                    </p>
-                  )}
-                </div>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {parsedData.slice(0, 5).map((row, index) => (
+                      <TableRow key={index}>
+                        {Object.values(row).map((value: any, cellIndex) => (
+                          <TableCell key={cellIndex}>
+                            {formatCellValue(value, Object.keys(parsedData[0])[cellIndex])}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-            )}
-
-            <div className="mt-6 flex gap-4">
-              <Button
-                className="bg-green-600 hover:bg-green-700"
-                onClick={handleImport}
-                disabled={isImporting || uploadResults.success === 0}
-              >
-                {isImporting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Importing...
-                  </>
-                ) : (
-                  <>
-                    Import {uploadResults.success} Valid Records
-                  </>
-                )}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={downloadErrorReport} 
-                disabled={uploadResults.errors.length === 0}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download Error Report
-              </Button>
+              {parsedData.length > 5 && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
+                  ... and {parsedData.length - 5} more rows
+                </p>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-4 mt-6">
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none"
+              onClick={handleImport}
+              disabled={isImporting || uploadResults.success === 0}
+            >
+              {isImporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  Import {uploadResults.success} Valid Records
+                </>
+              )}
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={downloadErrorReport} 
+              disabled={uploadResults.errors.length === 0}
+              className="flex-1 sm:flex-none"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download Error Report
+            </Button>
+          </div>
+        </div>
       )}
 
       {importResults && (
@@ -1116,56 +1161,55 @@ export default function BulkUploadPage() {
         </Card>
       )}
 
-      <Card className="shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 border-b">
-          <CardTitle className="text-xl">{getTableTitle()}</CardTitle>
-          <CardDescription>
+      <div className="h-full grow rounded-2xl border-0 sm:border border-slate-200 backdrop-blur-sm shadow-soft dark:border-slate-700 dark:bg-slate-800/80 p-0 sm:p-6 overflow-y-auto">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{getTableTitle()}</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             {displayedData.length > 2 
               ? `Showing ${displayedData.length} records (including 2 demo records)` 
               : 'Demo sample data - your imported data will appear below'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  {BACKEND_SCHEMAS[uploadType as keyof typeof BACKEND_SCHEMAS].fields.map((field) => (
-                    <th
-                      key={field}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r last:border-r-0"
-                    >
-                      {field}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {displayedData.map((row, index) => (
-                  <tr 
+          </p>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {BACKEND_SCHEMAS[uploadType as keyof typeof BACKEND_SCHEMAS].fields.map((field) => (
+                  <TableHead key={field}>
+                    {field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {displayedData.length > 0 ? (
+                displayedData.map((row, index) => (
+                  <TableRow 
                     key={index} 
-                    className={`hover:bg-gray-50 ${index < 2 ? 'bg-blue-50/30' : ''}`}
+                    className={index < 2 ? 'bg-blue-50/30 dark:bg-blue-900/20' : ''}
                   >
                     {BACKEND_SCHEMAS[uploadType as keyof typeof BACKEND_SCHEMAS].fields.map((field) => (
-                      <td
-                        key={field}
-                        className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 border-r last:border-r-0"
-                      >
-                        {(row as any)[field] || '-'}
-                      </td>
+                      <TableCell key={field} className="font-medium">
+                        {formatCellValue((row as any)[field], field)}
+                      </TableCell>
                     ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {displayedData.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              No data available. Upload a file to get started.
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell 
+                    colSpan={BACKEND_SCHEMAS[uploadType as keyof typeof BACKEND_SCHEMAS].fields.length} 
+                    className="h-24 text-center text-gray-500 dark:text-gray-400"
+                  >
+                    No data available. Upload a file to get started.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
     </div>
   )
 }

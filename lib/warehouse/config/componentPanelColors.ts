@@ -37,7 +37,6 @@ export const COMPONENT_PANEL_COLORS: Record<string, string> = {
   // Zone Components
   [COMPONENT_TYPES.WAREHOUSE_BLOCK]: '#FF9800',        // Orange - Warehouse blocks
   [COMPONENT_TYPES.STORAGE_ZONE]: '#9C27B0',           // Purple - Storage zones
-  [COMPONENT_TYPES.PROCESSING_AREA]: '#F44336',        // Red - Processing areas
   [COMPONENT_TYPES.CONTAINER_UNIT]: '#00BCD4',         // Cyan - Container units
   [COMPONENT_TYPES.ZONE_DIVIDER]: '#795548',           // Brown - Zone dividers
   [COMPONENT_TYPES.AREA_BOUNDARY]: '#607D8B',          // Blue Gray - Area boundaries
@@ -58,14 +57,9 @@ export const COMPONENT_PANEL_COLORS: Record<string, string> = {
   [COMPONENT_TYPES.GENERAL_AREA]: '#9E9E9E',           // Gray - General area
   
   // Primary Warehouse Operations
-  [COMPONENT_TYPES.OPEN_STORAGE_SPACE]: '#4CAF50',     // Green - Open storage space
-  [COMPONENT_TYPES.DISPATCH_STAGING_AREA]: '#FF9800',  // Orange - Dispatch staging
   [COMPONENT_TYPES.DISPATCH_GATES]: '#2196F3',         // Blue - Dispatch gates
   [COMPONENT_TYPES.INBOUND_GATES]: '#00BCD4',          // Cyan - Inbound gates
-  [COMPONENT_TYPES.GRADING_AREA]: '#9C27B0',           // Purple - Grading area
-  [COMPONENT_TYPES.PACKAGING_AREA]: '#FF5722',         // Deep Orange - Packaging area
   [COMPONENT_TYPES.OFFICE_SPACE_AREA]: '#607D8B',      // Blue Gray - Office space area
-  [COMPONENT_TYPES.COLD_STORAGE]: '#00BCD4',           // Cyan Blue - Cold storage
 };
 
 /**

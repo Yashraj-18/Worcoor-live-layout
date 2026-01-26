@@ -261,6 +261,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
       {/* Enhanced Storage Unit Information */}
       {selectedItem.type === 'storage_unit' && (() => {
         const labelInfo = generateStorageUnitLabelInfo(selectedItem, 1);
+        const displayName = selectedItem.name || 'Storage Unit';
         return (
           <div style={{ 
             backgroundColor: 'rgba(34, 197, 94, 0.1)', 
@@ -271,12 +272,12 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
             backdropFilter: 'blur(10px)'
           }}>
             <div style={{ fontWeight: 'bold', color: '#4ade80', marginBottom: '8px' }}>
-              📦 Storage Unit Information
+              📦 {displayName} Information
             </div>
             <div style={{ fontSize: '0.9rem', color: '#86efac' }}>
-              <div><strong>Type:</strong> {labelInfo?.displayName || 'Storage Unit'}</div>
+              <div><strong>Type:</strong> {displayName}</div>
               <div><strong>Location ID:</strong> {getContextualLabel(selectedItem, 'properties') || 'Not Assigned'}</div>
-              <div><strong>Category:</strong> {labelInfo?.categoryText || 'General Storage'}</div>
+              <div><strong>Category:</strong> {displayName}</div>
               {selectedItem.locationId && (
                 <div style={{ marginTop: '4px', fontSize: '0.8rem', fontStyle: 'italic', color: '#bbf7d0' }}>
                   Selected from dropdown: {selectedItem.locationId}

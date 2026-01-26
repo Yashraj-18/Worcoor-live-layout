@@ -372,7 +372,13 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
       color: baseColor,
       ...(isSpareUnit ? { customColor: baseColor } : {}),
       // Set label based on component type
-      label: newItem.label || (isStorageUnit ? 'Storage Unit-test' : newItem.name)
+      label: newItem.label || (isStorageUnit ? (newItem.name === 'Open Storage Space' ? 'Open Storage Space' : 
+                                                   newItem.name === 'Dispatch Staging Area' ? 'Dispatch Staging Area' :
+                                                   newItem.name === 'Grading Area' ? 'Grading Area' :
+                                                   newItem.name === 'Processing Area' ? 'Processing Area' :
+                                                   newItem.name === 'Production Area' ? 'Production Area' :
+                                                   newItem.name === 'Packaging Area' ? 'Packaging Area' :
+                                                   newItem.name === 'Cold Storage' ? 'Cold Storage' : 'Storage Unit-test') : newItem.name)
     };
     
     // Debug logging for final Storage Unit item
@@ -1489,18 +1495,20 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
                 <button onClick={() => setSelectedFacility(null)}>×</button>
               </div>
             )}
-
           </>
         )}
+
 
         {/* Location ID Selector Modal */}
         <SkuIdSelector
           isVisible={skuIdSelectorVisible}
-          onClose={handleLocationIdSelectorClose}
+          onClose={() => {
+            setSkuIdSelectorVisible(false);
+            setPendingSkuRequest(null);
+          }}
           onSave={handleLocationIdSelect}
           existingLocationIds={pendingSkuRequest ? getExistingLocationIds(pendingSkuRequest.itemId) : []}
           showCategories={pendingSkuRequest && pendingSkuRequest.compartmentId === 'single-sku'}
-          allowCustomIds={pendingSkuRequest && pendingSkuRequest.compartmentId === 'single-sku'}
         />
 
         {/* Multi Location ID Selector Modal for Vertical Storage Racks */}

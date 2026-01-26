@@ -40,7 +40,6 @@ export const STACKABLE_COMPONENTS = [
   COMPONENT_TYPES.STORAGE_ZONE,
   COMPONENT_TYPES.CONTAINER_UNIT,
   COMPONENT_TYPES.WAREHOUSE_BLOCK,
-  COMPONENT_TYPES.PROCESSING_AREA,
   
   // More stackable components will be added as we build them
 ];
@@ -77,26 +76,11 @@ export const COMPONENT_COLORS = {
   // All colors are now managed in lib/warehouse/config/componentPanelColors.ts
   // This object is kept for backward compatibility but should not be modified directly
   
-  // Primary Warehouse Operations
-  [COMPONENT_TYPES.OPEN_STORAGE_SPACE]: '#4CAF50', // Green - Open storage area
-  [COMPONENT_TYPES.DISPATCH_STAGING_AREA]: '#FF9800', // Orange - Dispatch staging
-  [COMPONENT_TYPES.DISPATCH_GATES]: '#2196F3', // Blue - Dispatch gates
+    [COMPONENT_TYPES.DISPATCH_GATES]: '#2196F3', // Blue - Dispatch gates
   [COMPONENT_TYPES.INBOUND_GATES]: '#00BCD4', // Cyan - Inbound gates
-  [COMPONENT_TYPES.GRADING_AREA]: '#9C27B0', // Purple - Quality grading
-  [COMPONENT_TYPES.PACKAGING_AREA]: '#FF5722', // Deep Orange - Packaging operations
   [COMPONENT_TYPES.OFFICE_SPACE_AREA]: '#607D8B', // Blue Gray - Office workspace
-  [COMPONENT_TYPES.COLD_STORAGE]: '#00BCD4' // Cyan Blue - Cold storage
 };
 
-// Storage Category Colors - Based on Storage Type
-export const STORAGE_CATEGORY_COLORS = {
-  'storage': '#4CAF50',        // Green - General storage
-  'dry_storage': '#9E9E9E',    // Grey - Dry storage
-  'cold_storage': '#1565C0',   // Dark Blue - Cold storage
-  'hazardous': '#F44336',      // Red - Hazardous materials
-  'fragile': '#FFEB3B',        // Yellow - Fragile items
-  'bulk': '#00BCD4'            // Cyan - Bulk storage
-};
 
 // Status color mapping
 export const STATUS_COLORS = {
@@ -299,9 +283,114 @@ export const WAREHOUSE_COMPONENTS = [
       },
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
+        name: "Open Storage Space",
+        icon: "📦",
+        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        defaultSize: { width: 60, height: 60 }, // 1×1 grid block
+        description: "Open storage space with sequential SKU ID assignment",
+        priority: "high",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: false,
+        hasSku: true, // Enable SKU functionality
+        singleSku: true // Single SKU per unit (not compartmentalized)
+      },
+      {
+        type: COMPONENT_TYPES.STORAGE_UNIT,
+        name: "Dispatch Staging Area",
+        icon: "📦",
+        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        defaultSize: { width: 60, height: 60 }, // 1×1 grid block
+        description: "Dispatch staging area with sequential SKU ID assignment",
+        priority: "high",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: false,
+        hasSku: true, // Enable SKU functionality
+        singleSku: true // Single SKU per unit (not compartmentalized)
+      },
+      {
+        type: COMPONENT_TYPES.STORAGE_UNIT,
+        name: "Grading Area",
+        icon: "📦",
+        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        defaultSize: { width: 60, height: 60 }, // 1×1 grid block
+        description: "Grading area with sequential SKU ID assignment",
+        priority: "high",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: false,
+        hasSku: true, // Enable SKU functionality
+        singleSku: true // Single SKU per unit (not compartmentalized)
+      },
+      {
+        type: COMPONENT_TYPES.STORAGE_UNIT,
+        name: "Processing Area",
+        icon: "📦",
+        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        defaultSize: { width: 60, height: 60 }, // 1×1 grid block
+        description: "Processing area with sequential SKU ID assignment",
+        priority: "high",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: false,
+        hasSku: true, // Enable SKU functionality
+        singleSku: true // Single SKU per unit (not compartmentalized)
+      },
+      {
+        type: COMPONENT_TYPES.STORAGE_UNIT,
+        name: "Storage Unit",
+        icon: "📦",
+        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        defaultSize: { width: 60, height: 60 }, // 1×1 grid block
+        description: "Individual storage unit with sequential SKU ID assignment",
+        priority: "high",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: false,
+        hasSku: true, // Enable SKU functionality
+        singleSku: true // Single SKU per unit (not compartmentalized)
+      },
+      {
+        type: COMPONENT_TYPES.STORAGE_UNIT,
+        name: "Production Area",
+        icon: "📦",
+        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        defaultSize: { width: 60, height: 60 }, // 1×1 grid block
+        description: "Production area with sequential SKU ID assignment",
+        priority: "high",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: false,
+        hasSku: true, // Enable SKU functionality
+        singleSku: true // Single SKU per unit (not compartmentalized)
+      },
+      {
+        type: COMPONENT_TYPES.STORAGE_UNIT,
+        name: "Packaging Area",
+        icon: "📦",
+        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        defaultSize: { width: 60, height: 60 }, // 1×1 grid block
+        description: "Packaging area with sequential SKU ID assignment",
+        priority: "high",
+        snapToGrid: true,
+        gridAligned: true,
+        gridStep: 60,
+        resizable: false,
+        hasSku: true, // Enable SKU functionality
+        singleSku: true // Single SKU per unit (not compartmentalized)
+      },
+      {
+        type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Cold Storage",
         icon: "❄️",
-        color: getComponentPanelColor(COMPONENT_TYPES.COLD_STORAGE),
+        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Temperature-controlled cold storage unit for perishable goods",
         priority: "high",

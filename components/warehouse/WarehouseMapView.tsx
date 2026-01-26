@@ -224,6 +224,13 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         'spare_unit': 'Spare Unit',
         'sku_holder': 'Horizontal Storage',
         'vertical_sku_holder': 'Vertical Storage',
+        'open_storage_space': 'Open Storage Space',
+        'dispatch_staging_area': 'Dispatch Staging Area',
+        'grading_area': 'Grading Area',
+        'processing_area': 'Processing Area',
+        'production_area': 'Production Area',
+        'packaging_area': 'Packaging Area',
+        'cold_storage': 'Cold Storage',
         'solid_boundary': 'Solid Boundary',
         'dotted_boundary': 'Dotted Boundary'
       };
@@ -969,6 +976,13 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       'Spare Unit': 'spare_unit',
       'Horizontal Storage': 'sku_holder',
       'Vertical Storage': 'vertical_sku_holder',
+      'Open Storage Space': 'storage_unit',
+      'Dispatch Staging Area': 'storage_unit',
+      'Grading Area': 'storage_unit',
+      'Processing Area': 'storage_unit',
+      'Production Area': 'storage_unit',
+      'Packaging Area': 'storage_unit',
+      'Cold Storage': 'storage_unit',
       'Square Boundary': 'square_boundary',
       'Solid Boundary': 'solid_boundary',
       'Dotted Boundary': 'dotted_boundary'

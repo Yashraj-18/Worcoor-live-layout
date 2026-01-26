@@ -230,7 +230,7 @@ const WarehousePropertiesPanel = ({
         <strong>Selected: {selectedItem.name}</strong>
         <br />
         <small style={{ color: '#6c757d' }}>
-          {isZone ? 'Zone Container' : isUnit ? 'Storage Unit' : 'Item'}
+          {isZone ? 'Zone Container' : isUnit ? selectedItem.name : 'Item'}
         </small>
       </div>
 

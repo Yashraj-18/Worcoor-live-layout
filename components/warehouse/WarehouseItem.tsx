@@ -330,7 +330,7 @@ const WarehouseItem = ({
     }
 
     const inventoryEntries = item.inventoryData?.inventory || [];
-    const isStorageComponent = ['storage_unit', 'sku_holder', 'vertical_sku_holder', 'storage_zone', 'container_unit', 'cold_storage', 'open_storage_space', 'dispatch_staging_area', 'grading_area', 'packaging_area'].includes(item.type);
+    const isStorageComponent = ['storage_unit', 'sku_holder', 'vertical_sku_holder', 'storage_zone', 'container_unit', 'open_storage_space'].includes(item.type);
     const maxCapacity = isStorageComponent ? (item.inventoryData?.capacity ?? item.capacity ?? null) : null;
     const totalInventoryQuantity = inventoryEntries.reduce((sum, entry) => {
       const value = entry?.availableQuantity ?? entry?.quantity ?? 0;
@@ -650,28 +650,16 @@ const WarehouseItem = ({
       return;
     }
 
-    // Handle Storage Unit / Spare Unit / Cold Storage / Open Storage Space / Dispatch Staging Area / Grading Area / Packaging Area Location assignment
+    // Handle Storage Unit / Spare Unit / Open Storage Space Location assignment
     const isSingleSkuUnit = (item.type === 'storage_unit' || item.type === 'spare_unit') && item.hasSku && item.singleSku;
-    const isColdStorageUnit = item.type === 'cold_storage';
     const isOpenStorageUnit = item.type === 'open_storage_space';
-    const isDispatchStagingUnit = item.type === 'dispatch_staging_area';
-    const isGradingUnit = item.type === 'grading_area';
-    const isPackagingUnit = item.type === 'packaging_area';
     
-    if ((isSingleSkuUnit || isColdStorageUnit || isOpenStorageUnit || isDispatchStagingUnit || isGradingUnit || isPackagingUnit) && onRequestSkuId && !item.locationId) {
+    if ((isSingleSkuUnit || isOpenStorageUnit) && onRequestSkuId && !item.locationId) {
       let selectorId;
       if (item.type === 'spare_unit') {
         selectorId = 'spare-unit';
-      } else if (item.type === 'cold_storage') {
-        selectorId = 'cold-storage';
       } else if (item.type === 'open_storage_space') {
         selectorId = 'open-storage';
-      } else if (item.type === 'dispatch_staging_area') {
-        selectorId = 'dispatch-staging';
-      } else if (item.type === 'grading_area') {
-        selectorId = 'grading';
-      } else if (item.type === 'packaging_area') {
-        selectorId = 'packaging';
       } else {
         selectorId = 'single-sku';
       }
@@ -904,22 +892,16 @@ const WarehouseItem = ({
         ) : null;
       })()}
 
-      {/* Storage Unit - Display category name inside */}
+      {/* Storage Unit - Display name inside */}
       {item.type === 'storage_unit' && (() => {
         const trimmedName = item.name ? item.name.trim() : '';
-        const categoryDisplayNames = {
-          dry_storage: 'Dry Storage',
-          cold_storage: 'Cold Storage',
-          hazardous: 'Hazardous Storage',
-          fragile: 'Fragile Storage',
-          bulk: 'Bulk Storage',
-          storage: 'Storage'
-        };
-        const categoryText = item.labelInfo?.categoryText
-          || categoryDisplayNames[item.category]
-          || 'Storage Unit';
-        // Show only the category text or name, not the label
-        const primaryText = trimmedName || categoryText;
+        const primaryText = trimmedName || (item.name === 'Open Storage Space' ? 'Open Storage Space' : 
+                                         item.name === 'Dispatch Staging Area' ? 'Dispatch Staging Area' :
+                                         item.name === 'Grading Area' ? 'Grading Area' :
+                                         item.name === 'Processing Area' ? 'Processing Area' :
+                                         item.name === 'Production Area' ? 'Production Area' :
+                                         item.name === 'Packaging Area' ? 'Packaging Area' :
+                                         item.name === 'Cold Storage' ? 'Cold Storage' : 'Storage Unit');
         const minDimension = Math.min(item.width || 60, item.height || 60);
         const primaryFontSize = Math.max(9, Math.min(14, Math.floor(minDimension / 6)));
 
@@ -1347,7 +1329,7 @@ const WarehouseItem = ({
       />
 
       {/* Component Type Label - Shown below the component */}
-      {(item.type === 'sku_holder' || item.type === 'vertical_sku_holder' || item.type === 'storage_unit' || item.type === 'spare_unit' || item.type === 'cold_storage' || item.type === 'open_storage_space' || item.type === 'dispatch_staging_area' || item.type === 'grading_area' || item.type === 'packaging_area') && (() => {
+      {(item.type === 'sku_holder' || item.type === 'vertical_sku_holder' || item.type === 'storage_unit' || item.type === 'spare_unit' || item.type === 'open_storage_space') && (() => {
         // Determine the label text - use item.label if available, otherwise use default component type
         let labelText = '';
         
@@ -1360,19 +1342,17 @@ const WarehouseItem = ({
           } else if (item.type === 'vertical_sku_holder') {
             labelText = 'Vertical Storage Rack';
           } else if (item.type === 'storage_unit') {
-            labelText = 'Storage Unit';
+            labelText = item.name === 'Open Storage Space' ? 'Open Storage Space' : 
+                       item.name === 'Dispatch Staging Area' ? 'Dispatch Staging Area' :
+                       item.name === 'Grading Area' ? 'Grading Area' :
+                       item.name === 'Processing Area' ? 'Processing Area' :
+                       item.name === 'Production Area' ? 'Production Area' :
+                       item.name === 'Packaging Area' ? 'Packaging Area' :
+                       item.name === 'Cold Storage' ? 'Cold Storage' : 'Storage Unit';
           } else if (item.type === 'spare_unit') {
             labelText = 'Spare Unit';
-          } else if (item.type === 'cold_storage') {
-            labelText = 'Cold Storage';
           } else if (item.type === 'open_storage_space') {
             labelText = 'Open Storage';
-          } else if (item.type === 'dispatch_staging_area') {
-            labelText = 'Dispatch Staging';
-          } else if (item.type === 'grading_area') {
-            labelText = 'Grading Area';
-          } else if (item.type === 'packaging_area') {
-            labelText = 'Packaging Area';
           } else {
             labelText = 'Storage Component';
           }

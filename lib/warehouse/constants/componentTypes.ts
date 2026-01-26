@@ -9,7 +9,6 @@ export const COMPONENT_TYPES = {
   // Basic structural elements
   WAREHOUSE_BLOCK: 'warehouse_block',
   STORAGE_ZONE: 'storage_zone',
-  PROCESSING_AREA: 'processing_area',
   CONTAINER_UNIT: 'container_unit',
   ZONE_DIVIDER: 'zone_divider',
   AREA_BOUNDARY: 'area_boundary',
@@ -43,12 +42,7 @@ export const COMPONENT_TYPES = {
   GENERAL_AREA: 'general_area',
   
   // Primary Warehouse Operations
-  OPEN_STORAGE_SPACE: 'open_storage_space',
-  DISPATCH_STAGING_AREA: 'dispatch_staging_area',
-  DISPATCH_GATES: 'dispatch_gates',
+      DISPATCH_GATES: 'dispatch_gates',
   INBOUND_GATES: 'inbound_gates',
-  GRADING_AREA: 'grading_area',
-  PACKAGING_AREA: 'packaging_area',
-  OFFICE_SPACE_AREA: 'office_space_area',
-  COLD_STORAGE: 'cold_storage'
+  OFFICE_SPACE_AREA: 'office_space_area'
 };

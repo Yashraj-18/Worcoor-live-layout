@@ -25,8 +25,8 @@ export const COMPONENT_PANEL_COLORS: Record<string, string> = {
   [COMPONENT_TYPES.SQUARE_BOUNDARY]: '#263238',        // Dark Gray - Main warehouse boundary
   
   // Boundary Components
-  [COMPONENT_TYPES.SOLID_BOUNDARY]: '#607D8B',         // Blue Gray - Solid divisions
-  [COMPONENT_TYPES.DOTTED_BOUNDARY]: '#90A4AE',        // Light Blue Gray - Dotted divisions
+  [COMPONENT_TYPES.SOLID_BOUNDARY]: 'transparent',         // Transparent - Solid divisions
+  [COMPONENT_TYPES.DOTTED_BOUNDARY]: 'transparent',        // Transparent - Dotted divisions
   
   // Storage Components (1×1 to 2×2)
   [COMPONENT_TYPES.STORAGE_UNIT]: 'transparent',       // Transparent - No color (fresh start)
@@ -42,24 +42,24 @@ export const COMPONENT_PANEL_COLORS: Record<string, string> = {
   [COMPONENT_TYPES.AREA_BOUNDARY]: '#607D8B',          // Blue Gray - Area boundaries
   
   // Common Areas
-  [COMPONENT_TYPES.FIRE_EXIT_MARKING]: '#D32F2F',      // Dark Red - Fire exit markings
-  [COMPONENT_TYPES.SECURITY_AREA]: '#546E7A',          // Blue Gray - Security areas
-  [COMPONENT_TYPES.RESTROOMS_AREA]: '#B0BEC5',         // Light Blue Gray - Restrooms
-  [COMPONENT_TYPES.PATHWAYS_ARROWS]: '#FFEB3B',        // Yellow - Pathway arrows
+  [COMPONENT_TYPES.FIRE_EXIT_MARKING]: 'transparent',      // Transparent - Fire exit markings
+  [COMPONENT_TYPES.SECURITY_AREA]: 'transparent',          // Transparent - Security areas
+  [COMPONENT_TYPES.RESTROOMS_AREA]: 'transparent',         // Transparent - Restrooms
+  [COMPONENT_TYPES.PATHWAYS_ARROWS]: 'transparent',        // Transparent - Pathway arrows
   
   // Office Spaces
-  [COMPONENT_TYPES.CONFERENCE_ROOM]: '#3F51B5',        // Indigo - Conference rooms
-  [COMPONENT_TYPES.MEETING_ROOMS]: '#009688',          // Teal - Meeting rooms
-  [COMPONENT_TYPES.PANTRY_AREA]: '#795548',            // Brown - Pantry area
-  [COMPONENT_TYPES.OPEN_STAGE]: '#E91E63',             // Pink - Open stage
-  [COMPONENT_TYPES.SEATING_AREA]: '#607D8B',           // Blue Gray - Seating area
-  [COMPONENT_TYPES.BOOTHS]: '#FF5722',                 // Deep Orange - Booths
-  [COMPONENT_TYPES.GENERAL_AREA]: '#9E9E9E',           // Gray - General area
+  [COMPONENT_TYPES.CONFERENCE_ROOM]: 'transparent',        // Transparent - Conference rooms
+  [COMPONENT_TYPES.MEETING_ROOMS]: 'transparent',          // Transparent - Meeting rooms
+  [COMPONENT_TYPES.PANTRY_AREA]: 'transparent',            // Transparent - Pantry area
+  [COMPONENT_TYPES.OPEN_STAGE]: 'transparent',             // Transparent - Open stage
+  [COMPONENT_TYPES.SEATING_AREA]: 'transparent',           // Transparent - Seating area
+  [COMPONENT_TYPES.BOOTHS]: 'transparent',                 // Transparent - Booths
+  [COMPONENT_TYPES.GENERAL_AREA]: 'transparent',           // Transparent - General area
   
   // Primary Warehouse Operations
-  [COMPONENT_TYPES.DISPATCH_GATES]: '#2196F3',         // Blue - Dispatch gates
-  [COMPONENT_TYPES.INBOUND_GATES]: '#00BCD4',          // Cyan - Inbound gates
-  [COMPONENT_TYPES.OFFICE_SPACE_AREA]: '#607D8B',      // Blue Gray - Office space area
+  [COMPONENT_TYPES.DISPATCH_GATES]: 'transparent',         // Transparent - Dispatch gates
+  [COMPONENT_TYPES.INBOUND_GATES]: 'transparent',          // Transparent - Inbound gates
+  [COMPONENT_TYPES.OFFICE_SPACE_AREA]: 'transparent',      // Transparent - Office space area
 };
 
 /**

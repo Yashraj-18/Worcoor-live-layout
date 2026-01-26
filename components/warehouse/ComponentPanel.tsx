@@ -1,12 +1,12 @@
 'use client';
 
-
-
 import React, { useState, useEffect, useRef } from 'react';
 
 import { useDrag } from 'react-dnd';
 
 import { DRAG_TYPES, WAREHOUSE_COMPONENTS } from '@/lib/warehouse/constants/warehouseComponents';
+import { getLucideIcon, getIconSize, getIconColor, ICON_RENDER_PROPS, getCategoryIcon } from '@/lib/warehouse/constants/lucideIconMapping';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 
 
@@ -168,6 +168,11 @@ const DraggableComponent: React.FC<DraggableComponentProps> = ({ component }) =>
 
 
 
+  // Get the appropriate Lucide icon for this component
+  const LucideIcon = getLucideIcon(component.type);
+  const iconSize = getIconSize(component.priority, component.category);
+  const iconColor = getIconColor(component.priority);
+
   return (
 
     <div
@@ -192,7 +197,21 @@ const DraggableComponent: React.FC<DraggableComponentProps> = ({ component }) =>
 
         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
 
-        cursor: 'grab'
+        cursor: 'grab',
+
+        display: 'flex',
+
+        flexDirection: 'column',
+
+        alignItems: 'center',
+
+        justifyContent: 'center',
+
+        padding: '8px',
+
+        minHeight: '60px',
+
+        position: 'relative'
 
       }}
 
@@ -200,21 +219,34 @@ const DraggableComponent: React.FC<DraggableComponentProps> = ({ component }) =>
 
     >
 
+      {/* Lucide Icon */}
+      <div className="component-icon" style={{
+        marginBottom: '4px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <LucideIcon 
+          size={iconSize} 
+          color={iconColor}
+          {...ICON_RENDER_PROPS}
+        />
+      </div>
+
+      {/* Component Name */}
       <div className="component-name" style={{
 
         color: 'white',
 
         fontWeight: '600',
 
-        fontSize: '11px',
+        fontSize: '10px',
 
         textAlign: 'center',
 
-        lineHeight: '1.3',
+        lineHeight: '1.2',
 
         textShadow: '0 1px 2px rgba(0,0,0,0.8)',
-
-        padding: '6px 4px',
 
         wordWrap: 'break-word',
 
@@ -230,9 +262,9 @@ const DraggableComponent: React.FC<DraggableComponentProps> = ({ component }) =>
 
         justifyContent: 'center',
 
-        height: 'calc(100% - 20px)',
+        width: '100%',
 
-        maxHeight: '100%'
+        maxWidth: '100%'
 
       }}>{component.name}</div>
 
@@ -245,6 +277,8 @@ const DraggableComponent: React.FC<DraggableComponentProps> = ({ component }) =>
 
 
 const ComponentCategory: React.FC<ComponentCategoryProps> = ({ category, isExpanded, onToggle }) => {
+  // Get the appropriate icon for this category
+  const CategoryIcon = getCategoryIcon(category.category);
 
   // Sort components by priority (high -> medium -> low)
 
@@ -272,19 +306,32 @@ const ComponentCategory: React.FC<ComponentCategoryProps> = ({ category, isExpan
 
         onClick={onToggle}
 
-        style={{ cursor: 'pointer' }}
+        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
 
       >
 
-        <span className="category-toggle">
-
-          {isExpanded ? '▼' : '▶'}
-
+        <span className="category-toggle" style={{ display: 'flex', alignItems: 'center' }}>
+          {isExpanded ? (
+            <ChevronDown size={16} color="#6b7280" />
+          ) : (
+            <ChevronRight size={16} color="#6b7280" />
+          )}
         </span>
 
-        <span className="category-title">{category.category}</span>
+        <span className="category-icon" style={{ display: 'flex', alignItems: 'center' }}>
+          <CategoryIcon size={18} color="#374151" />
+        </span>
 
-        <span className="category-count">({(category.components || []).length})</span>
+        <span className="category-title" style={{ fontWeight: '600', color: '#374151' }}>
+          {category.category}
+        </span>
+
+        <span className="category-count" style={{ 
+          fontSize: '12px', 
+          color: '#6b7280'
+        }}>
+          ({(category.components || []).length})
+        </span>
 
               </div>
 

@@ -94,16 +94,22 @@ const TopNavbar = ({
     <nav className="modern-navbar" onClick={closeDropdowns}>
       {/* Left Section - Brand & Selectors */}
       <div className="navbar-left">
-        <div 
-          className="brand-section" 
-          onClick={onNavigateToDashboard}
-          style={{ cursor: 'pointer' }}
-          title="Go to Home Screen"
-        >
-          <div className="brand-icon">🏭</div>
-          <div className="brand-text">
-            <div className="brand-title">Layout Builder</div>
+        <div className="brand-section" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
+          <div className="brand-text" style={{ paddingTop: '8px' }}>
+            <div className="brand-title">WC Builder</div>
           </div>
+          <button 
+            className="return-dashboard-btn"
+            onClick={onNavigateToDashboard}
+            title="Return to Dashboard"
+            style={{ 
+              marginTop: '0px',
+              fontSize: '11px',
+              padding: '4px 8px'
+            }}
+          >
+            ← Dashboard
+          </button>
         </div>
         
         <div className="selector-group">
@@ -183,43 +189,7 @@ const TopNavbar = ({
             )}
           </div>
 
-          {/* View Actions */}
-          <div className="action-item">
-            <button 
-              className="action-btn"
-              onClick={(e) => { e.stopPropagation(); toggleDropdown('view'); }}
-            >
-              <span className="action-text">View</span>
-            </button>
-            {activeDropdown === 'view' && (
-              <div className="action-dropdown">
-                <button 
-                  onClick={onToggleGrid}
-                  className={`action-option ${gridVisible ? 'active' : ''}`}
-                >
-                  <span className="option-icon">⚏</span>
-                  <span>{gridVisible ? 'Hide' : 'Show'} Grid</span>
-                </button>
-                <button 
-                  onClick={onToggleSnap}
-                  className={`action-option ${snapEnabled ? 'active' : ''}`}
-                >
-                  <span className="option-icon">🎯</span>
-                  <span>{snapEnabled ? 'Disable' : 'Enable'} Snap</span>
-                </button>
-                <div className="dropdown-separator"></div>
-                <button onClick={() => { onZoomReset(); closeDropdowns(); }} className="action-option">
-                  <span className="option-icon">🎯</span>
-                  <span>Reset to Center</span>
-                </button>
-                <button onClick={() => { onZoomFit(); closeDropdowns(); }} className="action-option">
-                  <span className="option-icon">🔲</span>
-                  <span>Fit to View</span>
-                </button>
-              </div>
-            )}
-          </div>
-
+          
           {/* Tools Actions */}
           <div className="action-item">
             <button 
@@ -233,6 +203,10 @@ const TopNavbar = ({
                 <button onClick={onAutoGenerateBoundary} className="action-option">
                   <span className="option-icon">⬜</span>
                   <span>Auto-Generate Boundary</span>
+                </button>
+                <button onClick={() => { onZoomReset(); closeDropdowns(); }} className="action-option">
+                  <span className="option-icon">🎯</span>
+                  <span>Reset to Center</span>
                 </button>
                 <div className="dropdown-separator"></div>
                 <button onClick={onFacilityManager} className="action-option">

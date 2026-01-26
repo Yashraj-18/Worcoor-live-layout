@@ -172,8 +172,12 @@ export const renderShapeComponent = (item) => {
     >
       <path
         d={path}
-        fill={isContainer ? 'transparent' : (item.color || getComponentColor(item.type, item.category))}
-        stroke={item.color || getComponentColor(item.type, item.category)}
+        fill={isContainer ? 'transparent' : 
+             (item.type === 'sku_holder' || item.type === 'vertical_sku_holder') ? 'transparent' :
+             (item.color || getComponentColor(item.type, item.category))}
+        stroke={isContainer ? 'transparent' : 
+               (item.type === 'sku_holder' || item.type === 'vertical_sku_holder') ? 'transparent' :
+               (item.color || getComponentColor(item.type, item.category))}
         strokeWidth={isContainer ? "3" : "1"}
         opacity={isContainer ? "1" : "0.8"}
         strokeDasharray={isContainer ? "none" : "none"}
@@ -183,7 +187,9 @@ export const renderShapeComponent = (item) => {
         <path
           d={generateShapePath(item.type, item.width - (item.containerPadding * 2), item.height - (item.containerPadding * 2), { x: item.containerPadding, y: item.containerPadding })}
           fill="none"
-          stroke={item.color || getComponentColor(item.type, item.category)}
+          stroke={isContainer ? 'transparent' : 
+               (item.type === 'sku_holder' || item.type === 'vertical_sku_holder') ? 'transparent' :
+               (item.color || getComponentColor(item.type, item.category))}
           strokeWidth="1"
           opacity="0.3"
           strokeDasharray="5,5"

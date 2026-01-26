@@ -736,7 +736,7 @@ const WarehouseItem = ({
     : null;
   const spareUnitTextColor = isSpareUnit ? getContrastColorForHex(spareUnitColor) : null;
   const storageUnitColor = item.type === 'storage_unit'
-    ? (item.customColor || item.color || '#4CAF50')
+    ? 'transparent'
     : null;
   const storageUnitTextColor = storageUnitColor ? getContrastColorForHex(storageUnitColor) : '#FFFFFF';
   const hasHighlightedCompartments = Array.isArray(highlightedCompartments) && highlightedCompartments.length > 0;
@@ -766,8 +766,8 @@ const WarehouseItem = ({
         height: item.height,
         backgroundColor: item.isHollow ? 'transparent' : 
           (item.type === 'storage_unit' ? storageUnitColor : 
-           item.type === 'sku_holder' ? (item.showCompartments ? 'transparent' : '#2196F3') :
-           item.type === 'vertical_sku_holder' ? (item.showCompartments ? 'transparent' : '#FF9800') :
+           item.type === 'sku_holder' ? 'transparent' :
+           item.type === 'vertical_sku_holder' ? 'transparent' :
            isSpareUnit ? spareUnitColor :
            isContainer ? 'transparent' : 
            getComponentColor(item.type, item.category)),
@@ -1081,7 +1081,7 @@ const WarehouseItem = ({
         }}
         gridSize={gridSize}
         snapToGrid={snapToGrid}
-        color={item.type === 'sku_holder' ? '#2196F3' : '#FF9800'}
+        color={'transparent'}
         isReadOnly={isReadOnly}
       />
     </div>

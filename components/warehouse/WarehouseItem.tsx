@@ -805,8 +805,8 @@ const WarehouseItem = ({
         height: item.height,
         backgroundColor: item.isHollow ? 'transparent' : 
           (item.type === 'storage_unit' ? 'transparent' : 
-           item.type === 'sku_holder' ? (item.showCompartments ? 'transparent' : '#2196F3') :
-           item.type === 'vertical_sku_holder' ? (item.showCompartments ? 'transparent' : '#FF9800') :
+           item.type === 'sku_holder' ? 'transparent' :
+           item.type === 'vertical_sku_holder' ? 'transparent' :
            isSpareUnit ? spareUnitColor :
            isContainer ? 'transparent' : 
            getComponentColor(item.type, item.category)),
@@ -1342,7 +1342,7 @@ const WarehouseItem = ({
         }}
         gridSize={gridSize}
         snapToGrid={snapToGrid}
-        color={item.type === 'sku_holder' ? '#2196F3' : '#FF9800'}
+        color={'transparent'}
         isReadOnly={isReadOnly}
       />
 

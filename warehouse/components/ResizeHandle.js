@@ -10,7 +10,7 @@ const ResizeHandle = ({
   onResize, 
   gridSize = 60, 
   snapToGrid = true,
-  color = '#2196F3',
+  color = 'transparent',
   isReadOnly = false
 }) => {
   const [isDragging, setIsDragging] = useState(false);

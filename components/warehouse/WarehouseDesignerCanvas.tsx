@@ -188,24 +188,23 @@ const WarehouseItem = ({
       };
     }
 
-    // Horizontal Storage Racks - Black borders with blue interior
+    // Horizontal Storage Racks - Transparent
     if (isStorageRack) {
       return {
         ...baseStyle,
-        border: '2px solid #1976D2',
-        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+        border: 'none',
+        backgroundColor: 'transparent',
         borderRadius: '0px',
-        boxShadow: '0 1px 3px rgba(25, 118, 210, 0.2)'
+        boxShadow: 'none'
       };
     }
 
-    // Vertical Storage Racks - Orange borders with orange interior
+    // Vertical Storage Racks - Transparent
     if (isVerticalStorageRack) {
       return {
         ...baseStyle,
-        border: '2px solid #FF9800 !important',
-        borderStyle: 'solid !important',
-        backgroundColor: '#FF9800',
+        border: 'none',
+        backgroundColor: 'transparent',
         borderRadius: '0px',
         boxShadow: 'none'
       };

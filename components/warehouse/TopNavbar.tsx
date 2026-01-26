@@ -154,15 +154,22 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
     <nav className="modern-navbar" onClick={closeDropdowns}>
       {/* Left Section - Brand & Selectors */}
       <div className="navbar-left">
-        <div 
-          className="brand-section" 
-          onClick={onNavigateToDashboard}
-          style={{ cursor: 'pointer' }}
-          title="Go to Home Screen"
-        >
-          <div className="brand-text">
-            <div className="brand-title">Layout Builder</div>
+        <div className="brand-section" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
+          <div className="brand-text" style={{ paddingTop: '8px' }}>
+            <div className="brand-title">WC Builder</div>
           </div>
+          <button 
+            className="return-dashboard-btn"
+            onClick={onNavigateToDashboard}
+            title="Return to Dashboard"
+            style={{ 
+              marginTop: '0px',
+              fontSize: '11px',
+              padding: '4px 8px'
+            }}
+          >
+            ← Dashboard
+          </button>
         </div>
         
         <div className="selector-group">
@@ -229,24 +236,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
             )}
           </div>
 
-          {/* View Actions */}
-          <div className="action-item">
-            <button 
-              className="action-btn"
-              onClick={(e) => { e.stopPropagation(); toggleDropdown('view'); }}
-            >
-              <span className="action-text">View</span>
-            </button>
-            {activeDropdown === 'view' && (
-              <div className="action-dropdown">
-                <button onClick={() => { onZoomReset?.(); closeDropdowns(); }} className="action-option">
-                  <span className="option-icon">🎯</span>
-                  <span>Reset to Center</span>
-                </button>
-              </div>
-            )}
-          </div>
-
+          
           {/* Tools Actions */}
           <div className="action-item">
             <button 
@@ -260,6 +250,10 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
                 <button onClick={onAutoGenerateBoundary} className="action-option">
                   <span className="option-icon">⬜</span>
                   <span>Auto-Generate Boundary</span>
+                </button>
+                <button onClick={() => { onZoomReset?.(); closeDropdowns(); }} className="action-option">
+                  <span className="option-icon">🎯</span>
+                  <span>Reset to Center</span>
                 </button>
               </div>
             )}

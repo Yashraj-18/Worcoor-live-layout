@@ -110,37 +110,7 @@ const DraggableComponent = ({ component }) => {
         maxHeight: '100%',
         paddingTop: '20px' // Make room for icon
       }}>{component.name}</div>
-      <div className="component-size" style={{
-        position: 'absolute',
-        bottom: '2px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        color: '#333',
-        padding: '2px 6px',
-        borderRadius: '3px',
-        fontSize: '10px',
-        fontWeight: '500'
-      }}>
-        {component.drawingTool ? '🎨' : `${component.defaultSize?.width || 50}×${component.defaultSize?.height || 50}`}
-      </div>
-      {component.priority === 'high' && (
-        <div className="priority-badge" style={{
-          position: 'absolute',
-          top: '2px',
-          right: '2px',
-          background: '#ff1744',
-          color: 'white',
-          borderRadius: '50%',
-          width: '8px',
-          height: '8px',
-          fontSize: '0.6rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}></div>
-      )}
-    </div>
+                </div>
   );
 };
 
@@ -163,37 +133,7 @@ const ComponentCategory = ({ category, isExpanded, onToggle }) => {
         </span>
         <span className="category-title">{category.category}</span>
         <span className="category-count">({(category.components || []).length})</span>
-        <div className="category-priority-indicator" style={{
-          marginLeft: 'auto',
-          display: 'flex',
-          gap: '2px'
-        }}>
-          {(category.components || []).filter(item => item.priority === 'high').length > 0 && (
-            <div style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              background: 'var(--error-500)'
-            }} title="High priority items"></div>
-          )}
-          {(category.components || []).filter(item => item.priority === 'medium').length > 0 && (
-            <div style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              background: 'var(--warning-500)'
-            }} title="Medium priority items"></div>
-          )}
-          {(category.components || []).filter(item => item.priority === 'low').length > 0 && (
-            <div style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              background: 'var(--success-500)'
-            }} title="Low priority items"></div>
-          )}
-        </div>
-      </div>
+              </div>
       {isExpanded && (
         <div className="category-items animate-fade-in">
           {sortedItems.map((component, index) => (

@@ -228,34 +228,7 @@ export const WAREHOUSE_COMPONENTS = [
       },
     ]
   },
-  {
-    category: "Floor Plan Components",
-    icon: "📁",
-    priority: "high",
-    expanded: true,
-    components: [
-      {
-        type: COMPONENT_TYPES.SQUARE_BOUNDARY,
-        name: "Square Boundary",
-        icon: "⬜",
-        color: getComponentPanelColor(COMPONENT_TYPES.SQUARE_BOUNDARY),
-        defaultSize: { width: 480, height: 480 }, // 8×8 grid blocks (60px × 8 = 480px)
-        description: "Resizable rectangular warehouse boundary with hollow border design",
-        priority: "high",
-        isBoundary: true,
-        isHollow: true,
-        borderWidth: 4,
-        containerLevel: 1,
-        snapToGrid: true,
-        gridAligned: true,
-        resizable: true,
-        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
-        maxSize: { width: 1200, height: 1200 }, // Maximum 20×20 grid blocks
-        gridStep: 60 // Resize in 60px increments
-      }
-    ]
-  },
-  {
+    {
     category: "Boundaries",
     icon: "🔲",
     priority: "high",

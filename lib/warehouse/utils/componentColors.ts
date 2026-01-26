@@ -53,17 +53,17 @@ export const ensureFixedColors = (items: WarehouseItem[]): WarehouseItem[] => {
 };
 
 /**
- * Force refresh colors for all storage units to ensure they use the base green color
+ * Force refresh colors for all storage units and storage racks to ensure they use transparent colors
  * @param items - Array of component items
- * @returns Items with corrected storage unit colors
+ * @returns Items with corrected storage unit and storage rack colors
  */
 export const forceRefreshStorageUnitColors = (items: WarehouseItem[]): WarehouseItem[] => {
   return items.map(item => {
-    if (item.type === 'storage_unit') {
-      // Force Storage Units to always be transparent
+    // Force Storage Units and Storage Racks to always be transparent
+    if (item.type === 'storage_unit' || item.type === 'sku_holder' || item.type === 'vertical_sku_holder') {
       const correctedColor = 'transparent';
       
-      console.log(`Force refreshing storage unit ${item.id}: ${item.color} -> ${correctedColor}`);
+      console.log(`Force refreshing ${item.type} ${item.id}: ${item.color} -> ${correctedColor}`);
       
       return {
         ...item,
@@ -86,9 +86,9 @@ export const COLOR_LEGEND: Record<string, Record<string, ColorLegendItem>> = {
     'Dotted Boundary': { color: '#90A4AE', description: 'Dotted zone divisions' }
   },
   'Storage Components': {
-    'Storage Unit': { color: '#4CAF50', description: 'Storage containers/units' },
-    'Horizontal Storage Rack': { color: '#2196F3', description: 'Horizontal storage racks/shelves' },
-    'Vertical Storage Rack': { color: '#FF5722', description: 'Vertical storage racks/shelves' }
+    'Storage Unit': { color: 'transparent', description: 'Storage containers/units' },
+    'Horizontal Storage Rack': { color: 'transparent', description: 'Horizontal storage racks/shelves' },
+    'Vertical Storage Rack': { color: 'transparent', description: 'Vertical storage racks/shelves' }
   },
   'Zone Components': {
     'Warehouse Block': { color: '#FF9800', description: 'Warehouse blocks' },

@@ -316,7 +316,9 @@ const WarehouseCanvas = ({
             y: finalY,
             width: draggedItem.defaultSize?.width || 50,
             height: draggedItem.defaultSize?.height || 50,
-            color: draggedItem.color || getComponentColor(draggedItem.type, draggedItem.category) || '#e3f2fd',
+            color: draggedItem.color || 
+       (draggedItem.type === 'sku_holder' || draggedItem.type === 'vertical_sku_holder') ? 'transparent' :
+       getComponentColor(draggedItem.type, draggedItem.category) || '#e3f2fd',
             label: draggedItem.autoLabel && draggedItem.zoneType ? hierarchicalManager.generateZoneLabel(draggedItem.zoneType) : '',
             icon: draggedItem.icon,
             isShape: draggedItem.isShape || false,

@@ -230,6 +230,14 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
           };
         }
 
+        // Force storage racks to be transparent
+        if (item.type === COMPONENT_TYPES.SKU_HOLDER || item.type === COMPONENT_TYPES.VERTICAL_SKU_HOLDER) {
+          return {
+            ...item,
+            color: 'transparent'
+          };
+        }
+
         const fixedColor = getComponentColor(item.type, item.category);
 
         // Debug log for vertical storage racks
@@ -345,8 +353,9 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
       console.groupEnd();
     }
     
-    // Determine base color - force Storage Units to transparent
-    const baseColor = isStorageUnit
+    // Determine base color - force Storage Units and Storage Racks to transparent
+    const isStorageRack = newItem.type === COMPONENT_TYPES.SKU_HOLDER || newItem.type === COMPONENT_TYPES.VERTICAL_SKU_HOLDER;
+    const baseColor = isStorageUnit || isStorageRack
       ? 'transparent'
       : isSpareUnit
         ? (newItem.customColor || newItem.color || '#8D6E63')

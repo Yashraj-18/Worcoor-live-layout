@@ -15,13 +15,13 @@ const COMPONENT_CONFIG = {
   },
   sku_holder: {
     label: 'Horizontal Storage Rack',
-    color: '#2196F3',
+    color: 'transparent',
     type: 'rack',
     maxPerCompartment: 1
   },
   vertical_sku_holder: {
     label: 'Vertical Storage Rack',
-    color: '#FF9800',
+    color: 'transparent',
     type: 'rack',
     maxPerCompartment: 1
   }

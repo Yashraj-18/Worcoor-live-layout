@@ -1,10 +1,8 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useRef } from 'react';
-import { jwtDecode } from 'jwt-decode';
+import { createContext, useContext, useEffect, useState } from 'react';
 import localStorageService from '@/src/services/localStorageService';
 import { apiService } from '@/src/services/apiService';
-import { api_url } from '@/src/constants/api_url';
 import { setAuthContext } from './AuthContextProviderForApi';
 
 export type AuthData = {
@@ -27,8 +25,6 @@ export type AuthContextType = {
   userData: AuthData['userData'] | null;
 };
 
-type JwtPayload = { exp: number; sub: string };
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -36,119 +32,62 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [userData, setUserData] = useState<AuthData['userData'] | null>(null);
 
-  const refreshTimer = useRef<NodeJS.Timeout | null>(null);
-  const retryInterval = useRef<NodeJS.Timeout | null>(null);
-
-  const scheduleTokenRefresh = (accessToken: string, refreshToken: string) => {
-    if (refreshTimer.current) clearTimeout(refreshTimer.current);
-
-    try {
-      const decoded: JwtPayload = jwtDecode(accessToken);
-      const expiryMs = decoded.exp * 1000;
-      const refreshTime = expiryMs - Date.now() - 2 * 60 * 1000;
-
-      if (refreshTime > 0) {
-        refreshTimer.current = setTimeout(() => {
-          refreshAccessToken(refreshToken);
-        }, refreshTime);
-      }
-    } catch (err) {
-      console.error('Failed to decode token for refresh schedule:', err);
-    }
-  };
-
-  const refreshAccessToken = async (refreshToken: string) => {
-    // ✅ Mock token refresh - no external API call
-    console.log('Mock: Token refresh skipped (using mock authentication)');
-    
-    const authData = localStorageService.getItem<AuthData>('authData');
-    if (!authData?._id) return;
-    const newAccessToken = authData.accessToken;
-    const storedAuth = localStorageService.getItem<AuthData>('authData');
-    if (storedAuth) {
-      const updatedAuth = { ...storedAuth, accessToken: newAccessToken };
-      localStorageService.setItem('authData', updatedAuth);
-      setUserData(updatedAuth.userData);
-      setIsAuthenticated(true);
-      apiService.setAuthToken(newAccessToken);
-      scheduleTokenRefresh(newAccessToken, storedAuth.refreshToken);
-    }
-    if (retryInterval.current) {
-      clearInterval(retryInterval.current);
-      retryInterval.current = null;
-    }
-  };
-
-  const startRetry = (refreshToken: string) => {
-    if (retryInterval.current) return;
-
-    retryInterval.current = setInterval(() => {
-      console.log('Retrying token refresh...');
-      refreshAccessToken(refreshToken);
-    }, 30 * 1000);
-  };
-
   const login = (authData: AuthData) => {
-    localStorageService.setItem('authData', authData);
+    // ✅ Use sessionStorage instead of localStorage
+    // This clears when browser closes, but persists during session
+    sessionStorage.setItem('authData', JSON.stringify(authData));
+    
     setIsAuthenticated(true);
     setIsAuthLoading(false);
-    setUserData(authData.userData); // ✅ keep userData in context
-    scheduleTokenRefresh(authData.accessToken, authData.refreshToken);
+    setUserData(authData.userData);
+    apiService.setAuthToken(authData.accessToken);
   };
 
   const authLogout = () => {
+    // ✅ Clear both sessionStorage and localStorage
+    sessionStorage.removeItem('authData');
     localStorageService.removeItem('authData');
+    
     setIsAuthenticated(false);
     setIsAuthLoading(false);
     setUserData(null);
     apiService.clearAuthToken();
-
-    if (refreshTimer.current) {
-      clearTimeout(refreshTimer.current);
-      refreshTimer.current = null;
-    }
-    if (retryInterval.current) {
-      clearInterval(retryInterval.current);
-      retryInterval.current = null;
-    }
   };
 
-  const checkAndRefreshIfNearExpiry = (accessToken: string, refreshToken: string) => {
-    try {
-      const decoded: JwtPayload = jwtDecode(accessToken);
-      const expiryMs = decoded.exp * 1000;
-      const timeLeft = expiryMs - Date.now();
-
-      if (timeLeft < 2 * 60 * 1000) {
-        console.log('Token near expiry, refreshing immediately...');
-        refreshAccessToken(refreshToken);
-      }
-    } catch (err) {
-      console.error('Error checking token expiry:', err);
-    }
-  };
-
-  // ✅ run only once on mount
+  // ✅ Check sessionStorage on mount (stays logged in during browser session)
+  // ❌ Does NOT check localStorage (no persistent sessions across browser restarts)
   useEffect(() => {
-    const authData = localStorageService.getItem<AuthData>('authData');
-    if (authData?.isLogin) {
-      setIsAuthenticated(true);
-      setUserData(authData.userData);
-      scheduleTokenRefresh(authData.accessToken, authData.refreshToken);
-      checkAndRefreshIfNearExpiry(authData.accessToken, authData.refreshToken);
+    const sessionAuthData = sessionStorage.getItem('authData');
+    
+    if (sessionAuthData) {
+      try {
+        const authData: AuthData = JSON.parse(sessionAuthData);
+        
+        if (authData?.isLogin) {
+          // Restore session from sessionStorage
+          setIsAuthenticated(true);
+          setUserData(authData.userData);
+          apiService.setAuthToken(authData.accessToken);
+          console.log('✅ Session restored from sessionStorage');
+        }
+      } catch (error) {
+        console.error('Failed to parse session auth data:', error);
+        sessionStorage.removeItem('authData');
+      }
     }
+    
     setIsAuthLoading(false);
 
     setAuthContext({
-      isAuthenticated: !!authData?.isLogin,
+      isAuthenticated: !!sessionAuthData,
       isAuthLoading: false,
       login,
       authLogout,
-      userData: authData?.userData || null,
+      userData: sessionAuthData ? JSON.parse(sessionAuthData).userData : null,
     });
 
     return () => setAuthContext(null);
-  }, []); // 👈 no dependency array to avoid loops
+  }, []);
 
   return (
     <AuthContext.Provider

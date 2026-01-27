@@ -248,38 +248,38 @@ export default function DashboardPage() {
 
             <Card className="group relative overflow-hidden border border-slate-200 bg-white/80 backdrop-blur-sm shadow-soft hover:shadow-medium transition-all duration-300 h-full">
               <CardHeader>
-                <CardTitle className="text-slate-900 dark:text-slate-50 text-lg">Quality Metrics</CardTitle>
+                <CardTitle className="text-slate-900 dark:text-slate-50 text-lg">Utilization Metrics</CardTitle>
                 <CardDescription className="text-slate-600 dark:text-slate-200">
-                  Manufacturing quality indicators
+                  Space and asset utilization indicators
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium">Defect Rate</p>
-                      <p className="text-sm font-medium">2.5%</p>
+                      <p className="text-sm font-medium">Area Utilization</p>
+                      <p className="text-sm font-medium">1,250 m²</p>
                     </div>
-                    <Progress value={2.5} className="h-2" />
-                    <p className="text-xs text-green-600 mt-1">-0.3% from last month</p>
+                    <Progress value={78} className="h-2" />
+                    <p className="text-xs text-green-600 mt-1">78% of total area (1,600 m²)</p>
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium">First Pass Yield</p>
-                      <p className="text-sm font-medium">97.5%</p>
+                      <p className="text-sm font-medium">Location Tag Utilization</p>
+                      <p className="text-sm font-medium">245</p>
                     </div>
-                    <Progress value={97.5} className="h-2" />
-                    <p className="text-xs text-green-600 mt-1">+0.8% from last month</p>
+                    <Progress value={82} className="h-2" />
+                    <p className="text-xs text-green-600 mt-1">82% of total locations (300)</p>
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium">Customer Returns</p>
-                      <p className="text-sm font-medium">0.5%</p>
+                      <p className="text-sm font-medium">Asset Utilization</p>
+                      <p className="text-sm font-medium">156</p>
                     </div>
-                    <Progress value={0.5} className="h-2" />
-                    <p className="text-xs text-green-600 mt-1">-0.2% from last month</p>
+                    <Progress value={65} className="h-2" />
+                    <p className="text-xs text-orange-600 mt-1">65% of total assets (240)</p>
                   </div>
                 </div>
               </CardContent>
@@ -295,14 +295,23 @@ export default function DashboardPage() {
             <Card className="group relative overflow-hidden border border-slate-200 bg-white/80 backdrop-blur-sm shadow-soft hover:shadow-medium transition-all duration-300 h-full">
               <CardHeader>
                 <CardTitle className="text-slate-900 dark:text-slate-50 text-lg">System Status</CardTitle>
-                <CardDescription className="text-slate-600 dark:text-slate-200">Current system health</CardDescription>
+                <CardDescription className="text-slate-600 dark:text-slate-200">API performance and data sync status</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
-                      <span className="text-sm">Production Module</span>
+                      <span className="text-sm">API Response Time</span>
+                    </div>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      125ms
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
+                      <span className="text-sm">API Status</span>
                     </div>
                     <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                       Operational
@@ -310,29 +319,20 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
-                      <span className="text-sm">Inventory Management</span>
+                      <Activity className="h-4 w-4 text-blue-500 mr-2" />
+                      <span className="text-sm">New Incoming Data</span>
                     </div>
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      Operational
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      23 items
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
-                      <span className="text-sm">Worker Management</span>
+                      <Clock className="h-4 w-4 text-orange-500 mr-2" />
+                      <span className="text-sm">Last Fetched</span>
                     </div>
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      Operational
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
-                      <span className="text-sm">Analytics Engine</span>
-                    </div>
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      Operational
+                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                      2 min ago
                     </Badge>
                   </div>
                 </div>

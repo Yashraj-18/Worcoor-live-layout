@@ -331,7 +331,63 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
                 <Tag size={12} color="#86efac" />
                 <strong>Category:</strong> {displayName}
               </div>
-              {selectedItem.locationId && (
+              
+              {/* Multiple Location IDs Display */}
+              {selectedItem.locationData && selectedItem.locationData.isMultiLocation && selectedItem.locationData.locationIds && (
+                <div style={{ 
+                  marginTop: '4px', 
+                  fontSize: '0.8rem', 
+                  color: '#bbf7d0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Package size={12} color="#bbf7d0" />
+                    <strong>Multiple Location IDs ({selectedItem.locationData.locationIds.length}):</strong>
+                  </div>
+                  <div style={{ marginLeft: '20px', fontSize: '0.75rem' }}>
+                    {selectedItem.locationData.locationIds.map((id: string, index: number) => (
+                      <div key={id} style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '4px',
+                        marginBottom: '2px'
+                      }}>
+                        <span style={{ 
+                          width: '8px', 
+                          height: '8px', 
+                          borderRadius: '50%', 
+                          backgroundColor: index === 0 ? '#4CAF50' : '#81C784',
+                          display: 'inline-block'
+                        }} />
+                        <span style={{ color: index === 0 ? '#4CAF50' : '#81C784' }}>
+                          {id} {index === 0 && '(Primary)'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Single Location ID Display (for non-multi-location items) */}
+              {!selectedItem.locationData?.isMultiLocation && selectedItem.locationId && (
+                <div style={{ 
+                  marginTop: '4px', 
+                  fontSize: '0.8rem', 
+                  fontStyle: 'italic', 
+                  color: '#bbf7d0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <Star size={12} color="#bbf7d0" />
+                  Selected from dropdown: {selectedItem.locationId}
+                </div>
+              )}
+              
+              {/* Single Location ID Display (for multi-location items that also have primary locationId) */}
+              {selectedItem.locationData?.isMultiLocation && selectedItem.locationId && !selectedItem.locationData.locationIds && (
                 <div style={{ 
                   marginTop: '4px', 
                   fontSize: '0.8rem', 

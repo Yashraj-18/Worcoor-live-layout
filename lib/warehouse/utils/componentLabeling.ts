@@ -178,8 +178,15 @@ export const getContextualLabel = (item: WarehouseItem, context: string = 'defau
   // Priority: locationId > custom label > auto-generated label
   let displayLabel = '';
   
-  // First check for location ID from dropdown selection
-  if (item.locationId) {
+  // First check for multiple location IDs
+  if (item.locationData && item.locationData.isMultiLocation && item.locationData.locationIds) {
+    const ids = item.locationData.locationIds;
+    if (ids.length === 1) {
+      displayLabel = ids[0];
+    } else {
+      displayLabel = `${ids[0]} +${ids.length - 1}`;
+    }
+  } else if (item.locationId) {
     displayLabel = item.locationId;
   } else if (item.skuData && item.skuData.sku) {
     displayLabel = item.skuData.sku;

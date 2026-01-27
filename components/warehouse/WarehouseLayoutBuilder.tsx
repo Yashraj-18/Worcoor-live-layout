@@ -873,7 +873,7 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     
     console.log('Location ID request for item:', item); // Debug log
     
-    // Check if this is a vertical storage rack (with fallback check)
+    // Check if this component supports multiple location IDs
     if (item && item.type === 'vertical_sku_holder') {
       console.log('Detected vertical storage rack, opening MultiLocationSelector'); // Debug log
       setMultiLocationSelectorVisible(true);
@@ -894,7 +894,7 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     if (item.compartmentContents) {
       const compartmentLocationIds = Object.values(item.compartmentContents)
         .flatMap(content => {
-          // Handle multiple location IDs (vertical storage racks)
+          // Handle multiple location IDs (vertical storage racks and storage units)
           if (content.isMultiLocation && content.locationIds) {
             return content.locationIds;
           }
@@ -905,9 +905,14 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
       locationIds.push(...compartmentLocationIds);
     }
     
-    // Get Location ID from single location items (Storage Units)
+    // Get Location IDs from single location items (Storage Units)
     if (item.locationId) {
       locationIds.push(item.locationId);
+    }
+    
+    // Get multiple location IDs from storage units with multi-location support
+    if (item.locationData && item.locationData.isMultiLocation && item.locationData.locationIds) {
+      locationIds.push(...item.locationData.locationIds);
     }
     
     return locationIds;
@@ -994,6 +999,39 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     // Handle both string (legacy) and object (new with category) formats
     const locationId = typeof data === 'string' ? data : data.locationId;
     const singleCategory = typeof data === 'string' ? '' : data.category;
+
+    // Handle multiple location IDs for storage units
+    if (data.locationIds && Array.isArray(data.locationIds)) {
+      const primaryLocationId = data.locationIds[0] || '';
+      handleUpdateItem(itemId, { 
+        locationId: primaryLocationId, // Primary location ID for display
+        category: data.category || singleCategory, // Add category for color determination
+        locationData: {
+          isMultiLocation: true,
+          locationIds: data.locationIds,
+          primaryLocationId: primaryLocationId,
+          uniqueId: primaryLocationId,
+          sku: data.locationIds.join(','),
+          quantity: data.locationIds.length,
+          status: 'planned',
+          category: data.category || singleCategory,
+          availability: 'available',
+          createdAt: new Date().toISOString(),
+          lastModified: new Date().toISOString(),
+          metadata: {
+            weight: null,
+            dimensions: null,
+            temperature: null,
+            hazardous: false,
+            priority: 'normal',
+            isMultiLocation: true
+          }
+        }
+      });
+      setSkuIdSelectorVisible(false);
+      setPendingSkuRequest(null);
+      return;
+    }
 
     // Handle single location units (Storage Unit)
     if (compartmentId === 'single-sku') {
@@ -1509,6 +1547,13 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
           onSave={handleLocationIdSelect}
           existingLocationIds={pendingSkuRequest ? getExistingLocationIds(pendingSkuRequest.itemId) : []}
           showCategories={pendingSkuRequest && pendingSkuRequest.compartmentId === 'single-sku'}
+          allowCustomIds={pendingSkuRequest && pendingSkuRequest.compartmentId === 'single-sku'}
+          allowMultipleIds={pendingSkuRequest ? (() => {
+            const item = warehouseItems.find(i => i.id === pendingSkuRequest.itemId);
+            const allowMultiple = item && item.type === 'storage_unit' && item.supportsMultipleLocationIds;
+            console.log('WarehouseLayoutBuilder allowMultipleIds check:', { itemId: pendingSkuRequest.itemId, itemType: item?.type, supportsMultipleLocationIds: item?.supportsMultipleLocationIds, allowMultiple }); // Debug log
+            return allowMultiple;
+          })() : false}
         />
 
         {/* Multi Location ID Selector Modal for Vertical Storage Racks */}

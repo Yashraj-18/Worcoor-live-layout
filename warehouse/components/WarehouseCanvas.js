@@ -337,6 +337,7 @@ const WarehouseCanvas = ({
           };
           
           console.log('Creating new item:', newItem);
+          console.log('Item supportsMultipleLocationIds:', newItem.supportsMultipleLocationIds); // Debug log
           
           // Check for linking opportunities for new structural elements
           if (LINKABLE_ELEMENTS.includes(draggedItem.type)) {

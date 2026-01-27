@@ -7,10 +7,11 @@ import globalIdCache from '@/lib/warehouse/utils/globalIdCache';
 interface SkuIdSelectorProps {
   isVisible: boolean;
   onClose: () => void;
-  onSave: (skuId: string | { locationId: string; category: string }) => void;
+  onSave: (skuId: string | { locationId: string; category: string } | { locationIds: string[]; category: string }) => void;
   existingLocationIds?: string[];
   showCategories?: boolean;
   allowCustomIds?: boolean;
+  allowMultipleIds?: boolean; // New prop for storage components
 }
 
 const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({ 
@@ -19,11 +20,23 @@ const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({
   onSave, 
   existingLocationIds = [], 
   showCategories = false,
-  allowCustomIds = false
+  allowCustomIds = false,
+  allowMultipleIds = false
 }) => {
+  console.log('SkuIdSelector props:', { 
+    allowMultipleIds, 
+    showCategories, 
+    allowCustomIds,
+    isVisible,
+    existingLocationIds: existingLocationIds.length
+  }); // Debug log
+  
   const [selectedLocationId, setSelectedLocationId] = useState('');
   const [customLocationId, setCustomLocationId] = useState('');
   const [useCustom, setUseCustom] = useState(false);
+  const [multipleIds, setMultipleIds] = useState<string[]>([]);
+  const [showMultipleMode, setShowMultipleMode] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('');
 
   // Generate available Location IDs (LOC-001 to LOC-999)
   // Check against both existingLocationIds (local) and global cache
@@ -49,33 +62,78 @@ const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({
     if (!allowCustomIds) {
       setUseCustom(false);
     }
+    // Reset multiple mode when selector opens
+    setMultipleIds([]);
+    setShowMultipleMode(false);
+    setSelectedCategory('');
   }, [availableLocationIds.length, allowCustomIds]);
+
+  const addMoreIds = () => {
+    const finalLocationId = useCustom ? customLocationId.trim() : selectedLocationId;
+    if (finalLocationId && !multipleIds.includes(finalLocationId)) {
+      setMultipleIds([...multipleIds, finalLocationId]);
+      setShowMultipleMode(true);
+      // Select next available ID
+      const nextAvailable = availableLocationIds.find(id => 
+        id !== finalLocationId && !multipleIds.includes(id)
+      );
+      if (nextAvailable) {
+        setSelectedLocationId(nextAvailable);
+      }
+    }
+  };
+
+  const removeId = (idToRemove: string) => {
+    setMultipleIds(multipleIds.filter(id => id !== idToRemove));
+    if (multipleIds.length <= 1) {
+      setShowMultipleMode(false);
+    }
+  };
 
   const handleSave = () => {
     const finalLocationId = useCustom ? customLocationId.trim() : selectedLocationId;
     
-    if (!finalLocationId) {
+    if (!finalLocationId && multipleIds.length === 0) {
       showMessage.warning('Please select or enter a Location ID');
       return;
     }
 
-    // Check both local existing IDs and global cache
-    if (existingLocationIds.includes(finalLocationId) || globalIdCache.isIdInUse(finalLocationId)) {
-      showMessage.error(`Location ID "${finalLocationId}" is already in use elsewhere in the map. Please select a different one.`);
+    // Check for conflicts
+    const allSelectedIds = multipleIds.length > 0 ? [...multipleIds] : [finalLocationId];
+    const conflictingIds = allSelectedIds.filter(id => 
+      existingLocationIds.includes(id) || globalIdCache.isIdInUse(id)
+    );
+
+    if (conflictingIds.length > 0) {
+      showMessage.error(`Location ID(s) "${conflictingIds.join(', ')}" are already in use. Please select different ones.`);
       return;
     }
 
-    // Add the new ID to the global cache
-    globalIdCache.addId(finalLocationId);
+    // Add all IDs to global cache
+    allSelectedIds.forEach(id => globalIdCache.addId(id));
 
-    // Always return just the Location ID
-    onSave(finalLocationId);
+    // Return single ID or multiple IDs based on mode
+    if (showMultipleMode && multipleIds.length > 0) {
+      onSave({ 
+        locationIds: [...multipleIds, finalLocationId].filter(id => id), 
+        category: selectedCategory 
+      });
+    } else {
+      if (showCategories && selectedCategory) {
+        onSave({ locationId: finalLocationId, category: selectedCategory });
+      } else {
+        onSave(finalLocationId);
+      }
+    }
   };
 
   const handleClose = () => {
     setSelectedLocationId('');
     setCustomLocationId('');
     setUseCustom(false);
+    setMultipleIds([]);
+    setShowMultipleMode(false);
+    setSelectedCategory('');
     onClose();
   };
 
@@ -159,6 +217,55 @@ const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 hover:border-input/80"
                       maxLength={20}
                     />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Multiple Location IDs - Only available for storage components */}
+            {allowMultipleIds && (
+              <div className="space-y-3 pt-2">
+                {/* Add More IDs Button */}
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={addMoreIds}
+                    disabled={!selectedLocationId && !customLocationId}
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-out focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 active:scale-95 bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm h-8 px-3"
+                  >
+                    + Add More IDs
+                  </button>
+                  {showMultipleMode && (
+                    <span className="text-xs text-muted-foreground">
+                      {multipleIds.length + 1} ID(s) selected
+                    </span>
+                  )}
+                </div>
+
+                {/* Selected Multiple IDs */}
+                {showMultipleMode && multipleIds.length > 0 && (
+                  <div className="ml-7 space-y-2">
+                    <div className="text-xs font-medium text-foreground">Selected Location IDs:</div>
+                    <div className="space-y-1">
+                      {multipleIds.map((id, index) => (
+                        <div key={id} className="flex items-center justify-between bg-muted/50 rounded px-2 py-1">
+                          <span className="text-xs text-foreground">{id}</span>
+                          <button
+                            onClick={() => removeId(id)}
+                            className="text-xs text-destructive hover:text-destructive/80 ml-2"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                      {(selectedLocationId || customLocationId) && (
+                        <div className="flex items-center justify-between bg-primary/10 rounded px-2 py-1 border border-primary/20">
+                          <span className="text-xs text-foreground">
+                            {useCustom ? customLocationId : selectedLocationId}
+                          </span>
+                          <span className="text-xs text-primary ml-2">Current</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

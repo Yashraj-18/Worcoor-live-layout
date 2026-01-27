@@ -870,6 +870,16 @@ const WarehouseItem = ({
           || 'Storage Unit';
         const primaryText = trimmedName || categoryText;
         const labelText = (() => {
+          // Check for multiple location IDs first
+          if (item.locationData && item.locationData.isMultiLocation && item.locationData.locationIds) {
+            const ids = item.locationData.locationIds;
+            if (ids.length === 1) {
+              return ids[0];
+            } else {
+              return `${ids[0]}+${ids.length - 1}`;
+            }
+          }
+          // Fall back to single location ID
           if (item.locationId && item.locationId.trim()) {
             return item.locationId.trim();
           }

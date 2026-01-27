@@ -271,7 +271,8 @@ export const WAREHOUSE_COMPONENTS = [
         gridStep: 60,
         resizable: false,
         hasSku: true, // Enable SKU functionality
-        singleSku: true // Single SKU per unit (not compartmentalized)
+        singleSku: true, // Single SKU per unit (not compartmentalized)
+        supportsMultipleLocationIds: true // Support multiple location IDs
       },
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
@@ -285,7 +286,8 @@ export const WAREHOUSE_COMPONENTS = [
         gridStep: 60,
         resizable: false,
         hasSku: true, // Enable SKU functionality
-        singleSku: true // Single SKU per unit (not compartmentalized)
+        singleSku: true, // Single SKU per unit (not compartmentalized)
+        supportsMultipleLocationIds: true // Support multiple location IDs
       },
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
@@ -299,7 +301,8 @@ export const WAREHOUSE_COMPONENTS = [
         gridStep: 60,
         resizable: false,
         hasSku: true, // Enable SKU functionality
-        singleSku: true // Single SKU per unit (not compartmentalized)
+        singleSku: true, // Single SKU per unit (not compartmentalized)
+        supportsMultipleLocationIds: true // Support multiple location IDs
       },
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
@@ -313,7 +316,8 @@ export const WAREHOUSE_COMPONENTS = [
         gridStep: 60,
         resizable: false,
         hasSku: true, // Enable SKU functionality
-        singleSku: true // Single SKU per unit (not compartmentalized)
+        singleSku: true, // Single SKU per unit (not compartmentalized)
+        supportsMultipleLocationIds: true // Support multiple location IDs
       },
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
@@ -327,7 +331,8 @@ export const WAREHOUSE_COMPONENTS = [
         gridStep: 60,
         resizable: false,
         hasSku: true, // Enable SKU functionality
-        singleSku: true // Single SKU per unit (not compartmentalized)
+        singleSku: true, // Single SKU per unit (not compartmentalized)
+        supportsMultipleLocationIds: true // Support multiple location IDs
       },
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
@@ -341,7 +346,8 @@ export const WAREHOUSE_COMPONENTS = [
         gridStep: 60,
         resizable: false,
         hasSku: true, // Enable SKU functionality
-        singleSku: true // Single SKU per unit (not compartmentalized)
+        singleSku: true, // Single SKU per unit (not compartmentalized)
+        supportsMultipleLocationIds: true // Support multiple location IDs
       },
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
@@ -355,7 +361,8 @@ export const WAREHOUSE_COMPONENTS = [
         gridStep: 60,
         resizable: false,
         hasSku: true, // Enable SKU functionality
-        singleSku: true // Single SKU per unit (not compartmentalized)
+        singleSku: true, // Single SKU per unit (not compartmentalized)
+        supportsMultipleLocationIds: true // Support multiple location IDs
       },
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
@@ -369,7 +376,8 @@ export const WAREHOUSE_COMPONENTS = [
         gridStep: 60,
         resizable: false,
         hasSku: true, // Enable SKU functionality
-        singleSku: true // Single SKU per unit (not compartmentalized)
+        singleSku: true, // Single SKU per unit (not compartmentalized)
+        supportsMultipleLocationIds: true // Support multiple location IDs
       },
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
@@ -383,7 +391,8 @@ export const WAREHOUSE_COMPONENTS = [
         gridStep: 60,
         resizable: false,
         hasSku: true, // Enable SKU functionality
-        singleSku: true // Single SKU per unit (not compartmentalized)
+        singleSku: true, // Single SKU per unit (not compartmentalized)
+        supportsMultipleLocationIds: true // Support multiple location IDs
       }
     ]
   },

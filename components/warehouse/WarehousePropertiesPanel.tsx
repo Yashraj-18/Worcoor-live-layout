@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getAllLocations } from '@/lib/warehouse/utils/locationService';
 import globalIdCache from '@/lib/warehouse/utils/globalIdCache';
+import { getLucideIcon, getCategoryIcon, getIconSize, getIconColor } from '@/lib/warehouse/constants/lucideIconMapping';
+import { Settings, X, MapPin, Tag, Package, Archive, Building, UsersRound, Star, Palette, Maximize2, Move, Shield, Zap, Users, Lock } from 'lucide-react';
 
 const WarehousePropertiesPanel = ({ 
   selectedItem, 
@@ -209,34 +211,86 @@ const WarehousePropertiesPanel = ({
   const isZone = selectedItem.containerLevel === 2;
   const isUnit = selectedItem.containerLevel === 3;
 
+  // Get appropriate icon for the selected item
+  const getItemIcon = () => {
+    if (selectedItem.type) {
+      return getLucideIcon(selectedItem.type);
+    }
+    // Fallback based on container level
+    if (isZone) return Building;
+    if (isUnit) return Package;
+    return Settings;
+  };
+
+  const ItemIcon = getItemIcon();
+
   return (
     <div style={panelStyle}>
       <div style={headerStyle}>
-        <h3 style={{ margin: 0, fontSize: '16px' }}>Properties</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Settings size={18} color="#374151" />
+          <h3 style={{ margin: 0, fontSize: '16px', color: '#374151' }}>Properties</h3>
+        </div>
         <button 
           onClick={onClose}
           style={{ 
             background: 'none', 
             border: 'none', 
             fontSize: '18px', 
-            cursor: 'pointer' 
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '4px',
+            borderRadius: '4px',
+            transition: 'background-color 0.2s'
           }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
         >
-          ×
+          <X size={16} color="#6b7280" />
         </button>
       </div>
 
-      <div style={{ marginBottom: '16px', padding: '8px', backgroundColor: '#e9ecef', borderRadius: '4px' }}>
-        <strong>Selected: {selectedItem.name}</strong>
-        <br />
-        <small style={{ color: '#6c757d' }}>
-          {isZone ? 'Zone Container' : isUnit ? selectedItem.name : 'Item'}
-        </small>
+      <div style={{ 
+        marginBottom: '16px', 
+        padding: '12px', 
+        backgroundColor: '#f8fafc', 
+        borderRadius: '8px', 
+        border: '1px solid #e2e8f0',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px'
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          width: '40px',
+          height: '40px',
+          backgroundColor: selectedItem.color || '#6b7280',
+          borderRadius: '8px',
+          flexShrink: 0
+        }}>
+          <ItemIcon size={20} color="white" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <strong style={{ color: '#1f2937', fontSize: '14px' }}>
+            {selectedItem.name || 'Untitled Item'}
+          </strong>
+          <br />
+          <small style={{ color: '#6b7280', fontSize: '12px' }}>
+            {isZone ? 'Zone Container' : isUnit ? selectedItem.name : 'Warehouse Component'}
+          </small>
+        </div>
       </div>
 
       {/* Basic Properties */}
       <div style={fieldStyle}>
-        <label style={labelStyle}>Name:</label>
+        <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Package size={14} color="#6b7280" />
+          Name:
+        </label>
         <input
           type="text"
           value={properties.name}
@@ -246,23 +300,45 @@ const WarehousePropertiesPanel = ({
       </div>
 
       {/* Component Labeling - Enhanced */}
-      <div style={{ ...fieldStyle, backgroundColor: '#fff3cd', padding: '8px', borderRadius: '4px', border: '1px solid #ffeaa7' }}>
-        <label style={{ ...labelStyle, color: '#856404', fontWeight: 'bold' }}>Display Name/Label:</label>
+      <div style={{ 
+        ...fieldStyle, 
+        backgroundColor: '#fef3c7', 
+        padding: '12px', 
+        borderRadius: '8px', 
+        border: '1px solid #fbbf24',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px'
+      }}>
+        <label style={{ 
+          ...labelStyle, 
+          color: '#92400e', 
+          fontWeight: 'bold',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <Star size={14} color="#92400e" />
+          Display Name/Label:
+        </label>
         <input
           type="text"
           value={properties.label}
           onChange={(e) => handlePropertyChange('label', e.target.value)}
-          style={{ ...inputStyle, borderColor: '#ffc107', backgroundColor: '#fff' }}
+          style={{ ...inputStyle, borderColor: '#fbbf24', backgroundColor: '#fff' }}
           placeholder="Enter display name (e.g., Zone A, Rack 01, Storage Unit 1)"
         />
-        <small style={{ color: '#856404', fontSize: '11px', fontWeight: '500' }}>
+        <small style={{ color: '#92400e', fontSize: '11px', fontWeight: '500' }}>
           ✨ This name will be displayed below the component in both layout builder and operational view
         </small>
       </div>
 
       {/* Location ID Selection */}
       <div style={fieldStyle}>
-        <label style={labelStyle}>Location ID:</label>
+        <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <MapPin size={14} color="#6b7280" />
+          Location ID:
+        </label>
         <select
           value={properties.locationId || ''}
           onChange={handleLocationChange}
@@ -278,14 +354,18 @@ const WarehousePropertiesPanel = ({
             ))}
         </select>
         {!isLocationAvailable(properties.locationId) && (
-          <div style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>
+          <div style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <X size={12} color="#dc2626" />
             This location ID is already in use
           </div>
         )}
       </div>
 
       <div style={fieldStyle}>
-        <label style={labelStyle}>Location Tag (optional):</label>
+        <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Tag size={14} color="#6b7280" />
+          Location Tag (optional):
+        </label>
         <input
           type="text"
           value={properties.locationTag || ''}
@@ -293,13 +373,16 @@ const WarehousePropertiesPanel = ({
           style={inputStyle}
           placeholder="e.g., A1-R1-S1"
         />
-        <small style={{ color: '#6c757d', fontSize: '11px' }}>
+        <small style={{ color: '#6b7280', fontSize: '11px' }}>
           Unique location identifier for search and tracking
         </small>
       </div>
 
       <div style={fieldStyle}>
-        <label style={labelStyle}>Type:</label>
+        <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Archive size={14} color="#6b7280" />
+          Type:
+        </label>
         <select
           value={properties.type}
           onChange={(e) => handlePropertyChange('type', e.target.value)}
@@ -326,7 +409,10 @@ const WarehousePropertiesPanel = ({
       </div>
 
       <div style={fieldStyle}>
-        <label style={labelStyle}>Color:</label>
+        <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Palette size={14} color="#6b7280" />
+          Color:
+        </label>
         <input
           type="color"
           value={properties.color}
@@ -338,7 +424,10 @@ const WarehousePropertiesPanel = ({
       {/* Dimensions */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
         <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Width:</label>
+          <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Maximize2 size={14} color="#6b7280" />
+            Width:
+          </label>
           <input
             type="number"
             value={properties.width}
@@ -347,7 +436,10 @@ const WarehousePropertiesPanel = ({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Height:</label>
+          <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Maximize2 size={14} color="#6b7280" />
+            Height:
+          </label>
           <input
             type="number"
             value={properties.height}
@@ -357,11 +449,80 @@ const WarehousePropertiesPanel = ({
         </div>
       </div>
 
+      {/* Additional Properties */}
+      <div style={fieldStyle}>
+        <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Move size={14} color="#6b7280" />
+          Units:
+        </label>
+        <select
+          value={properties.units || 'px'}
+          onChange={(e) => handlePropertyChange('units', e.target.value)}
+          style={inputStyle}
+        >
+          <option value="px">Pixels</option>
+          <option value="grid">Grid Units</option>
+          <option value="meters">Meters</option>
+          <option value="feet">Feet</option>
+        </select>
+      </div>
+
+      <div style={fieldStyle}>
+        <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Shield size={14} color="#6b7280" />
+          Access:
+        </label>
+        <select
+          value={properties.access || 'public'}
+          onChange={(e) => handlePropertyChange('access', e.target.value)}
+          style={inputStyle}
+        >
+          <option value="public">Public</option>
+          <option value="restricted">Restricted</option>
+          <option value="private">Private</option>
+          <option value="secure">Secure</option>
+        </select>
+      </div>
+
+      <div style={fieldStyle}>
+        <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Zap size={14} color="#6b7280" />
+          Status:
+        </label>
+        <select
+          value={properties.status || 'active'}
+          onChange={(e) => handlePropertyChange('status', e.target.value)}
+          style={inputStyle}
+        >
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="maintenance">Under Maintenance</option>
+          <option value="reserved">Reserved</option>
+        </select>
+      </div>
+
+      <div style={fieldStyle}>
+        <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Package size={14} color="#6b7280" />
+          Load Capacity:
+        </label>
+        <input
+          type="number"
+          value={properties.loadCapacity || ''}
+          onChange={(e) => handlePropertyChange('loadCapacity', parseInt(e.target.value))}
+          style={inputStyle}
+          placeholder="Maximum load capacity"
+        />
+      </div>
+
       {/* Zone-specific properties */}
       {isZone && (
         <>
           <div style={fieldStyle}>
-            <label style={labelStyle}>Units:</label>
+            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Move size={14} color="#6b7280" />
+              Units:
+            </label>
             <input
               type="number"
               value={properties.units}
@@ -372,7 +533,10 @@ const WarehousePropertiesPanel = ({
           </div>
 
           <div style={fieldStyle}>
-            <label style={labelStyle}>Access Type:</label>
+            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Shield size={14} color="#6b7280" />
+              Access Type:
+            </label>
             <select
               value={properties.access}
               onChange={(e) => handlePropertyChange('access', e.target.value)}
@@ -386,7 +550,10 @@ const WarehousePropertiesPanel = ({
           </div>
 
           <div style={fieldStyle}>
-            <label style={labelStyle}>Capacity:</label>
+            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Package size={14} color="#6b7280" />
+              Capacity:
+            </label>
             <input
               type="number"
               value={properties.capacity}
@@ -402,7 +569,10 @@ const WarehousePropertiesPanel = ({
       {isUnit && (
         <>
           <div style={fieldStyle}>
-            <label style={labelStyle}>Status:</label>
+            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Zap size={14} color="#6b7280" />
+              Status:
+            </label>
             <select
               value={properties.status || 'available'}
               onChange={(e) => handlePropertyChange('status', e.target.value)}
@@ -416,7 +586,10 @@ const WarehousePropertiesPanel = ({
           </div>
 
           <div style={fieldStyle}>
-            <label style={labelStyle}>Load Capacity (kg):</label>
+            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Package size={14} color="#6b7280" />
+              Load Capacity (kg):
+            </label>
             <input
               type="number"
               value={properties.loadCapacity || 1000}

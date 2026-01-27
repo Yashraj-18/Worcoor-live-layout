@@ -5,6 +5,8 @@ import SkuIdSelector from './SkuIdSelector';
 import { getContextualLabel, generateStorageUnitLabelInfo } from '@/lib/warehouse/utils/componentLabeling';
 import showMessage from '@/lib/warehouse/utils/showMessage';
 import globalIdCache from '@/lib/warehouse/utils/globalIdCache';
+import { getLucideIcon, getCategoryIcon, getIconSize, getIconColor } from '@/lib/warehouse/constants/lucideIconMapping';
+import { Settings, X, MapPin, Tag, Package, Archive, Building, UsersRound, Star, Palette, Maximize2, Move, Shield, Zap, Users, Lock, Target } from 'lucide-react';
 
 const normalizeHexColor = (value: string, fallback: string = '#8D6E63'): string => {
   if (!value || typeof value !== 'string') {
@@ -53,10 +55,31 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
   const [skuIdSelectorVisible, setSkuIdSelectorVisible] = useState(false);
   const [pendingCompartmentId, setPendingCompartmentId] = useState<string | null>(null);
 
+  // Get appropriate icon for the selected item
+  const getItemIcon = () => {
+    if (selectedItem?.type) {
+      return getLucideIcon(selectedItem.type);
+    }
+    return Settings;
+  };
+
+  const ItemIcon = getItemIcon();
+
   if (!selectedItem) {
     return (
       <div className="properties-panel animate-slide-right">
-        <h3>⚙️ Properties</h3>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          padding: '16px',
+          borderBottom: '1px solid rgba(148, 163, 184, 0.2)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Settings size={18} color="#94a3b8" />
+            <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: '16px' }}>Properties</h3>
+          </div>
+        </div>
         <div style={{ 
           textAlign: 'center', 
           color: '#94a3b8', 
@@ -68,7 +91,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
           border: '2px dashed rgba(148, 163, 184, 0.3)',
           backdropFilter: 'blur(10px)'
         }}>
-          <div style={{ fontSize: '2rem', marginBottom: 'var(--spacing-2)' }}>🎯</div>
+          <div style={{ fontSize: '2rem', marginBottom: 'var(--spacing-2)', display: 'flex', justifyContent: 'center' }}>
+            <Target size={48} color="#64748b" />
+          </div>
           <div style={{ fontWeight: '600', marginBottom: 'var(--spacing-1)', color: '#e2e8f0' }}>No Selection</div>
           <div style={{ color: '#64748b' }}>Click on any warehouse item to view and edit its properties</div>
         </div>
@@ -256,30 +281,67 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
 
   return (
     <div className="properties-panel animate-slide-right">
-      <h3>⚙️ Properties</h3>
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        padding: '16px',
+        borderBottom: '1px solid rgba(148, 163, 184, 0.2)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Settings size={18} color="#94a3b8" />
+          <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: '16px' }}>Properties</h3>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            width: '32px',
+            height: '32px',
+            backgroundColor: selectedItem.color || '#6b7280',
+            borderRadius: '6px',
+            flexShrink: 0
+          }}>
+            <ItemIcon size={16} color="white" />
+          </div>
+        </div>
+      </div>
       
       {/* Enhanced Storage Unit Information */}
       {selectedItem.type === 'storage_unit' && (() => {
         const labelInfo = generateStorageUnitLabelInfo(selectedItem, 1);
         const displayName = selectedItem.name || 'Storage Unit';
         return (
-          <div style={{ 
-            backgroundColor: 'rgba(34, 197, 94, 0.1)', 
-            padding: '12px', 
-            borderRadius: '6px', 
-            border: '1px solid rgba(34, 197, 94, 0.3)',
-            marginBottom: '16px',
-            backdropFilter: 'blur(10px)'
-          }}>
-            <div style={{ fontWeight: 'bold', color: '#4ade80', marginBottom: '8px' }}>
-              📦 {displayName} Information
+          <div className="property-group storage-unit-info">
+            <div className="property-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Package size={16} color="#4ade80" />
+              {displayName} Information
             </div>
-            <div style={{ fontSize: '0.9rem', color: '#86efac' }}>
-              <div><strong>Type:</strong> {displayName}</div>
-              <div><strong>Location ID:</strong> {getContextualLabel(selectedItem, 'properties') || 'Not Assigned'}</div>
-              <div><strong>Category:</strong> {displayName}</div>
+            <div style={{ fontSize: '0.9rem', color: '#86efac', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Archive size={12} color="#86efac" />
+                <strong>Type:</strong> {displayName}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <MapPin size={12} color="#86efac" />
+                <strong>Location ID:</strong> {getContextualLabel(selectedItem, 'properties') || 'Not Assigned'}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Tag size={12} color="#86efac" />
+                <strong>Category:</strong> {displayName}
+              </div>
               {selectedItem.locationId && (
-                <div style={{ marginTop: '4px', fontSize: '0.8rem', fontStyle: 'italic', color: '#bbf7d0' }}>
+                <div style={{ 
+                  marginTop: '4px', 
+                  fontSize: '0.8rem', 
+                  fontStyle: 'italic', 
+                  color: '#bbf7d0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <Star size={12} color="#bbf7d0" />
                   Selected from dropdown: {selectedItem.locationId}
                 </div>
               )}
@@ -289,7 +351,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
       })()}
 
       <div className="property-group">
-        <label className="property-label">Component Name</label>
+        <label className="property-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Package size={14} color="#6b7280" />
+          Component Name
+        </label>
         <input
           type="text"
           className="property-input"
@@ -311,7 +376,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
       </div>
 
       <div className="property-group">
-        <label className="property-label">Label</label>
+        <label className="property-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Star size={14} color="#6b7280" />
+          Label
+        </label>
         <input
           type="text"
           className="property-input"
@@ -323,8 +391,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
 
       {isSpareUnit && (
         <div className="property-group">
-          <label className="property-label">Spare Unit Color</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+          <label className="property-label">
+            <Palette size={14} color="#6b7280" />
+            Spare Unit Color
+          </label>
+          <div className="color-palette">
             {SPARE_UNIT_PALETTE.map((paletteColor) => {
               const isSelected = spareUnitBaseColor === normalizeHexColor(paletteColor);
               return (
@@ -332,46 +403,15 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
                   key={paletteColor}
                   type="button"
                   onClick={() => handleSpareUnitColorChange(paletteColor)}
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    border: isSelected ? '2px solid #212121' : '2px solid transparent',
-                    boxShadow: isSelected ? '0 0 0 3px rgba(255, 193, 7, 0.6)' : '0 1px 3px rgba(0,0,0,0.25)',
-                    backgroundColor: paletteColor,
-                    cursor: 'pointer',
-                    position: 'relative',
-                    transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-                  }}
+                  className={`color-option ${isSelected ? 'selected' : ''}`}
                   aria-label={`Select spare unit color ${paletteColor}`}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.05)';
-                    e.currentTarget.style.boxShadow = '0 3px 6px rgba(0,0,0,0.3)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)';
-                    e.currentTarget.style.boxShadow = isSelected ? '0 0 0 3px rgba(255, 193, 7, 0.6)' : '0 1px 3px rgba(0,0,0,0.25)';
-                  }}
                 >
-                  {isSelected && (
-                    <span style={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      color: '#ffffff',
-                      fontSize: '1rem',
-                      fontWeight: 700,
-                      textShadow: '0 1px 3px rgba(0,0,0,0.45)'
-                    }}>
-                      ✓
-                    </span>
-                  )}
+                  {isSelected && <span>✓</span>}
                 </button>
               );
             })}
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#6c757d', marginTop: '0.35rem' }}>
+          <div className="help-text">
             Pick from curated colors to keep spare unit placeholders consistent.
           </div>
         </div>
@@ -380,10 +420,12 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
 
       <div className="property-group">
         <label className="property-label">
+          <Maximize2 size={14} color="#6b7280" />
           Position X
-          {selectedItem.isPositionLocked && <span style={{ color: '#FF5722', marginLeft: '8px' }}>🔒</span>}
-          <span style={{ color: '#4CAF50', marginLeft: '8px', fontSize: '0.8rem' }}>
-            📐 Grid: {selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}px
+          {selectedItem.isPositionLocked && <span className="status-indicator locked"><Lock size={12} /> Locked</span>}
+          <span className="status-indicator grid">
+            <Move size={12} />
+            Grid: {selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}px
           </span>
         </label>
         <input
@@ -399,17 +441,19 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
             cursor: selectedItem.isPositionLocked ? 'not-allowed' : 'text'
           }}
         />
-        <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
+        <div className="grid-info">
           Grid position: {Math.round(selectedItem.x / (selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))))} × {selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}px
         </div>
       </div>
 
       <div className="property-group">
         <label className="property-label">
+          <Maximize2 size={14} color="#6b7280" />
           Position Y
-          {selectedItem.isPositionLocked && <span style={{ color: '#FF5722', marginLeft: '8px' }}>🔒</span>}
-          <span style={{ color: '#4CAF50', marginLeft: '8px', fontSize: '0.8rem' }}>
-            📐 Grid: {selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}px
+          {selectedItem.isPositionLocked && <span className="status-indicator locked"><Lock size={12} /> Locked</span>}
+          <span className="status-indicator grid">
+            <Move size={12} />
+            Grid: {selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}px
           </span>
         </label>
         <input
@@ -425,7 +469,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
             cursor: selectedItem.isPositionLocked ? 'not-allowed' : 'text'
           }}
         />
-        <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
+        <div className="grid-info">
           Grid position: {Math.round(selectedItem.y / (selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))))} × {selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}px
         </div>
       </div>
@@ -498,19 +542,21 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
           )}
         </div>
         {selectedItem.gridStep && (
-          <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
-            Grid blocks: {Math.round(selectedItem.width / selectedItem.gridStep)} × {selectedItem.gridStep}px
+          <div className="grid-info">
+            Grid units: {Math.round(selectedItem.width / selectedItem.gridStep)} × {selectedItem.gridStep}px
           </div>
         )}
       </div>
 
       <div className="property-group">
         <label className="property-label">
+          <Maximize2 size={14} color="#6b7280" />
           Height
-          {selectedItem.isSizeLocked && <span style={{ color: '#3F51B5', marginLeft: '8px' }}>📐</span>}
+          {selectedItem.isSizeLocked && <span className="status-indicator locked"><Lock size={12} /> Locked</span>}
           {selectedItem.gridStep && (
-            <span style={{ color: '#4CAF50', marginLeft: '8px', fontSize: '0.8rem' }}>
-              📏 Grid: {selectedItem.gridStep}px
+            <span className="status-indicator grid">
+              <Move size={12} />
+              Grid: {selectedItem.gridStep}px
             </span>
           )}
         </label>
@@ -520,11 +566,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
             className="property-input"
             value={selectedItem.height}
             onChange={(e) => handleNumberChange('height', e.target.value)}
-            min={selectedItem.minSize?.height || selectedItem.gridStep || 20}
-            max={selectedItem.maxSize?.height}
-            step={selectedItem.gridStep || 1}
+            min={selectedItem.minSize?.height || 60}
+            max={selectedItem.maxSize?.height || 1200}
+            step={selectedItem.gridStep || 15}
             disabled={selectedItem.isSizeLocked}
-            style={{ 
+            style={{
               opacity: selectedItem.isSizeLocked ? 0.6 : 1,
               cursor: selectedItem.isSizeLocked ? 'not-allowed' : 'text',
               flex: 1

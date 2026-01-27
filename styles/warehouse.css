@@ -2824,17 +2824,19 @@ code {
 
   z-index: 100;
 
+  border-radius: 12px 0 0 12px;
+
 }
 
 
 
-/* Properties Panel Header */
+/* Enhanced Properties Panel Header */
 
 .properties-panel h3 {
 
   margin: 0;
 
-  padding: 1.5rem 1.5rem 1rem;
+  padding: 1.25rem 1.5rem 1rem;
 
   color: #ffffff;
 
@@ -2860,21 +2862,39 @@ code {
 
   z-index: 10;
 
+  border-radius: 12px 12px 0 0;
+
 }
 
 
 
-/* Property Groups */
+/* Enhanced Property Groups */
 
 .property-group {
 
-  padding: 1rem 1.5rem;
+  padding: 1.25rem 1.5rem;
 
   border-bottom: 1px solid rgba(59, 130, 246, 0.1);
 
+  background: rgba(255, 255, 255, 0.02);
+
+  border-radius: 8px;
+
+  margin: 0.75rem 1rem;
+
+  backdrop-filter: blur(10px);
+
+  transition: all 0.2s ease;
+
 }
 
+.property-group:hover {
 
+  background: rgba(255, 255, 255, 0.04);
+
+  border-color: rgba(59, 130, 246, 0.2);
+
+}
 
 .property-group:last-child {
 
@@ -2884,9 +2904,15 @@ code {
 
 
 
+/* Enhanced Property Labels */
+
 .property-label {
 
-  display: block;
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
 
   font-size: 0.8125rem;
 
@@ -2903,6 +2929,8 @@ code {
 }
 
 
+
+/* Enhanced Property Inputs */
 
 .property-input {
 
@@ -2926,9 +2954,9 @@ code {
 
   font-family: inherit;
 
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
 }
-
-
 
 .property-input:hover {
 
@@ -2936,9 +2964,9 @@ code {
 
   border-color: rgba(59, 130, 246, 0.4);
 
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+
 }
-
-
 
 .property-input:focus {
 

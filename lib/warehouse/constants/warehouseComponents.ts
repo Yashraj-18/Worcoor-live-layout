@@ -101,14 +101,12 @@ export const ORIENTATION_COLORS = {
 export const WAREHOUSE_COMPONENTS = [
   {
     category: "Primary Components",
-    icon: "⭐",
     priority: "high",
     expanded: true,
     components: [
       {
         type: COMPONENT_TYPES.SKU_HOLDER,
         name: "Horizontal Storage Rack",
-        icon: "📋",
         color: getComponentPanelColor(COMPONENT_TYPES.SKU_HOLDER),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block = 1 SKU compartment
         description: "Horizontal storage rack system where each 60×60px grid block holds 1 SKU unit",
@@ -129,7 +127,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.VERTICAL_SKU_HOLDER,
         name: "Vertical Storage Rack",
-        icon: "📐",
         color: getComponentPanelColor(COMPONENT_TYPES.VERTICAL_SKU_HOLDER),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block = 1 SKU compartment
         description: "Vertical storage rack system where each 60×60px grid block holds 1 SKU unit",
@@ -214,14 +211,12 @@ export const WAREHOUSE_COMPONENTS = [
   },
     {
     category: "Boundaries",
-    icon: "🔲",
     priority: "high",
     expanded: true,
     components: [
       {
         type: COMPONENT_TYPES.SOLID_BOUNDARY,
         name: "Solid Boundary",
-        icon: "⬜",
         color: getComponentPanelColor(COMPONENT_TYPES.SOLID_BOUNDARY),
         defaultSize: { width: 180, height: 180 }, // 3×3 grid blocks
         description: "Solid boundary box for zone divisions with normal border",
@@ -241,7 +236,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.DOTTED_BOUNDARY,
         name: "Dotted Boundary",
-        icon: "⬛",
         color: getComponentPanelColor(COMPONENT_TYPES.DOTTED_BOUNDARY),
         defaultSize: { width: 180, height: 180 }, // 3×3 grid blocks
         description: "Dotted boundary box for zone divisions with dashed border",
@@ -262,14 +256,12 @@ export const WAREHOUSE_COMPONENTS = [
   },
   {
     category: "Storage Components",
-    icon: "🔹",
     priority: "high",
     expanded: true,
     components: [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Storage Unit",
-        icon: "📦",
         color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Individual storage unit with sequential SKU ID assignment",
@@ -284,7 +276,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Open Storage Space",
-        icon: "📦",
         color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Open storage space with sequential SKU ID assignment",
@@ -299,7 +290,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Dispatch Staging Area",
-        icon: "📦",
         color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Dispatch staging area with sequential SKU ID assignment",
@@ -314,7 +304,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Grading Area",
-        icon: "📦",
         color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Grading area with sequential SKU ID assignment",
@@ -329,7 +318,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Processing Area",
-        icon: "📦",
         color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Processing area with sequential SKU ID assignment",
@@ -344,7 +332,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Storage Unit",
-        icon: "📦",
         color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Individual storage unit with sequential SKU ID assignment",
@@ -359,7 +346,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Production Area",
-        icon: "📦",
         color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Production area with sequential SKU ID assignment",
@@ -374,7 +360,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Packaging Area",
-        icon: "📦",
         color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Packaging area with sequential SKU ID assignment",
@@ -389,7 +374,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Cold Storage",
-        icon: "❄️",
         color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Temperature-controlled cold storage unit for perishable goods",
@@ -405,7 +389,6 @@ export const WAREHOUSE_COMPONENTS = [
   },
   {
     category: "Common Areas",
-    icon: "🏢",
     priority: "medium",
     expanded: false,
     components: [
@@ -467,7 +450,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.PATHWAYS_ARROWS,
         name: "Pathways Arrows",
-        icon: "➡️",
         color: getComponentPanelColor(COMPONENT_TYPES.PATHWAYS_ARROWS),
         defaultSize: { width: 180, height: 60 }, // 3×1 grid blocks
         description: "Directional arrows for pathway and traffic flow guidance",
@@ -486,14 +468,12 @@ export const WAREHOUSE_COMPONENTS = [
   },
   {
     category: "Office Spaces",
-    icon: "🏢",
     priority: "medium",
     expanded: false,
     components: [
       {
         type: COMPONENT_TYPES.CONFERENCE_ROOM,
         name: "Conference Room",
-        icon: "🤝",
         color: getComponentPanelColor(COMPONENT_TYPES.CONFERENCE_ROOM),
         defaultSize: { width: 300, height: 240 }, // 5×4 grid blocks
         description: "Large conference room for meetings and presentations",
@@ -512,7 +492,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.MEETING_ROOMS,
         name: "Meeting Rooms",
-        icon: "👥",
         color: getComponentPanelColor(COMPONENT_TYPES.MEETING_ROOMS),
         defaultSize: { width: 180, height: 180 }, // 3×3 grid blocks
         description: "Small meeting rooms for team discussions",
@@ -531,7 +510,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.PANTRY_AREA,
         name: "Pantry Area",
-        icon: "☕",
         color: getComponentPanelColor(COMPONENT_TYPES.PANTRY_AREA),
         defaultSize: { width: 120, height: 120 }, // 2×2 grid blocks
         description: "Kitchen and refreshment area for staff",
@@ -550,7 +528,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.OPEN_STAGE,
         name: "Open Stage",
-        icon: "🎭",
         color: getComponentPanelColor(COMPONENT_TYPES.OPEN_STAGE),
         defaultSize: { width: 360, height: 240 }, // 6×4 grid blocks
         description: "Open stage area for presentations and performances",
@@ -588,7 +565,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.BOOTHS,
         name: "Booths",
-        icon: "🪟",
         color: getComponentPanelColor(COMPONENT_TYPES.BOOTHS),
         defaultSize: { width: 120, height: 120 }, // 2×2 grid blocks
         description: "Private work booths for focused work",
@@ -607,7 +583,6 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.GENERAL_AREA,
         name: "General Area",
-        icon: "🏛️",
         color: getComponentPanelColor(COMPONENT_TYPES.GENERAL_AREA),
         defaultSize: { width: 180, height: 180 }, // 3×3 grid blocks
         description: "Multipurpose area for various activities",

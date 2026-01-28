@@ -3,15 +3,15 @@
 import React, { useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useDrag } from 'react-dnd';
-import { DRAG_TYPES, STACKABLE_COMPONENTS, STATUS_COLORS, OCCUPANCY_STATUS, ORIENTATION_COLORS } from '@/lib/warehouse/constants/warehouseComponents';
+import { DRAG_TYPES, STACKABLE_COMPONENTS, STATUS_COLORS, OCCUPANCY_STATUS } from '@/lib/warehouse/constants/warehouseComponents';
 import { getComponentColor } from '@/lib/warehouse/utils/componentColors';
 import { renderShapeComponent } from '@/lib/warehouse/utils/shapeRenderer';
-import { getContextualLabel, generateStorageUnitLabelInfo } from '@/lib/warehouse/utils/componentLabeling';
+import { getContextualLabel } from '@/lib/warehouse/utils/componentLabeling';
 import { inferVerticalRackLevelCount } from '@/lib/warehouse/utils/verticalRackUtils';
 import HoverInfoTooltip from './HoverInfoTooltip';
 import ResizeHandle from './ResizeHandle';
 
-const getContrastColorForHex = (hexColor) => {
+const getContrastColorForHex = (hexColor: any) => {
   if (!hexColor || typeof hexColor !== 'string') {
     return '#FFFFFF';
   }
@@ -35,9 +35,9 @@ const getContrastColorForHex = (hexColor) => {
   return luminance > 0.6 ? '#000000' : '#FFFFFF';
 };
 
-const clampChannel = (value) => Math.max(0, Math.min(255, value));
+const clampChannel = (value: number) => Math.max(0, Math.min(255, value));
 
-const adjustHexColor = (hexColor, amount = 0) => {
+const adjustHexColor = (hexColor: string, amount: number = 0) => {
   if (!hexColor || typeof hexColor !== 'string') {
     return '#475569';
   }
@@ -56,7 +56,7 @@ const adjustHexColor = (hexColor, amount = 0) => {
   const g = parseInt(hex.substring(2, 4), 16);
   const b = parseInt(hex.substring(4, 6), 16);
 
-  const adjustChannelValue = (channel) => {
+  const adjustChannelValue = (channel: number) => {
     if (amount >= 0) {
       return clampChannel(Math.round(channel + (255 - channel) * amount));
     }
@@ -70,7 +70,7 @@ const adjustHexColor = (hexColor, amount = 0) => {
   return `#${nextR.toString(16).padStart(2, '0')}${nextG.toString(16).padStart(2, '0')}${nextB.toString(16).padStart(2, '0')}`;
 };
 
-const toTitleCase = (value) => {
+const toTitleCase = (value: any) => {
   if (!value || typeof value !== 'string') {
     return '';
   }
@@ -98,13 +98,13 @@ const WarehouseItem = ({
   isReadOnly,
   isHighlighted = false,
   highlightedCompartments
-}) => {
-  const [hoverTooltip, setHoverTooltip] = useState(null);
-  const [hoveredCompartment, setHoveredCompartment] = useState(null);
+}: any) => {
+  const [hoverTooltip, setHoverTooltip] = useState<any>(null);
+  const [hoveredCompartment, setHoveredCompartment] = useState<any>(null);
 
   const hasCompartments = Boolean(item.skuGrid && item.showCompartments);
 
-  const getTooltipPosition = useCallback((eventLike) => {
+  const getTooltipPosition = useCallback((eventLike: any) => {
     if (!eventLike) {
       return { top: 0, left: 0 };
     }
@@ -142,7 +142,7 @@ const WarehouseItem = ({
     return { top, left };
   }, []);
 
-  const showTooltip = useCallback((eventLike, content, variant = 'occupied', context = 'item') => {
+  const showTooltip = useCallback((eventLike: any, content: any, variant: any = 'occupied', context: any = 'item') => {
     if (!eventLike || !content) {
       return;
     }
@@ -160,14 +160,14 @@ const WarehouseItem = ({
     setHoverTooltip(null);
   }, []);
 
-  const renderDetailRow = useCallback((label, value, key) => (
+  const renderDetailRow = useCallback((label: any, value: any, key: any) => (
     <div className="hover-card__metric" key={key || label}>
       <span className="hover-card__metric-label">{label}</span>
       <span className="hover-card__metric-value">{value ?? '—'}</span>
     </div>
   ), []);
 
-  const buildCompartmentTooltipContent = useCallback((rowIndex, colIndex, compartmentData) => {
+  const buildCompartmentTooltipContent = useCallback((rowIndex: number, colIndex: number, compartmentData: any) => {
     const baseMeta = {
       row: rowIndex + 1,
       column: colIndex + 1
@@ -189,7 +189,7 @@ const WarehouseItem = ({
 
     const resolvedLocationIds = Array.isArray(locationIds) ? locationIds.filter(Boolean) : [];
     const resolvedMappings = Array.isArray(levelLocationMappings)
-      ? levelLocationMappings.filter((mapping) => mapping && mapping.locationId)
+      ? levelLocationMappings.filter((mapping: any) => mapping && mapping.locationId)
       : [];
     const primaryLocation = hasAssignment
       ? locationId || uniqueId || resolvedLocationIds[0] || 'N/A'
@@ -201,14 +201,14 @@ const WarehouseItem = ({
       }
 
       if (resolvedMappings.length > 0) {
-        return resolvedMappings.map((mapping, idx) => {
+        return resolvedMappings.map((mapping: any, idx: number) => {
           const levelLabel = mapping.levelId || tags?.[idx] || `L${idx + 1}`;
           return `${levelLabel}: ${mapping.locationId}`;
         });
       }
 
       if (isMultiLocation && resolvedLocationIds.length > 0) {
-        return resolvedLocationIds.map((id, idx) => {
+        return resolvedLocationIds.map((id: any, idx: number) => {
           const levelLabel = tags?.[idx];
           return levelLabel ? `${levelLabel}: ${id}` : id;
         });
@@ -287,7 +287,7 @@ const WarehouseItem = ({
             <div className="hover-card__section">
               <div className="hover-card__section-label">Assigned Locations</div>
               <div className="hover-card__chip-row">
-                {resolvedLocationIds.map((id, idx) => (
+                {resolvedLocationIds.map((id: any, idx: number) => (
                   <span className="hover-card__chip" key={`${id}-${idx}`}>
                     {id}
                     {tags && tags[idx] && <span className="hover-card__chip-tag">{tags[idx]}</span>}
@@ -329,16 +329,16 @@ const WarehouseItem = ({
       rows.push(['Location Tag', item.locationTag]);
     }
 
-    const inventoryEntries = item.inventoryData?.inventory || [];
+    const inventoryEntries: any[] = item.inventoryData?.inventory || [];
     const isStorageComponent = ['storage_unit', 'sku_holder', 'vertical_sku_holder', 'storage_zone', 'container_unit', 'open_storage_space'].includes(item.type);
     const maxCapacity = isStorageComponent ? (item.inventoryData?.capacity ?? item.capacity ?? null) : null;
-    const totalInventoryQuantity = inventoryEntries.reduce((sum, entry) => {
+    const totalInventoryQuantity = inventoryEntries.reduce((sum: number, entry: any) => {
       const value = entry?.availableQuantity ?? entry?.quantity ?? 0;
       return sum + (typeof value === 'number' ? value : 0);
     }, 0);
     const availableCapacity = maxCapacity !== null ? Math.max(maxCapacity - totalInventoryQuantity, 0) : null;
     const storedItems = inventoryEntries
-      .map((entry) => entry?.skuName || entry?.sku || entry?.skuCode)
+      .map((entry: any) => entry?.skuName || entry?.sku || entry?.skuCode)
       .filter(Boolean);
     const uniqueStoredItems = Array.from(new Set(storedItems));
 
@@ -408,7 +408,7 @@ const WarehouseItem = ({
     );
   }, [item, renderDetailRow]);
 
-  const handleItemMouseEnter = useCallback((event) => {
+  const handleItemMouseEnter = useCallback((event: any) => {
     // Only show tooltips in read-only mode (viewer), not in edit mode (layout builder)
     if (!isReadOnly) {
       return;
@@ -418,7 +418,7 @@ const WarehouseItem = ({
       return;
     }
 
-    if (item.showCompartments) {
+    if (hasCompartments) {
       return;
     }
 
@@ -431,15 +431,15 @@ const WarehouseItem = ({
       ? 'occupied'
       : 'empty';
     showTooltip(event, content, variant, 'item');
-  }, [buildItemTooltipContent, item.occupancyStatus, item.type, showTooltip, isReadOnly]);
+  }, [buildItemTooltipContent, hasCompartments, item.occupancyStatus, item.type, showTooltip, isReadOnly]);
 
-  const handleItemMouseMove = useCallback((event) => {
+  const handleItemMouseMove = useCallback((event: any) => {
     // Only show tooltips in read-only mode (viewer), not in edit mode (layout builder)
     if (!isReadOnly) {
       return;
     }
 
-    if (item.type === 'square_boundary' || item.showCompartments || !hoverTooltip || hoverTooltip.context !== 'item') {
+    if (item.type === 'square_boundary' || hasCompartments || !hoverTooltip || hoverTooltip.context !== 'item') {
       return;
     }
     const content = buildItemTooltipContent();
@@ -447,7 +447,7 @@ const WarehouseItem = ({
       return;
     }
     showTooltip(event, content, hoverTooltip.variant, 'item');
-  }, [buildItemTooltipContent, hoverTooltip, item.type, showTooltip, isReadOnly]);
+  }, [buildItemTooltipContent, hasCompartments, hoverTooltip, item.type, showTooltip, isReadOnly]);
 
   const handleItemMouseLeave = useCallback(() => {
     // Only hide tooltips if we're in read-only mode
@@ -456,7 +456,7 @@ const WarehouseItem = ({
     }
   }, [hideTooltip, isReadOnly]);
 
-  const handleCompartmentHover = useCallback((event, compartmentData, rowIndex, colIndex) => {
+  const handleCompartmentHover = useCallback((event: any, compartmentData: any, rowIndex: number, colIndex: number) => {
     // Only show tooltips in read-only mode (viewer), not in edit mode (layout builder)
     if (!isReadOnly) {
       return;
@@ -478,16 +478,23 @@ const WarehouseItem = ({
     const gap = 3;
     const cellWidth = cols > 0 ? (item.width - gap * (cols - 1)) / cols : item.width;
     const cellHeight = rows > 0 ? (item.height - gap * (rows - 1)) / rows : item.height;
-    const isVertical = item.type === 'vertical_sku_holder';
-    const isOfficeSpace = item.type === 'office_space_area';
-    const filledFill = isVertical ? '#FFE0B2' : (isOfficeSpace ? 'transparent' : '#E0F7FA');
-    const emptyFill = isVertical ? '#FFF3E0' : (isOfficeSpace ? 'transparent' : '#E3F2FD');
+    const normalizedType = (item.type || '')
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, '_')
+      .replace(/_+/g, '_');
+    const isVertical = normalizedType === 'vertical_sku_holder';
+    const isOfficeSpace = normalizedType === 'office_space_area';
+    const isStorageRack = normalizedType === 'sku_holder' || normalizedType === 'vertical_sku_holder';
+    const filledFill = isStorageRack ? 'transparent' : (isVertical ? '#FFE0B2' : (isOfficeSpace ? 'transparent' : '#E0F7FA'));
+    const emptyFill = isStorageRack ? 'transparent' : (isVertical ? '#FFF3E0' : (isOfficeSpace ? 'transparent' : '#E3F2FD'));
     const highlightFill = '#FFF9C4';
-    const hoverFillOccupied = isVertical ? '#FFCC80' : (isOfficeSpace ? 'rgba(96, 125, 139, 0.1)' : '#B2EBF2');
-    const hoverFillEmpty = isVertical ? '#FFE0CC' : (isOfficeSpace ? 'rgba(96, 125, 139, 0.05)' : '#BBDEFB');
-    const textColor = isVertical ? '#E65100' : (isOfficeSpace ? '#607D8B' : '#006064');
+    const hoverFillOccupied = isStorageRack ? 'transparent' : (isVertical ? '#FFCC80' : (isOfficeSpace ? 'rgba(96, 125, 139, 0.1)' : '#B2EBF2'));
+    const hoverFillEmpty = isStorageRack ? 'transparent' : (isVertical ? '#FFE0CC' : (isOfficeSpace ? 'rgba(96, 125, 139, 0.05)' : '#BBDEFB'));
+    const textColor = isStorageRack ? '#111827' : (isVertical ? '#E65100' : (isOfficeSpace ? '#607D8B' : '#006064'));
 
-    const resolveLabel = (compartmentData) => {
+    const resolveLabel = (compartmentData: any) => {
       if (!compartmentData) {
         return '+';
       }
@@ -514,7 +521,7 @@ const WarehouseItem = ({
         viewBox={`0 0 ${item.width} ${item.height}`}
         style={{ position: 'absolute', top: 0, left: 0, zIndex: 2 }}
       >
-        {Array.from({ length: totalCompartments }).map((_, index) => {
+        {Array.from({ length: totalCompartments }).map((_: any, index: number) => {
           const row = Math.floor(index / cols);
           const col = index % cols;
           const compartmentId = `${row}-${col}`;
@@ -543,16 +550,16 @@ const WarehouseItem = ({
           return (
             <g
               key={compartmentId}
-              onMouseEnter={(event) => {
+              onMouseEnter={(event: any) => {
                 setHoveredCompartment(compartmentId);
                 handleCompartmentHover(event, compartmentData, row, col);
               }}
-              onMouseMove={(event) => handleCompartmentHover(event, compartmentData, row, col)}
+              onMouseMove={(event: any) => handleCompartmentHover(event, compartmentData, row, col)}
               onMouseLeave={() => {
                 setHoveredCompartment(null);
                 hideTooltip();
               }}
-              onClick={(event) => {
+              onClick={(event: any) => {
                 event.stopPropagation();
                 
                 // In readonly mode, trigger item selection for location details
@@ -568,7 +575,7 @@ const WarehouseItem = ({
                   onRequestSkuId(item.id, compartmentId, row, col);
                 }
               }}
-              onContextMenu={(event) => {
+              onContextMenu={(event: any) => {
                 event.preventDefault();
                 event.stopPropagation();
                 if (compartmentData && onUpdate) {
@@ -611,7 +618,7 @@ const WarehouseItem = ({
                   textAnchor="middle"
                   fontSize={fontSize}
                   fontWeight={compartmentData ? 600 : 500}
-                  fill={isCompartmentHighlighted ? '#1B5E20' : textColor}
+                  fill={isStorageRack ? textColor : (isCompartmentHighlighted ? '#1B5E20' : textColor)}
                   style={{ pointerEvents: 'none' }}
                 >
                   {label}
@@ -635,12 +642,12 @@ const WarehouseItem = ({
       isSizeLocked: item.isSizeLocked
     },
     canDrag: () => !isReadOnly && !item.isPositionLocked, // Prevent dragging when position is locked or in read-only mode
-    collect: (monitor) => ({
+    collect: (monitor: any) => ({
       isDragging: monitor.isDragging(),
     }),
   });
 
-  const handleClick = (e) => {
+  const handleClick = (e: any) => {
     e.stopPropagation();
 
     if (isReadOnly) {
@@ -670,7 +677,7 @@ const WarehouseItem = ({
     onSelect(item.id);
   };
 
-  const handleDoubleClick = (e) => {
+  const handleDoubleClick = (e: any) => {
     e.stopPropagation();
     if (isReadOnly) {
       return;
@@ -681,7 +688,7 @@ const WarehouseItem = ({
     }
   };
 
-  const handleRightClick = (e) => {
+  const handleRightClick = (e: any) => {
     e.preventDefault();
     e.stopPropagation();
     if (onRightClick) {
@@ -689,7 +696,7 @@ const WarehouseItem = ({
     }
   };
 
-  const handleInfoClick = (e) => {
+  const handleInfoClick = (e: any) => {
     e.stopPropagation();
     if (onInfoClick) {
       onInfoClick(e, item);
@@ -701,7 +708,7 @@ const WarehouseItem = ({
   const isContainer = item.isContainer;
 
   // Resize handling functions
-  const handleResizeStart = (e, direction) => {
+  const handleResizeStart = (e: any, direction: any) => {
     e.stopPropagation();
     e.preventDefault();
     
@@ -712,7 +719,7 @@ const WarehouseItem = ({
     // Use major grid (60px) for square boundary, sub-grid (15px) for others
     const gridSize = (item.type === 'square_boundary' || item.gridAligned) ? 60 : 15;
     
-    const handleMouseMove = (moveEvent) => {
+    const handleMouseMove = (moveEvent: any) => {
       const deltaX = moveEvent.clientX - startX;
       const deltaY = moveEvent.clientY - startY;
       
@@ -752,17 +759,28 @@ const WarehouseItem = ({
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
+  const normalizedType = (item?.type || '')
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
+    .replace(/_+/g, '_');
+  const isHorizontalRack = normalizedType === 'sku_holder';
+  const isVerticalRack = normalizedType === 'vertical_sku_holder';
+  const isStorageRack = isHorizontalRack || isVerticalRack;
+  const isStorageUnitType = normalizedType === 'storage_unit';
+
   const isContained = item.containerId;
   const containerLevel = item.containerLevel || 0;
   const isMainBoundary = containerLevel === 1;
   const isZone = containerLevel === 2;
   const isUnit = containerLevel === 3;
-  const isSpareUnit = item.type === 'spare_unit';
+  const isSpareUnit = normalizedType === 'spare_unit';
   const spareUnitColor = isSpareUnit
-    ? (item.customColor || item.color || getComponentColor(item.type, item.category) || '#8D6E63')
+    ? (item.customColor || item.color || getComponentColor(normalizedType, item.category) || '#8D6E63')
     : null;
   const spareUnitTextColor = isSpareUnit ? getContrastColorForHex(spareUnitColor) : null;
-  const storageUnitColor = item.type === 'storage_unit'
+  const storageUnitColor = isStorageUnitType
     ? 'transparent'  // Transparent - Fresh start with no color
     : null;
   const storageUnitTextColor = storageUnitColor ? '#000000' : '#FFFFFF'; // Black text for transparent background
@@ -776,35 +794,38 @@ const WarehouseItem = ({
 
   return (
     <div
-      ref={drag}
+      ref={(node) => {
+        drag(node);
+      }}
       className={`warehouse-item ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${isContainer ? 'container' : ''} ${isContained ? 'contained' : ''} ${isMainBoundary ? 'main-boundary' : ''} ${isZone ? 'zone' : ''} ${isUnit ? 'unit' : ''}`}
-      data-type={item.type}
+      data-type={normalizedType}
       data-occupancy={item.occupancyStatus || OCCUPANCY_STATUS.EMPTY}
       data-container={isContainer}
       data-contained={isContained}
       data-container-level={containerLevel}
       data-position-locked={item.isPositionLocked || false}
       data-size-locked={item.isSizeLocked || false}
-      data-color={isSpareUnit ? spareUnitColor : (item.type === 'storage_unit' ? storageUnitColor : item.color || '')}
+      data-color={isSpareUnit ? spareUnitColor : (isStorageUnitType ? storageUnitColor : item.color || '')}
       style={{
         left: item.x,
         top: item.y,
         width: item.width,
         height: item.height,
+        background: isStorageRack ? 'transparent' : undefined,
+        backgroundImage: isStorageRack ? 'none' : undefined,
         backgroundColor: item.isHollow ? 'transparent' : 
-          (item.type === 'storage_unit' ? 'transparent' : 
-           item.type === 'sku_holder' ? 'transparent' :
-           item.type === 'vertical_sku_holder' ? 'transparent' :
+          (isStorageUnitType ? 'transparent' : 
+           isStorageRack ? 'transparent' :
            isSpareUnit ? spareUnitColor :
            isContainer ? 'transparent' : 
-           getComponentColor(item.type, item.category)),
-        border: item.type === 'storage_unit' || isSpareUnit ? 'none' :
-               item.type === 'sku_holder' || item.type === 'vertical_sku_holder' ? 'none' : 
-               (item.type === 'square_boundary' ? '4px solid #000000' : 
+           getComponentColor(normalizedType, item.category)),
+        border: isStorageUnitType || isSpareUnit ? 'none' :
+               isStorageRack ? 'none' : 
+               (normalizedType === 'square_boundary' ? '4px solid #000000' : 
                (isMainBoundary ? '4px solid #263238' : 
-               (isZone ? `3px solid ${getComponentColor(item.type)}` : 
-               (isContainer ? `3px solid ${getComponentColor(item.type)}` : 
-               (isContained ? `2px dashed ${getComponentColor(item.type) || statusColor}` : `3px solid ${getComponentColor(item.type) || statusColor}`))))),
+               (isZone ? `3px solid ${getComponentColor(normalizedType)}` : 
+               (isContainer ? `3px solid ${getComponentColor(normalizedType)}` : 
+               (isContained ? `2px dashed ${getComponentColor(normalizedType) || statusColor}` : `3px solid ${getComponentColor(normalizedType) || statusColor}`))))),
         borderRadius: '0px',
         boxShadow: isHighlighted && !hasHighlightedCompartments ? '0 0 12px 3px rgba(79, 70, 229, 0.6)' : 'none',
         opacity: isDragging ? 0.7 : 1,
@@ -819,16 +840,19 @@ const WarehouseItem = ({
       onMouseLeave={handleItemMouseLeave}
     >
       {/* Debug: Show component info */}
-      {console.log('WarehouseItem rendering:', {
-        id: item.id,
-        type: item.type,
-        name: item.name,
-        position: { x: item.x, y: item.y },
-        dimensions: { width: item.width, height: item.height },
-        backgroundColor: item.type === 'storage_unit' ? storageUnitColor : item.color,
-        isHollow: item.isHollow,
-        showCompartments: item.showCompartments
-      })}
+      {(() => {
+        console.log('WarehouseItem rendering:', {
+          id: item.id,
+          type: item.type,
+          name: item.name,
+          position: { x: item.x, y: item.y },
+          dimensions: { width: item.width, height: item.height },
+          backgroundColor: isStorageUnitType ? storageUnitColor : item.color,
+          isHollow: item.isHollow,
+          showCompartments: item.showCompartments
+        });
+        return null;
+      })()}
       {/* Shape rendering for shape components */}
       {item.isShape && renderShapeComponent(item)}
       
@@ -844,7 +868,7 @@ const WarehouseItem = ({
               right: 0,
               textAlign: 'center',
               transform: 'translateY(-50%)',
-              color: spareUnitTextColor,
+              color: spareUnitTextColor || undefined,
               fontWeight: 'bold',
               fontSize: Math.min(Math.max(item.width / 10, 10), 14),
               textShadow: '0 1px 3px rgba(0,0,0,0.3)',
@@ -998,7 +1022,7 @@ const WarehouseItem = ({
                 borderRadius: '4px'
                 // No border - clean image display
               }}
-              onError={(e) => {
+              onError={(e: any) => {
                 console.error('Failed to load fire exit image, showing fallback');
                 // Show fallback text
                 e.target.style.display = 'none';
@@ -1049,7 +1073,7 @@ const WarehouseItem = ({
                 borderRadius: '2px',
                 backgroundColor: '#FFFFFF' // Ensure white background
               }}
-              onError={(e) => {
+              onError={(e: any) => {
                 console.error('Failed to load security area image, showing fallback');
                 // Show fallback text
                 e.target.style.display = 'none';
@@ -1099,7 +1123,7 @@ const WarehouseItem = ({
             {/* Restrooms Area Image */}
             <img
               src="/assets/images/icons/restroom.png"
-              alt="Restrooms Area"
+              alt="Restrooms"
               style={{
                 width: '90%',
                 height: '60px', // Fixed height to 60px as expected
@@ -1107,8 +1131,8 @@ const WarehouseItem = ({
                 borderRadius: '2px',
                 backgroundColor: '#FFFFFF' // Ensure white background
               }}
-              onError={(e) => {
-                console.error('Failed to load restrooms area image, showing fallback');
+              onError={(e: any) => {
+                console.error('Failed to load restrooms image, showing fallback');
                 // Show fallback text
                 e.target.style.display = 'none';
                 const fallback = document.createElement('div');
@@ -1156,8 +1180,8 @@ const WarehouseItem = ({
           >
             {/* Seating Area Image */}
             <img
-              src="/assets/images/icons/seating-area.png"
-              alt="Seating Area"
+              src="/assets/images/icons/seating.png"
+              alt="Seating"
               style={{
                 width: '90%',
                 height: '60px', // Fixed height to 60px as expected
@@ -1165,14 +1189,14 @@ const WarehouseItem = ({
                 borderRadius: '2px',
                 backgroundColor: '#FFFFFF' // Ensure white background
               }}
-              onError={(e) => {
-                console.error('Failed to load seating area image, showing fallback');
+              onError={(e: any) => {
+                console.error('Failed to load seating image, showing fallback');
                 // Show fallback text
                 e.target.style.display = 'none';
                 const fallback = document.createElement('div');
                 fallback.innerHTML = `
                   <div style="
-                    background-color: #607D8B;
+                    background-color: #4CAF50;
                     color: white;
                     font-weight: bold;
                     text-align: center;
@@ -1223,7 +1247,7 @@ const WarehouseItem = ({
                 borderRadius: '2px'
                 // No backgroundColor - transparent background
               }}
-              onError={(e) => {
+              onError={(e: any) => {
                 console.error('Failed to load dispatch gates image, showing fallback');
                 // Show fallback text
                 e.target.style.display = 'none';
@@ -1281,7 +1305,7 @@ const WarehouseItem = ({
                 borderRadius: '2px'
                 // No backgroundColor - transparent background
               }}
-              onError={(e) => {
+              onError={(e: any) => {
                 console.error('Failed to load inbound gates image, showing fallback');
                 // Show fallback text
                 e.target.style.display = 'none';
@@ -1317,7 +1341,7 @@ const WarehouseItem = ({
       {/* Resize handles for horizontal and vertical racks */}
       <ResizeHandle
         item={item}
-        onResize={(updates) => {
+        onResize={(updates: any) => {
           if (onUpdate) {
             onUpdate(item.id, updates);
           }
@@ -1366,7 +1390,7 @@ const WarehouseItem = ({
               left: '50%',
               transform: 'translateX(-50%)',
               marginTop: '6px',
-              backgroundColor: 'transparent',
+              backgroundColor: 'rgba(255,255,255,0.88)',
               color: '#000000',
               padding: '5px 10px',
               borderRadius: '4px',
@@ -1376,7 +1400,7 @@ const WarehouseItem = ({
               pointerEvents: 'none',
               userSelect: 'none',
               zIndex: 10000,
-              textShadow: '0 0 3px rgba(255,255,255,0.8), 0 0 5px rgba(255,255,255,0.6)'
+              textShadow: 'none'
             }}
           >
             {labelText}

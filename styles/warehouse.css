@@ -4140,6 +4140,30 @@ code {
 
 
 
+/* Ensure SKU Holder never shows any overlay tint */
+
+.warehouse-item[data-type="sku_holder"]::before,
+
+.warehouse-item[data-type="sku_holder"]::after,
+
+.warehouse-item[data-type="sku_holder"]:hover::before,
+
+.warehouse-item[data-type="sku_holder"]:hover::after,
+
+.warehouse-item[data-type="sku_holder"].selected::before,
+
+.warehouse-item[data-type="sku_holder"].selected::after {
+
+  display: none !important;
+
+  opacity: 0 !important;
+
+  background: transparent !important;
+
+}
+
+
+
 /* COMPLETE HOVER OVERRIDE FOR SKU HOLDER - ABSOLUTELY NO EFFECTS */
 
 div.warehouse-item[data-type="sku_holder"]:hover {
@@ -4148,11 +4172,11 @@ div.warehouse-item[data-type="sku_holder"]:hover {
 
   z-index: 5 !important;
 
-  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+  box-shadow: none !important;
 
-  border-color: #00BCD4 !important;
+  border-color: transparent !important;
 
-  background: linear-gradient(135deg, rgba(224, 247, 250, 0.9), rgba(224, 247, 250, 0.7)) !important;
+  background: transparent !important;
 
   transition: none !important;
 
@@ -4204,9 +4228,13 @@ div.warehouse-item[data-type="sku_holder"]:hover * {
 
   border: none !important;
 
-  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.5) !important;
+  box-shadow: none !important;
 
   background: transparent !important;
+
+  outline: none !important;
+
+  box-shadow: 0 0 0 0px rgba(0,0,0,0) !important;
 
 }
 
@@ -4277,6 +4305,30 @@ div.warehouse-item[data-type="vertical_sku_holder"] {
   animation: none !important;
 
   transition: none !important;
+
+}
+
+
+
+/* Ensure Vertical SKU Holder never shows any overlay tint */
+
+.warehouse-item[data-type="vertical_sku_holder"]::before,
+
+.warehouse-item[data-type="vertical_sku_holder"]::after,
+
+.warehouse-item[data-type="vertical_sku_holder"]:hover::before,
+
+.warehouse-item[data-type="vertical_sku_holder"]:hover::after,
+
+.warehouse-item[data-type="vertical_sku_holder"].selected::before,
+
+.warehouse-item[data-type="vertical_sku_holder"].selected::after {
+
+  display: none !important;
+
+  opacity: 0 !important;
+
+  background: transparent !important;
 
 }
 
@@ -4808,11 +4860,11 @@ div.warehouse-item[data-type="sku_holder"]:hover {
 
   rotate: none !important;
 
-  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+  box-shadow: none !important;
 
-  border-color: #00BCD4 !important;
+  border-color: transparent !important;
 
-  background: linear-gradient(135deg, rgba(224, 247, 250, 0.9), rgba(224, 247, 250, 0.7)) !important;
+  background: transparent !important;
 
 }
 
@@ -4840,7 +4892,7 @@ div.warehouse-item[data-type="vertical_sku_holder"]:hover {
 
   rotate: 0deg !important;
 
-  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+  box-shadow: none !important;
 
   border-color: transparent !important;
 
@@ -10102,7 +10154,8 @@ body, html {
 
 
 
-.warehouse-item.unit.selected {
+
+.warehouse-item.unit.selected:not([data-type="sku_holder"]):not([data-type="vertical_sku_holder"]) {
 
   border-color: #006064;
 

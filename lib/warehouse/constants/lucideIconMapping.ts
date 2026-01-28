@@ -32,7 +32,6 @@ import {
   Building2,
   Home,
   Store,
-  Shop,
   Factory,
   Briefcase,
   Users,
@@ -71,13 +70,12 @@ import {
   // Boundary & Area Icons
   Square,
   SquareDashed,
-  Rectangle,
   RectangleHorizontal,
   RectangleVertical,
   Circle,
   CircleDashed,
   Hexagon,
-  HexagonDashed,
+  
   
   // Meeting & Collaboration Icons
   Handshake,
@@ -113,8 +111,6 @@ import {
   // Seating & Rest Icons
   Armchair,
   Sofa,
-  Chair,
-  Couch,
   Bed,
   BedDouble,
   
@@ -129,7 +125,6 @@ import {
   Settings2,
   Wrench,
   Hammer,
-  Screwdriver,
   Drill,
   
   // Default fallback icon
@@ -155,7 +150,7 @@ export const LUCIDE_ICON_MAPPING: IconMapping = {
   // Boundaries
   'SOLID_BOUNDARY': Square,
   'DOTTED_BOUNDARY': SquareDashed,
-  'SQUARE_BOUNDARY': Rectangle,
+  'SQUARE_BOUNDARY': Square,
   
   // Storage Components
   'STORAGE_UNIT': Package,
@@ -185,7 +180,6 @@ export const LUCIDE_ICON_MAPPING: IconMapping = {
   // Additional warehouse-specific components
   'WAREHOUSE_BLOCK': Warehouse,
   'STORAGE_ZONE': Archive,
-  'PROCESSING_AREA': Factory,
   'CONTAINER_UNIT': Package,
   'ZONE_DIVIDER': RectangleVertical,
   'AREA_BOUNDARY': RectangleHorizontal,

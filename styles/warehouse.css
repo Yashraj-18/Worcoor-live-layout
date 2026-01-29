@@ -3788,7 +3788,7 @@ code {
 
 .warehouse-canvas.drag-over {
 
-  background: #f0f8ff;
+  background: #fafafa;
 
 }
 
@@ -4187,6 +4187,16 @@ div.warehouse-item[data-type="sku_holder"]:hover {
   translate: 0 0 !important;
 
   rotate: 0deg !important;
+
+}
+
+/* Force SKU Holder compartment cells to always be transparent */
+
+body .warehouse-item[data-type="sku_holder"] svg rect,
+
+body .warehouse-item[data-type="vertical_sku_holder"] svg rect {
+
+  fill: transparent !important;
 
 }
 
@@ -5174,7 +5184,7 @@ div.warehouse-item[data-type="vertical_sku_holder"]:hover {
 
 .drop-zone.drag-over {
 
-  background-color: rgba(33, 150, 243, 0.05);
+  background-color: transparent;
 
 }
 
@@ -10140,9 +10150,27 @@ body, html {
 
 }
 
+/* Ensure racks stay transparent even though .warehouse-item.unit applies a blue background */
+
+.warehouse-item.unit[data-type="sku_holder"],
+
+.warehouse-item.unit[data-type="sku_holder"]:hover,
+
+.warehouse-item.unit[data-type="sku_holder"].selected,
+
+.warehouse-item.unit[data-type="vertical_sku_holder"],
+
+.warehouse-item.unit[data-type="vertical_sku_holder"]:hover,
+
+.warehouse-item.unit[data-type="vertical_sku_holder"].selected {
+
+  background: transparent !important;
+
+}
 
 
-.warehouse-item.unit:hover {
+
+.warehouse-item.unit:hover:not([data-type="sku_holder"]):not([data-type="vertical_sku_holder"]):not([data-type="storage_unit"]):not([data-type="spare_unit"]) {
 
   border-color: #0097A7;
 
@@ -10155,7 +10183,7 @@ body, html {
 
 
 
-.warehouse-item.unit.selected:not([data-type="sku_holder"]):not([data-type="vertical_sku_holder"]) {
+.warehouse-item.unit.selected:not([data-type="sku_holder"]):not([data-type="vertical_sku_holder"]):not([data-type="storage_unit"]):not([data-type="spare_unit"]) {
 
   border-color: #006064;
 

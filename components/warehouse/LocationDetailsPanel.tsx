@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import locationDataService from '@/lib/warehouse/services/locationDataService';
+import { MapPin, Package, Building, TrendingUp, X, Archive, Factory, ShieldCheck, UsersRound, Coffee, Loader2, PackageOpen } from 'lucide-react';
 
 /**
  * LocationDetailsPanel - Displays detailed information about a selected warehouse component
@@ -256,28 +257,28 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: 'white',
+    backgroundColor: 'hsl(218.4 36.23% 13.53%)',
     borderRadius: 'var(--radius-lg)',
     overflow: 'hidden',
-    background: 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.9))'
+    background: 'linear-gradient(135deg, hsl(218.4 36.23% 13.53%), hsl(217.5 54.33% 5.85%))'
   } : {
     position: 'fixed',
     top: '80px',
     right: '20px',
     width: '380px',
     maxHeight: '85vh',
-    backgroundColor: 'white',
-    border: '1px solid var(--gray-300)',
+    backgroundColor: 'hsl(218.4 36.23% 13.53%)',
+    border: '1px solid hsl(215.3 25.1% 26.1%)',
     borderRadius: 'var(--radius-2xl)',
-    boxShadow: 'var(--shadow-2xl)',
+    boxShadow: '0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 20px 25px -5px rgba(0, 0, 0, 0.1)',
     zIndex: 1000,
     overflow: 'hidden',
     backdropFilter: 'blur(20px)',
-    background: 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.9))'
+    background: 'linear-gradient(135deg, hsl(218.4 36.23% 13.53%), hsl(217.5 54.33% 5.85%))'
   };
 
   const headerStyle = {
-    background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)',
+    background: 'linear-gradient(135deg, hsl(222.2 47% 11%) 0%, hsl(222.2 32.6% 18.55%) 100%)',
     color: 'white',
     padding: 'var(--spacing-5)',
     display: 'flex',
@@ -302,14 +303,14 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
   const sectionStyle = {
     marginBottom: '1.25rem',
     padding: '0.75rem',
-    background: 'linear-gradient(135deg, var(--gray-50), var(--gray-100))',
+    background: 'linear-gradient(135deg, hsl(215.3 25.1% 26.1%), hsl(215.3 25.1% 18.55%))',
     borderRadius: 'var(--radius-lg)',
-    border: '1px solid var(--gray-200)'
+    border: '1px solid hsl(215.3 25.1% 32.6%)'
   };
 
   const labelStyle = {
     fontSize: '0.75rem',
-    color: '#666',
+    color: '#94a3b8',
     fontWeight: '500',
     marginBottom: '0.25rem',
     textTransform: 'uppercase',
@@ -318,7 +319,7 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
 
   const valueStyle = {
     fontSize: '0.95rem',
-    color: '#333',
+    color: '#e2e8f0',
     fontWeight: '600',
     marginBottom: '0.5rem'
   };
@@ -335,7 +336,10 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
     <div style={panelStyle} className="animate-slide-up">
       <div style={headerStyle}>
         <div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>📍 Location Details</div>
+          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <MapPin size={20} />
+            Location Details
+          </div>
           <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>
             {getComponentDisplayName()}
           </div>
@@ -351,26 +355,33 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
             color: 'white',
             cursor: 'pointer',
             fontSize: '16px',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
-          onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.3)'}
-          onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.2)'}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
         >
-          ✕
+          <X size={16} />
         </button>
       </div>
 
       <div style={contentStyle}>
         {loading && (
-          <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⏳</div>
+          <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
+              <Loader2 size={32} className="animate-spin" />
+            </div>
             <div>Loading location data...</div>
           </div>
         )}
 
         {!loading && locationDataList.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📦</div>
+          <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
+              <PackageOpen size={32} />
+            </div>
             <div style={{ fontWeight: '600', marginBottom: '0.5rem' }}>No Data Available</div>
             <div style={{ fontSize: '0.85rem' }}>
               {selectedItem.locationId 
@@ -416,8 +427,9 @@ const renderLocationData = (locationData, sectionStyle, labelStyle, valueStyle) 
           <>
             {/* Location Information */}
             <div style={sectionStyle}>
-              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#1976D2' }}>
-                🏷️ Location Information
+              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <MapPin size={16} />
+                Location Information
               </h4>
               <div>
                 <div style={labelStyle}>Location ID</div>
@@ -435,8 +447,9 @@ const renderLocationData = (locationData, sectionStyle, labelStyle, valueStyle) 
 
             {/* SKU Information */}
             <div style={sectionStyle}>
-              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#1976D2' }}>
-                📦 SKU Information
+              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Package size={16} />
+                SKU Information
               </h4>
               <div>
                 <div style={labelStyle}>SKU Instance ID</div>
@@ -451,7 +464,7 @@ const renderLocationData = (locationData, sectionStyle, labelStyle, valueStyle) 
                 <div style={{
                   ...valueStyle,
                   fontSize: '1rem',
-                  color: '#1976D2',
+                  color: '#60a5fa',
                   marginBottom: '0.75rem'
                 }}>
                   {locationData.sku_name || 'N/A'}
@@ -461,8 +474,9 @@ const renderLocationData = (locationData, sectionStyle, labelStyle, valueStyle) 
 
             {/* Vendor & Procurement */}
             <div style={sectionStyle}>
-              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#1976D2' }}>
-                🏢 Vendor & Procurement
+              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Building size={16} />
+                Vendor & Procurement
               </h4>
               <div>
                 <div style={labelStyle}>Brand / Vendor</div>
@@ -486,23 +500,27 @@ const renderLocationData = (locationData, sectionStyle, labelStyle, valueStyle) 
             <div style={{
               ...sectionStyle,
               background: locationData.available_quantity > 0 
-                ? 'linear-gradient(135deg, #e8f5e9, #c8e6c9)' 
-                : 'linear-gradient(135deg, #ffebee, #ffcdd2)',
-              borderColor: locationData.available_quantity > 0 ? '#4caf50' : '#f44336'
+                ? 'linear-gradient(135deg, hsl(142.1 76.2% 36.3%), hsl(142.1 70.6% 45.3%))' 
+                : 'linear-gradient(135deg, hsl(0 84.2% 60.2%), hsl(0 62.8% 30.6%))',
+              borderColor: locationData.available_quantity > 0 ? 'hsl(142.1 70.6% 45.3%)' : 'hsl(0 62.8% 30.6%)'
             }}>
               <h4 style={{ 
                 margin: '0 0 0.75rem 0', 
                 fontSize: '0.9rem', 
-                color: locationData.available_quantity > 0 ? '#2e7d32' : '#c62828'
+                color: locationData.available_quantity > 0 ? '#22c55e' : '#ef4444',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
               }}>
-                📊 Inventory Status
+                <TrendingUp size={16} />
+                Inventory Status
               </h4>
               <div>
                 <div style={labelStyle}>Available Quantity</div>
                 <div style={{
                   fontSize: '1.75rem',
                   fontWeight: 'bold',
-                  color: locationData.available_quantity > 0 ? '#2e7d32' : '#c62828',
+                  color: locationData.available_quantity > 0 ? '#22c55e' : '#ef4444',
                   marginBottom: '0.5rem'
                 }}>
                   {locationData.available_quantity || 0}
@@ -511,10 +529,10 @@ const renderLocationData = (locationData, sectionStyle, labelStyle, valueStyle) 
               </div>
               <div style={{
                 padding: '0.5rem',
-                background: 'rgba(255,255,255,0.6)',
+                background: 'rgba(255,255,255,0.1)',
                 borderRadius: '4px',
                 fontSize: '0.8rem',
-                color: '#666',
+                color: '#94a3b8',
                 marginTop: '0.5rem'
               }}>
                 {locationData.available_quantity > 100 

@@ -4,6 +4,20 @@ import { COMPONENT_TYPES } from './componentTypes';
 // Re-export for other files
 export { COMPONENT_TYPES };
 
+// Storage category colors for different storage types
+export const STORAGE_CATEGORY_COLORS = {
+  'general-storage': '#4CAF50',      // Green
+  'dry-storage': '#FF9800',          // Orange  
+  'cold-storage': '#2196F3',         // Blue
+  'hazardous': '#F44336',            // Red
+  'perishable': '#9C27B0',          // Purple
+  'fragile': '#FF5722',              // Deep Orange
+  'high-value': '#FFC107',          // Amber
+  'bulk-storage': '#795548',         // Brown
+  'climate-controlled': '#00BCD4',   // Cyan
+  'secure-storage': '#607D8B'        // Blue Grey
+};
+
 // Drag and drop types
 export const DRAG_TYPES = {
   COMPONENT: 'component',
@@ -73,12 +87,48 @@ import { getComponentPanelColor } from '../config/componentPanelColors';
 
 // Legacy export for backward compatibility - now uses centralized color config
 export const COMPONENT_COLORS = {
-  // All colors are now managed in lib/warehouse/config/componentPanelColors.ts
+  // All components set to transparent for no color display
   // This object is kept for backward compatibility but should not be modified directly
   
-    [COMPONENT_TYPES.DISPATCH_GATES]: '#2196F3', // Blue - Dispatch gates
-  [COMPONENT_TYPES.INBOUND_GATES]: '#00BCD4', // Cyan - Inbound gates
-  [COMPONENT_TYPES.OFFICE_SPACE_AREA]: '#607D8B', // Blue Gray - Office workspace
+  // Floor Plan Components
+  [COMPONENT_TYPES.SQUARE_BOUNDARY]: 'transparent',
+  
+  // Boundaries
+  [COMPONENT_TYPES.SOLID_BOUNDARY]: 'transparent',
+  [COMPONENT_TYPES.DOTTED_BOUNDARY]: 'transparent',
+  
+  // Storage Components
+  [COMPONENT_TYPES.STORAGE_UNIT]: 'transparent',
+  [COMPONENT_TYPES.SKU_HOLDER]: 'transparent',
+  [COMPONENT_TYPES.VERTICAL_SKU_HOLDER]: 'transparent',
+  [COMPONENT_TYPES.SPARE_UNIT]: 'transparent',
+  
+  // Zone Components
+  [COMPONENT_TYPES.WAREHOUSE_BLOCK]: 'transparent',
+  [COMPONENT_TYPES.STORAGE_ZONE]: 'transparent',
+  [COMPONENT_TYPES.CONTAINER_UNIT]: 'transparent',
+  [COMPONENT_TYPES.ZONE_DIVIDER]: 'transparent',
+  [COMPONENT_TYPES.AREA_BOUNDARY]: 'transparent',
+  
+  // Common Areas
+  [COMPONENT_TYPES.FIRE_EXIT_MARKING]: 'transparent',
+  [COMPONENT_TYPES.SECURITY_AREA]: 'transparent',
+  [COMPONENT_TYPES.RESTROOMS_AREA]: 'transparent',
+  [COMPONENT_TYPES.PATHWAYS_ARROWS]: 'transparent',
+  
+  // Office Spaces
+  [COMPONENT_TYPES.CONFERENCE_ROOM]: 'transparent',
+  [COMPONENT_TYPES.MEETING_ROOMS]: 'transparent',
+  [COMPONENT_TYPES.PANTRY_AREA]: 'transparent',
+  [COMPONENT_TYPES.OPEN_STAGE]: 'transparent',
+  [COMPONENT_TYPES.SEATING_AREA]: 'transparent',
+  [COMPONENT_TYPES.BOOTHS]: 'transparent',
+  [COMPONENT_TYPES.GENERAL_AREA]: 'transparent',
+  
+  // Primary Warehouse Operations
+  [COMPONENT_TYPES.DISPATCH_GATES]: 'transparent',
+  [COMPONENT_TYPES.INBOUND_GATES]: 'transparent',
+  [COMPONENT_TYPES.OFFICE_SPACE_AREA]: 'transparent',
 };
 
 

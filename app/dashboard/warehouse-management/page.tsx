@@ -88,6 +88,14 @@ export default function WarehouseManagementPage() {
     // Use local modal state instead of navigation
     setSelectedLayoutId(layoutId);
     setShowMapModal(true);
+    
+    // Update URL to include the layout ID and name
+    const layout = savedLayouts.find(l => l.id === layoutId);
+    if (layout) {
+      const layoutName = layout.name.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '-').toLowerCase();
+      const newUrl = `${window.location.pathname}?map=${layoutId}&name=${layoutName}`;
+      window.history.pushState({ mapId: layoutId, mapName: layout.name }, '', newUrl);
+    }
   };
 
   return (
@@ -246,6 +254,10 @@ export default function WarehouseManagementPage() {
             onModalClose={() => {
               setShowMapModal(false);
               setSelectedLayoutId(null);
+              
+              // Restore original URL when modal closes
+              const originalUrl = window.location.pathname;
+              window.history.pushState({}, '', originalUrl);
             }}
           />
         </div>

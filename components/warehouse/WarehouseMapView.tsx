@@ -1377,9 +1377,8 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                   ) : (
                     <button 
                       className="demo-map-fullscreen-btn" 
-                      disabled
-                      style={{ opacity: 0.5, cursor: 'not-allowed' }}
-                      title="Fullscreen (temporarily disabled)"
+                      onClick={handleOpenFullscreen}
+                      title="Enter fullscreen"
                     >
                       ⛶
                     </button>

@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import SavedLayoutRenderer, { getLayoutItemKey } from './SavedLayoutRenderer';
+import SavedLayoutRenderer, { getLayoutItemKey } from '../SavedLayoutRenderer';
 import { inferVerticalRackLevelCount } from '../../lib/warehouse/utils/verticalRackUtils';
 import summarizeStorageComponents from '../../lib/warehouse/utils/layoutComponentSummary';
-import locationDataService from '../services/locationDataService';
-import LocationDetailsPanel from './LocationDetailsPanel';
-import layoutComponentsMock from '../data/layoutComponentsMock.json';
+import locationDataService from '../../../warehouse/services/locationDataService';
+import LocationDetailsPanel from '../LocationDetailsPanel';
+import layoutComponentsMock from '../../lib/warehouse/data/layoutComponentsMock.json';
 
 const renderDemoLayout = (demoData) => (
   <svg width="100%" height="100%" viewBox="0 0 700 320" className="fullscreen-warehouse-svg">

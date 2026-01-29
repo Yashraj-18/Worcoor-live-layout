@@ -482,7 +482,7 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
       .replace(/_+/g, '_');
     const isVertical = normalizedType === 'vertical_sku_holder';
     const isOfficeSpace = normalizedType === 'office_space_area';
-    const isStorageRack = normalizedType === 'sku_holder' || normalizedType === 'vertical_sku_holder';
+    const isStorageRack = Boolean(item?.skuGrid) || normalizedType === 'sku_holder' || normalizedType === 'vertical_sku_holder';
     const filledFill = isStorageRack ? 'transparent' : (isVertical ? '#FFE0B2' : (isOfficeSpace ? 'transparent' : '#E0F7FA'));
     const emptyFill = isStorageRack ? 'transparent' : (isVertical ? '#FFF3E0' : (isOfficeSpace ? 'transparent' : '#E3F2FD'));
     const highlightFill = '#FFF9C4';
@@ -643,6 +643,22 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
     }),
   });
 
+  const setRefs = useCallback((node: any) => {
+    if (!node) {
+      return;
+    }
+    drag(node);
+  }, [drag]);
+
+  const componentClasses = [
+    'warehouse-item',
+    item.type,
+    item.containerLevel ? 'unit' : null,
+    isSelected ? 'selected' : null,
+    item.isHollow ? 'hollow' : null,
+    isReadOnly ? 'read-only' : null
+  ].filter(Boolean).join(' ');
+
   const handleClick = (e: any) => {
     e.stopPropagation();
 
@@ -765,6 +781,11 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
   const isVerticalRack = normalizedType === 'vertical_sku_holder';
   const isStorageRack = isHorizontalRack || isVerticalRack;
   const isStorageUnitType = normalizedType === 'storage_unit';
+  const isOpenStorageSpaceType = isStorageUnitType && item?.name === 'Open Storage Space';
+  const isStorageZoneType = normalizedType === 'storage_zone';
+  const isContainerUnitType = normalizedType === 'container_unit';
+  const isSingleSkuStorageComponent = Boolean(isStorageUnitType && item?.hasSku && item?.singleSku);
+  const isStorageComponentType = isStorageUnitType || isSingleSkuStorageComponent || isOpenStorageSpaceType || isStorageZoneType || isContainerUnitType;
 
   const isContained = item.containerId;
   const containerLevel = item.containerLevel || 0;
@@ -781,24 +802,28 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
     : null;
   const storageUnitTextColor = storageUnitColor ? '#000000' : '#FFFFFF'; // Black text for transparent background
   const hasHighlightedCompartments = Array.isArray(highlightedCompartments) && highlightedCompartments.length > 0;
+
+  const resolvedLocationId = (item?.locationId
+    || item?.locationData?.primaryLocationId
+    || item?.locationData?.locationId
+    || item?.locationData?.uniqueId
+    || item?.locationCode
+    || item?.sku
+    || '')
+    .toString()
+    .trim();
+
+  const hasResolvedLocation = Boolean(resolvedLocationId);
   
   // Get status-based styling
   const occupancyStatus = item.occupancyStatus || OCCUPANCY_STATUS.EMPTY;
   const statusColor = STATUS_COLORS[occupancyStatus] || '#ddd';
-  // Remove orientation color override to maintain fixed component colors
-  // const orientationColor = item.storageOrientation ? ORIENTATION_COLORS[item.storageOrientation] : null;
 
   return (
     <div
-      ref={(node) => {
-        drag(node);
-      }}
-      className={`warehouse-item ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${isContainer ? 'container' : ''} ${isContained ? 'contained' : ''} ${isMainBoundary ? 'main-boundary' : ''} ${isZone ? 'zone' : ''} ${isUnit ? 'unit' : ''}`}
+      ref={setRefs}
+      className={componentClasses}
       data-type={normalizedType}
-      data-occupancy={item.occupancyStatus || OCCUPANCY_STATUS.EMPTY}
-      data-container={isContainer}
-      data-contained={isContained}
-      data-container-level={containerLevel}
       data-position-locked={item.isPositionLocked || false}
       data-size-locked={item.isSizeLocked || false}
       data-color={isSpareUnit ? spareUnitColor : (isStorageUnitType ? storageUnitColor : item.color || '')}
@@ -809,18 +834,18 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
         height: item.height,
         background: isStorageRack ? 'transparent' : undefined,
         backgroundImage: isStorageRack ? 'none' : undefined,
-        backgroundColor: item.isHollow ? 'transparent' : 
-          (isStorageUnitType ? 'transparent' : 
+        backgroundColor: item.isHollow ? 'transparent' :
+          (isStorageComponentType ? 'transparent' :
            isStorageRack ? 'transparent' :
            isSpareUnit ? spareUnitColor :
-           isContainer ? 'transparent' : 
+           isContainer ? 'transparent' :
            getComponentColor(normalizedType, item.category)),
-        border: isStorageUnitType || isSpareUnit ? 'none' :
-               isStorageRack ? 'none' : 
-               (normalizedType === 'square_boundary' ? '4px solid #000000' : 
-               (isMainBoundary ? '4px solid #263238' : 
-               (isZone ? `3px solid ${getComponentColor(normalizedType)}` : 
-               (isContainer ? `3px solid ${getComponentColor(normalizedType)}` : 
+        border: isStorageComponentType || isSpareUnit ? 'none' :
+               isStorageRack ? 'none' :
+               (normalizedType === 'square_boundary' ? '4px solid #000000' :
+               (isMainBoundary ? '4px solid #263238' :
+               (isZone ? `3px solid ${getComponentColor(normalizedType)}` :
+               (isContainer ? `3px solid ${getComponentColor(normalizedType)}` :
                (isContained ? `2px dashed ${getComponentColor(normalizedType) || statusColor}` : `3px solid ${getComponentColor(normalizedType) || statusColor}`))))),
         borderRadius: '0px',
         boxShadow: isHighlighted && !hasHighlightedCompartments ? '0 0 12px 3px rgba(79, 70, 229, 0.6)' : 'none',
@@ -851,31 +876,41 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
       })()}
       {/* Shape rendering for shape components */}
       {item.isShape && renderShapeComponent(item)}
+
+      {(isSingleSkuStorageComponent || normalizedType === 'spare_unit') && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 60,
+            height: 60,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: `${hasResolvedLocation ? 2 : 1}px solid #000000`,
+            borderRadius: 0,
+            backgroundColor: 'transparent',
+            color: '#111827',
+            fontWeight: hasResolvedLocation ? 600 : 500,
+            fontSize: 11,
+            letterSpacing: '0.2px',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            whiteSpace: 'nowrap',
+            zIndex: 5
+          }}
+        >
+          {hasResolvedLocation ? resolvedLocationId : '+'}
+        </div>
+      )}
       
       {/* Storage Racks and Spare Units - Show Location ID in black text */}
       {((item.type === 'sku_holder' || item.type === 'vertical_sku_holder' || item.type === 'spare_unit') && !item.showCompartments) && (() => {
         if (item.type === 'spare_unit') {
           // For Spare Units, show the locationId if it exists
-          return item.locationId ? (
-            <div style={{
-              position: 'absolute',
-              top: '50%',
-              left: 0,
-              right: 0,
-              textAlign: 'center',
-              transform: 'translateY(-50%)',
-              color: spareUnitTextColor || undefined,
-              fontWeight: 'bold',
-              fontSize: Math.min(Math.max(item.width / 10, 10), 14),
-              textShadow: '0 1px 3px rgba(0,0,0,0.3)',
-              padding: '0 5px',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }}>
-              {item.locationId}
-            </div>
-          ) : null;
+          return null;
         }
 
         // For storage racks
@@ -924,6 +959,11 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
                                          item.name === 'Cold Storage' ? 'Cold Storage' : 'Storage Unit');
         const minDimension = Math.min(item.width || 60, item.height || 60);
         const primaryFontSize = Math.max(9, Math.min(14, Math.floor(minDimension / 6)));
+
+        // Storage components show the centered square (LOC or '+'), so avoid overlapping text.
+        if (isSingleSkuStorageComponent) {
+          return null;
+        }
 
         return (
           <div
@@ -1386,10 +1426,10 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
               left: '50%',
               transform: 'translateX(-50%)',
               marginTop: '6px',
-              backgroundColor: 'rgba(255,255,255,0.88)',
+              backgroundColor: 'transparent',
               color: '#000000',
-              padding: '5px 10px',
-              borderRadius: '4px',
+              padding: '0px',
+              borderRadius: '0px',
               fontSize: '12px',
               fontWeight: '700',
               whiteSpace: 'nowrap',

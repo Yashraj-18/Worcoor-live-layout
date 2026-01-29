@@ -72,6 +72,7 @@
   "devDependencies": {
     "@types/node": "^22",
     "@types/papaparse": "^5.5.2",
+    "@types/prop-types": "^15.7.15",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

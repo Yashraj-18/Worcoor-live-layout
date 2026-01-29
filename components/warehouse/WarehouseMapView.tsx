@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import WarehouseLayoutBuilder from '@/components/warehouse/WarehouseLayoutBuilder';
 import LocationDetailsPanel from '@/components/warehouse/LocationDetailsPanel';
 import SavedLayoutRenderer, { getLayoutItemKey } from '@/components/warehouse/SavedLayoutRenderer';
@@ -90,6 +90,9 @@ interface WarehouseMapViewProps {
 
 const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initialSelectedLayoutId, onModalClose }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const layoutId = searchParams?.get('layoutId');
+  
   const [selectedZone, setSelectedZone] = useState<any>(null);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [selectedUnitForDemo, setSelectedUnitForDemo] = useState<string | null>(initialSelectedLayoutId || null);
@@ -115,9 +118,11 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   const [selectedAsset, setSelectedAsset] = useState<string>('');
   const [selectedUnit, setSelectedUnit] = useState<string | null>(null);
   const [savedLayouts, setSavedLayouts] = useState<WarehouseLayout[]>([]);
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [selectedItem, setSelectedItem] = useState<WarehouseItem | null>(null);
   const [showLocationDetails, setShowLocationDetails] = useState<boolean>(false);
+  const [mounted, setMounted] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [cameFromDashboard, setCameFromDashboard] = useState(false);
 
   // Load saved layouts from localStorage
   const refreshSavedLayouts = useCallback(() => {
@@ -129,6 +134,50 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       setSavedLayouts([]);
     }
   }, []);
+
+  useEffect(() => {
+    setMounted(true);
+    refreshSavedLayouts();
+    // Reset transition state when layoutId changes
+    setIsTransitioning(false);
+    
+    // Check if user came from main dashboard (has layoutId in URL)
+    if (layoutId) {
+      setCameFromDashboard(true);
+      setSelectedUnitForDemo(layoutId);
+      setShowDemoMapModal(true);
+    }
+  }, [layoutId]);
+
+  // Handle browser back button to close modal
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (showDemoMapModal) {
+        setShowDemoMapModal(false);
+        if (onModalClose) {
+          onModalClose();
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [showDemoMapModal, onModalClose]);
+
+  // Handle modal close with URL cleanup
+  const handleCloseModal = useCallback(() => {
+    setShowDemoMapModal(false);
+    
+    // Restore original URL when modal closes
+    const originalUrl = window.location.pathname;
+    window.history.pushState({}, '', originalUrl);
+    
+    if (onModalClose) {
+      onModalClose();
+    }
+  }, [onModalClose]);
 
   useEffect(() => {
     refreshSavedLayouts();
@@ -489,7 +538,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     setIsExpanded(!isExpanded);
   };
 
-  const handleActionClick = (actionId: string) => {
+  const handleActionClick = (actionId: string, unitId?: string) => {
     console.log('Action clicked:', actionId);
     // Add your action handling logic here
     switch(actionId) {
@@ -501,6 +550,24 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         break;
       case 'live-map':
         // Navigate to live map
+        break;
+      case 'view-live':
+        // Show demo map modal for specific unit and update URL
+        if (unitId) {
+          setSelectedUnitForDemo(unitId);
+          setShowDemoMapModal(true);
+          
+          // Update URL to include the layout ID
+          const unit = warehouseUnits.find(u => u.id === unitId);
+          if (unit) {
+            const layoutName = unit.name.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '-').toLowerCase();
+            const newUrl = `${window.location.pathname}?map=${unit.id}&name=${layoutName}`;
+            window.history.pushState({ mapId: unit.id, mapName: unit.name }, '', newUrl);
+          }
+        }
+        break;
+      case 'edit':
+        // Navigate to layout builder for specific unit
         break;
       default:
         break;
@@ -678,40 +745,6 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     setSearchResults([]);
   };
 
-  // Handle opening fullscreen preview in a new tab
-  const handleOpenFullscreen = () => {
-    if (!selectedUnitForDemo) {
-      return;
-    }
-
-    const unit = warehouseUnits.find((u) => u.id === selectedUnitForDemo);
-    if (!unit) {
-      return;
-    }
-
-    const { layoutData: unitLayoutData, ...unitMeta } = unit;
-    const payload = {
-      unit: unitMeta,
-      isCustomLayout: Boolean(unit.isCustomLayout),
-      layoutData: unit.isCustomLayout ? unitLayoutData : null,
-      demoData: unit.isCustomLayout ? null : demoMapsData[unit.id] || null,
-      storageSummaries,
-      layoutItems: unit.isCustomLayout ? unitLayoutData?.items || [] : null
-    };
-
-    try {
-      const encoded = encodeURIComponent(JSON.stringify(payload));
-      const baseUrl = `${window.location.origin}${window.location.pathname}`;
-      window.open(`${baseUrl}#fullscreen-map=${encoded}`, '_blank', 'noopener,noreferrer');
-      setShowDemoMapModal(false);
-    } catch (err) {
-      console.error('Failed to open fullscreen map:', err);
-    }
-  };
-
-  const handleExitFullscreen = () => {
-    setIsFullscreen(false);
-  };
 
   // Filter handlers
   const handleFilterSelect = (filterId: string) => {
@@ -1266,31 +1299,12 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       {/* Live Map Modal */}
       {showDemoMapModal && selectedUnitForDemo && (
           <div 
-            className={`demo-map-modal-overlay ${isFullscreen ? 'fullscreen-mode' : ''}`} 
-            onClick={() => !isFullscreen && setShowDemoMapModal(false)}
-            style={isFullscreen ? {
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              width: '100vw',
-              height: '100vh',
-              zIndex: 9999,
-              backgroundColor: '#fff'
-            } : {}}
+            className="demo-map-modal-overlay" 
+            onClick={() => setShowDemoMapModal(false)}
           >
             <div 
               className="demo-map-modal-content" 
               onClick={(e) => e.stopPropagation()}
-              style={isFullscreen ? {
-                width: '100%',
-                height: '100%',
-                maxWidth: '100%',
-                maxHeight: '100%',
-                margin: 0,
-                borderRadius: 0
-              } : {}}
             >
               <div className="demo-map-header">
                 <div className="demo-map-title">
@@ -1366,31 +1380,17 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                 </div>
                 
                 <div className="demo-map-controls">
-                  {isFullscreen ? (
-                    <button 
-                      className="demo-map-fullscreen-btn" 
-                      onClick={handleExitFullscreen}
-                      title="Exit fullscreen"
-                    >
-                      ⛶
-                    </button>
-                  ) : (
-                    <button 
-                      className="demo-map-fullscreen-btn" 
-                      onClick={handleOpenFullscreen}
-                      title="Enter fullscreen"
-                    >
-                      ⛶
-                    </button>
-                  )}
-                  {!isFullscreen && (
-                    <button className="demo-map-close-btn" onClick={() => {
-                      setShowDemoMapModal(false);
-                      if (onModalClose) {
-                        onModalClose();
-                      }
-                    }}>×</button>
-                  )}
+                  <button 
+                    className="demo-map-fullscreen-btn" 
+                    onClick={() => {
+                      // TODO: Implement fullscreen preview functionality
+                      console.log('Fullscreen preview clicked - to be implemented');
+                    }}
+                    title="Fullscreen Preview"
+                  >
+                    ⛶
+                  </button>
+                  <button className="demo-map-close-btn" onClick={handleCloseModal}>×</button>
                 </div>
               </div>
               

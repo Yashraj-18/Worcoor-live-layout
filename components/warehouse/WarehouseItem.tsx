@@ -409,6 +409,9 @@ const WarehouseItem = ({
   }, [item, renderDetailRow]);
 
   const handleItemMouseEnter = useCallback((event) => {
+    // TEMPORARILY DISABLED: Hover tooltips disabled
+    return;
+    
     // Only show tooltips in read-only mode (viewer), not in edit mode (layout builder)
     if (!isReadOnly) {
       return;
@@ -457,6 +460,9 @@ const WarehouseItem = ({
   }, [hideTooltip, isReadOnly]);
 
   const handleCompartmentHover = useCallback((event, compartmentData, rowIndex, colIndex) => {
+    // TEMPORARILY DISABLED: Compartment hover tooltips disabled
+    return;
+    
     // Only show tooltips in read-only mode (viewer), not in edit mode (layout builder)
     if (!isReadOnly) {
       return;

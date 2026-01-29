@@ -409,10 +409,8 @@ const WarehouseItem = ({
   }, [item, renderDetailRow]);
 
 const handleItemMouseEnter = useCallback((event: any) => {
-      // Only show tooltips in read-only mode (viewer), not in edit mode (layout builder)
-      if (!isReadOnly) {
-        return;
-      }
+    // TEMPORARILY DISABLED: Hover tooltips disabled
+    return;
 
     if (item.type === 'square_boundary') {
       return;
@@ -457,10 +455,8 @@ const handleItemMouseEnter = useCallback((event: any) => {
   }, [hideTooltip, isReadOnly]);
 
 const handleCompartmentHover = useCallback((event: any, compartmentData: any, rowIndex: number, colIndex: number) => {
-    // Only show tooltips in read-only mode (viewer), not in edit mode (layout builder)
-    if (!isReadOnly) {
-      return;
-    }
+    // TEMPORARILY DISABLED: Compartment hover tooltips disabled
+    return;
     const content = buildCompartmentTooltipContent(rowIndex, colIndex, compartmentData);
     const variant = compartmentData ? 'occupied' : 'empty';
     showTooltip(event, content, variant, 'compartment');

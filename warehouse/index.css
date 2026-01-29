@@ -2216,6 +2216,52 @@ div.warehouse-item[data-type="vertical_sku_holder"] {
 
 
 
+/* Force storage racks to always be transparent (override any gradients/overlays) */
+
+body .warehouse-item[data-type="sku_holder"],
+
+body .warehouse-item[data-type="sku_holder"]:hover,
+
+body .warehouse-item[data-type="sku_holder"].selected,
+
+body .warehouse-item[data-type="vertical_sku_holder"],
+
+body .warehouse-item[data-type="vertical_sku_holder"]:hover,
+
+body .warehouse-item[data-type="vertical_sku_holder"].selected {
+
+  background: transparent !important;
+
+  background-color: transparent !important;
+
+  background-image: none !important;
+
+  box-shadow: none !important;
+
+  border-color: transparent !important;
+
+}
+
+
+
+body .warehouse-item[data-type="sku_holder"]::before,
+
+body .warehouse-item[data-type="sku_holder"]::after,
+
+body .warehouse-item[data-type="vertical_sku_holder"]::before,
+
+body .warehouse-item[data-type="vertical_sku_holder"]::after {
+
+  display: none !important;
+
+  opacity: 0 !important;
+
+  background: transparent !important;
+
+}
+
+
+
 /* COMPLETE HOVER OVERRIDE FOR VERTICAL SKU HOLDER - ORANGE COLORS */
 
 div.warehouse-item[data-type="vertical_sku_holder"]:hover {
@@ -7910,7 +7956,8 @@ body, html {
 
 
 
-.warehouse-item.unit.selected {
+
+.warehouse-item.unit.selected:not([data-type="sku_holder"]):not([data-type="vertical_sku_holder"]) {
 
   border-color: #006064;
 

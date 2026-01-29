@@ -70,7 +70,6 @@ import {
   // Boundary & Area Icons
   Square,
   SquareDashed,
-  Square as Rectangle,
   RectangleHorizontal,
   RectangleVertical,
   Circle,
@@ -150,7 +149,7 @@ export const LUCIDE_ICON_MAPPING: IconMapping = {
   // Boundaries
   'SOLID_BOUNDARY': Square,
   'DOTTED_BOUNDARY': SquareDashed,
-  'SQUARE_BOUNDARY': Rectangle,
+  'SQUARE_BOUNDARY': Square,
   
   // Storage Components
   'STORAGE_UNIT': Package,

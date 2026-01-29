@@ -16,7 +16,7 @@ interface ComponentItem {
 
   name: string;
 
-  icon: string;
+  icon?: string;
 
   color: string;
 
@@ -100,7 +100,7 @@ const DraggableComponent: React.FC<DraggableComponentProps> = ({ component }) =>
 
       name: component.name,
 
-      icon: component.icon,
+      icon: component.icon || '',
 
       color: component.color,
 
@@ -172,6 +172,7 @@ const DraggableComponent: React.FC<DraggableComponentProps> = ({ component }) =>
   const LucideIcon = getLucideIcon(component.type);
   const iconSize = getIconSize(component.priority, component.category);
   const iconColor = getIconColor(component.priority);
+  const isTransparentPreview = component.type === 'sku_holder' || component.type === 'vertical_sku_holder' || component.type === 'storage_unit';
 
   return (
 
@@ -187,7 +188,7 @@ const DraggableComponent: React.FC<DraggableComponentProps> = ({ component }) =>
 
       style={{
 
-        backgroundColor: component.color,
+        backgroundColor: isTransparentPreview ? 'transparent' : component.color,
 
         opacity: isDragging ? 0.7 : 1,
 
@@ -238,6 +239,8 @@ const DraggableComponent: React.FC<DraggableComponentProps> = ({ component }) =>
 
         color: 'white',
 
+        backgroundColor: 'transparent',
+
         fontWeight: '600',
 
         fontSize: '10px',
@@ -247,8 +250,6 @@ const DraggableComponent: React.FC<DraggableComponentProps> = ({ component }) =>
         lineHeight: '1.2',
 
         textShadow: '0 1px 2px rgba(0,0,0,0.8)',
-
-        wordWrap: 'break-word',
 
         overflow: 'hidden',
 
@@ -319,16 +320,16 @@ const ComponentCategory: React.FC<ComponentCategoryProps> = ({ category, isExpan
         </span>
 
         <span className="category-icon" style={{ display: 'flex', alignItems: 'center' }}>
-          <CategoryIcon size={18} color="#374151" />
+          <CategoryIcon size={18} color="#ced1d5ff" />
         </span>
 
-        <span className="category-title" style={{ fontWeight: '600', color: '#374151' }}>
+        <span className="category-title" style={{ fontWeight: '600', color: '#e5e7eb' }}>
           {category.category}
         </span>
 
         <span className="category-count" style={{ 
           fontSize: '12px', 
-          color: '#6b7280'
+          color: '#9ca3af'
         }}>
           ({(category.components || []).length})
         </span>

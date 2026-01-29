@@ -81,6 +81,15 @@ export const LOCATION_ZONES = {
   // Will be populated as we add location zones
 };
 
+// Storage category colors (used for storage unit category labeling and legacy utils)
+export const STORAGE_CATEGORY_COLORS: Record<string, string> = {
+  dry_storage: '#4CAF50',
+  cold_storage: '#00BCD4',
+  hazardous: '#F44336',
+  fragile: '#FF9800',
+  bulk: '#9C27B0'
+};
+
 // Fixed Component Color Coding for Consistency - Realistic Colors
 // Import component panel colors from centralized configuration
 import { getComponentPanelColor } from '../config/componentPanelColors';

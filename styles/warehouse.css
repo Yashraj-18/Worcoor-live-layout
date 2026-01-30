@@ -3992,6 +3992,108 @@ code {
 
 
 
+/* Icon-only components - show only the icon (no box background/border/overlays) */
+
+.warehouse-item[data-type="fire_exit_marking"],
+
+.warehouse-item[data-type="security_area"],
+
+.warehouse-item[data-type="restrooms_area"],
+
+.warehouse-item[data-type="seating_area"],
+
+.warehouse-item[data-type="dispatch_gates"],
+
+.warehouse-item[data-type="inbound_gates"],
+
+.warehouse-item[data-type="pathways_arrows"],
+
+.warehouse-item[data-type="conference_room"],
+
+.warehouse-item[data-type="meeting_rooms"],
+
+.warehouse-item[data-type="pantry_area"],
+
+.warehouse-item[data-type="open_stage"],
+
+.warehouse-item[data-type="booths"],
+
+.warehouse-item[data-type="general_area"] {
+
+  border: none !important;
+
+  box-shadow: none !important;
+
+  background: none !important;
+
+  background-image: none !important;
+
+  backdrop-filter: none !important;
+
+  overflow: visible !important;
+
+}
+
+
+
+.warehouse-item[data-type="fire_exit_marking"]::before,
+
+.warehouse-item[data-type="security_area"]::before,
+
+.warehouse-item[data-type="restrooms_area"]::before,
+
+.warehouse-item[data-type="seating_area"]::before,
+
+.warehouse-item[data-type="dispatch_gates"]::before,
+
+.warehouse-item[data-type="inbound_gates"]::before,
+
+.warehouse-item[data-type="pathways_arrows"]::before,
+
+.warehouse-item[data-type="conference_room"]::before,
+
+.warehouse-item[data-type="meeting_rooms"]::before,
+
+.warehouse-item[data-type="pantry_area"]::before,
+
+.warehouse-item[data-type="open_stage"]::before,
+
+.warehouse-item[data-type="booths"]::before,
+
+.warehouse-item[data-type="general_area"]::before,
+
+.warehouse-item[data-type="fire_exit_marking"]::after,
+
+.warehouse-item[data-type="security_area"]::after,
+
+.warehouse-item[data-type="restrooms_area"]::after,
+
+.warehouse-item[data-type="seating_area"]::after,
+
+.warehouse-item[data-type="dispatch_gates"]::after,
+
+.warehouse-item[data-type="inbound_gates"]::after,
+
+.warehouse-item[data-type="pathways_arrows"]::after,
+
+.warehouse-item[data-type="conference_room"]::after,
+
+.warehouse-item[data-type="meeting_rooms"]::after,
+
+.warehouse-item[data-type="pantry_area"]::after,
+
+.warehouse-item[data-type="open_stage"]::after,
+
+.warehouse-item[data-type="booths"]::after,
+
+.warehouse-item[data-type="general_area"]::after {
+
+  display: none !important;
+
+}
+
+
+
 /* Spare Units - let inline color render without overlays */
 
 .warehouse-item[data-type="spare_unit"] {

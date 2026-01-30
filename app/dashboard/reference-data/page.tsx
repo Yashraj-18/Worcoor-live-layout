@@ -86,41 +86,6 @@ export default function InventoryManagementPage() {
           <CardContent className="p-8 flex flex-col justify-between h-full">
             <div className="flex-1">
               <div className="flex items-start gap-4">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-sm">
-                  <Box className="h-6 w-6" />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <h3 className="font-semibold text-foreground dark:text-slate-50 text-lg">SKU Management</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-200 leading-relaxed">
-                    Manage SKUs and inventory levels
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-8">
-              <div className="flex items-center gap-2 pt-3 mt-auto">
-                <span className="text-xs text-muted-foreground dark:text-slate-300">Available SKUs:</span>
-                <Badge variant="secondary" className="text-xs font-medium">
-                  248 SKUs
-                </Badge>
-              </div>
-              <Button
-                asChild
-                className="w-full mt-16 mx-2 px-6 py-3 border border-slate-200/50 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200 rounded-lg"
-              >
-                <Link href="/dashboard/reference-data/skus" className="flex items-center justify-center gap-2">
-                  Manage SKUs
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="group relative overflow-hidden border border-slate-200 bg-white/80 backdrop-blur-sm shadow-soft hover:shadow-medium transition-all duration-300 h-full">
-          <CardContent className="p-8 flex flex-col justify-between h-full">
-            <div className="flex-1">
-              <div className="flex items-start gap-4">
                 <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-sm">
                   <Warehouse className="h-6 w-6" />
                 </div>
@@ -180,6 +145,41 @@ export default function InventoryManagementPage() {
               >
                 <Link href="/dashboard/reference-data/location-tags" className="flex items-center justify-center gap-2">
                   Manage Tags
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="group relative overflow-hidden border border-slate-200 bg-white/80 backdrop-blur-sm shadow-soft hover:shadow-medium transition-all duration-300 h-full">
+          <CardContent className="p-8 flex flex-col justify-between h-full">
+            <div className="flex-1">
+              <div className="flex items-start gap-4">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-sm">
+                  <Box className="h-6 w-6" />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <h3 className="font-semibold text-foreground dark:text-slate-50 text-lg">SKU Management</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-200 leading-relaxed">
+                    Manage SKUs and inventory levels
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-8">
+              <div className="flex items-center gap-2 pt-3 mt-auto">
+                <span className="text-xs text-muted-foreground dark:text-slate-300">Available SKUs:</span>
+                <Badge variant="secondary" className="text-xs font-medium">
+                  248 SKUs
+                </Badge>
+              </div>
+              <Button
+                asChild
+                className="w-full mt-16 mx-2 px-6 py-3 border border-slate-200/50 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200 rounded-lg"
+              >
+                <Link href="/dashboard/reference-data/skus" className="flex items-center justify-center gap-2">
+                  Manage SKUs
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>

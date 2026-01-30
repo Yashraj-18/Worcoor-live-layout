@@ -425,123 +425,206 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
 const renderLocationData = (locationData, sectionStyle, labelStyle, valueStyle) => {
   return (
           <>
-            {/* Location Information */}
-            <div style={sectionStyle}>
-              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <MapPin size={16} />
-                Location Information
-              </h4>
-              <div>
-                <div style={labelStyle}>Location ID</div>
-                <div style={valueStyle}>{locationData.location_id}</div>
-              </div>
-              <div>
-                <div style={labelStyle}>Physical Location</div>
-                <div style={valueStyle}>{locationData.location || 'N/A'}</div>
-              </div>
-              <div>
-                <div style={labelStyle}>Storage Type</div>
-                <div style={valueStyle}>{locationData.parent_resource || 'N/A'}</div>
-              </div>
-            </div>
-
             {/* SKU Information */}
             <div style={sectionStyle}>
               <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Package size={16} />
                 SKU Information
               </h4>
-              <div>
-                <div style={labelStyle}>SKU Instance ID</div>
-                <div style={valueStyle}>{locationData.sku_instance_id || 'N/A'}</div>
-              </div>
-              <div>
-                <div style={labelStyle}>SKU Code</div>
-                <div style={valueStyle}>{locationData.sku_code || 'N/A'}</div>
-              </div>
-              <div>
-                <div style={labelStyle}>Product Name</div>
-                <div style={{
-                  ...valueStyle,
-                  fontSize: '1rem',
-                  color: '#60a5fa',
-                  marginBottom: '0.75rem'
-                }}>
-                  {locationData.sku_name || 'N/A'}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <div style={labelStyle}>ID</div>
+                  <div style={valueStyle}>{locationData.sku_instance_id || 'N/A'}</div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Organization Id</div>
+                  <div style={valueStyle}>ORG-001</div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Sku Name</div>
+                  <div style={{
+                    ...valueStyle,
+                    fontSize: '1rem',
+                    color: '#60a5fa',
+                    gridColumn: '1 / -1'
+                  }}>
+                    {locationData.sku_name || 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Sku Category</div>
+                  <div style={valueStyle}>{locationData.sku_category || locationData.parent_resource || 'N/A'}</div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Sku Unit</div>
+                  <div style={valueStyle}>{locationData.sku_unit || 'Pieces'}</div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Quantity</div>
+                  <div style={{
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    color: locationData.available_quantity > 0 ? '#22c55e' : '#ef4444'
+                  }}>
+                    {locationData.available_quantity || 0}
+                  </div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Effective Date</div>
+                  <div style={valueStyle}>
+                    {locationData.sku_procured_date 
+                      ? new Date(locationData.sku_procured_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })
+                      : 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Expiry Date</div>
+                  <div style={valueStyle}>
+                    {locationData.sku_expiry_date 
+                      ? new Date(locationData.sku_expiry_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })
+                      : 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Location Tag Id</div>
+                  <div style={valueStyle}>{locationData.location_id || 'N/A'}</div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Created At</div>
+                  <div style={valueStyle}>
+                    {locationData.created_at 
+                      ? new Date(locationData.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })
+                      : locationData.sku_procured_date
+                      ? new Date(locationData.sku_procured_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })
+                      : 'N/A'}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Vendor & Procurement */}
+            {/* Location Tag Information */}
             <div style={sectionStyle}>
               <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Building size={16} />
-                Vendor & Procurement
+                <MapPin size={16} />
+                Location Tag Information
               </h4>
-              <div>
-                <div style={labelStyle}>Brand / Vendor</div>
-                <div style={valueStyle}>{locationData.sku_brand_vendor || 'N/A'}</div>
-              </div>
-              <div>
-                <div style={labelStyle}>Procurement Date</div>
-                <div style={valueStyle}>
-                  {locationData.sku_procured_date 
-                    ? new Date(locationData.sku_procured_date).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })
-                    : 'N/A'}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <div style={labelStyle}>Id</div>
+                  <div style={valueStyle}>{locationData.location_id || 'N/A'}</div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Organization Id</div>
+                  <div style={valueStyle}>ORG-001</div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Location Tag Name</div>
+                  <div style={{
+                    ...valueStyle,
+                    fontSize: '1rem',
+                    color: '#60a5fa',
+                    gridColumn: '1 / -1'
+                  }}>
+                    {locationData.location_tag_name || locationData.location || 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Capacity</div>
+                  <div style={valueStyle}>{locationData.capacity || locationData.available_quantity || 0}</div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Created At</div>
+                  <div style={valueStyle}>
+                    {locationData.location_created_at 
+                      ? new Date(locationData.location_created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })
+                      : locationData.sku_procured_date
+                      ? new Date(locationData.sku_procured_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })
+                      : 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Unit Id</div>
+                  <div style={valueStyle}>{locationData.unit_id || 'U1'}</div>
                 </div>
               </div>
             </div>
 
-            {/* Inventory Status */}
-            <div style={{
-              ...sectionStyle,
-              background: locationData.available_quantity > 0 
-                ? 'linear-gradient(135deg, hsl(142.1 76.2% 36.3%), hsl(142.1 70.6% 45.3%))' 
-                : 'linear-gradient(135deg, hsl(0 84.2% 60.2%), hsl(0 62.8% 30.6%))',
-              borderColor: locationData.available_quantity > 0 ? 'hsl(142.1 70.6% 45.3%)' : 'hsl(0 62.8% 30.6%)'
-            }}>
-              <h4 style={{ 
-                margin: '0 0 0.75rem 0', 
-                fontSize: '0.9rem', 
-                color: locationData.available_quantity > 0 ? '#22c55e' : '#ef4444',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <TrendingUp size={16} />
-                Inventory Status
+            {/* Asset Information */}
+            <div style={sectionStyle}>
+              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Archive size={16} />
+                Asset Information
               </h4>
-              <div>
-                <div style={labelStyle}>Available Quantity</div>
-                <div style={{
-                  fontSize: '1.75rem',
-                  fontWeight: 'bold',
-                  color: locationData.available_quantity > 0 ? '#22c55e' : '#ef4444',
-                  marginBottom: '0.5rem'
-                }}>
-                  {locationData.available_quantity || 0}
-                  <span style={{ fontSize: '0.9rem', marginLeft: '0.5rem' }}>units</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <div style={labelStyle}>Id</div>
+                  <div style={valueStyle}>{locationData.asset_id || locationData.sku_instance_id || 'N/A'}</div>
                 </div>
-              </div>
-              <div style={{
-                padding: '0.5rem',
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '4px',
-                fontSize: '0.8rem',
-                color: '#94a3b8',
-                marginTop: '0.5rem'
-              }}>
-                {locationData.available_quantity > 100 
-                  ? '✅ Well Stocked' 
-                  : locationData.available_quantity > 50 
-                  ? '⚠️ Moderate Stock' 
-                  : locationData.available_quantity > 0 
-                  ? '🔴 Low Stock' 
-                  : '❌ Out of Stock'}
+                <div>
+                  <div style={labelStyle}>Organization Id</div>
+                  <div style={valueStyle}>ORG-001</div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Asset Name</div>
+                  <div style={{
+                    ...valueStyle,
+                    fontSize: '1rem',
+                    color: '#60a5fa',
+                    gridColumn: '1 / -1'
+                  }}>
+                    {locationData.asset_name || locationData.sku_name || 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Asset Type</div>
+                  <div style={valueStyle}>{locationData.asset_type || locationData.parent_resource || 'N/A'}</div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Location Tag Id</div>
+                  <div style={valueStyle}>{locationData.location_id || 'N/A'}</div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Created At</div>
+                  <div style={valueStyle}>
+                    {locationData.asset_created_at 
+                      ? new Date(locationData.asset_created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })
+                      : locationData.sku_procured_date
+                      ? new Date(locationData.sku_procured_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })
+                      : 'N/A'}
+                  </div>
+                </div>
               </div>
             </div>
 

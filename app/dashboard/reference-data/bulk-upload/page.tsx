@@ -40,7 +40,7 @@ const BACKEND_SCHEMAS = {
     }
   },
   location_tags: {
-    fields: ['id', 'organization_id', 'location_tag_name', 'capacity', 'created_at', 'unit_id'],
+    fields: ['id', 'organization_id', 'location_tag_name', 'capacity', 'created_at', 'unit_id', 'length', 'breadth', 'height', 'volume'],
     required: ['location_tag_name', 'organization_id'],
     types: {
       id: 'uuid4',
@@ -48,11 +48,15 @@ const BACKEND_SCHEMAS = {
       location_tag_name: 'varchar',
       capacity: 'int4',
       created_at: 'timestamptz',
-      unit_id: 'uuid4'
+      unit_id: 'uuid4',
+      length: 'numeric',
+      breadth: 'numeric', 
+      height: 'numeric',
+      volume: 'numeric'
     }
   },
   assets: {
-    fields: ['id', 'organization_id', 'asset_name', 'asset_type', 'location_tag_id', 'created_at'],
+    fields: ['id', 'organization_id', 'asset_name', 'asset_type', 'location_tag_id', 'created_at', 'length', 'breadth', 'height', 'volume'],
     required: ['asset_name', 'organization_id'],
     types: {
       id: 'uuid4',
@@ -60,7 +64,11 @@ const BACKEND_SCHEMAS = {
       asset_name: 'varchar',
       asset_type: 'varchar',
       location_tag_id: 'uuid4',
-      created_at: 'timestamptz'
+      created_at: 'timestamptz',
+      length: 'numeric',
+      breadth: 'numeric',
+      height: 'numeric',
+      volume: 'numeric'
     }
   }
 }
@@ -100,7 +108,11 @@ const DEMO_DATA = {
       location_tag_name: 'Warehouse Zone A',
       capacity: '1000',
       created_at: '2024-01-23T10:30:00Z',
-      unit_id: '523e4567-e89b-12d3-a456-426614174000'
+      unit_id: '523e4567-e89b-12d3-a456-426614174000',
+      length: '10.5',
+      breadth: '8.2',
+      height: '4.0',
+      volume: '344.4'
     },
     {
       id: '423e4567-e89b-12d3-a456-426614174001',
@@ -108,7 +120,11 @@ const DEMO_DATA = {
       location_tag_name: 'Cold Storage Unit',
       capacity: '500',
       created_at: '2024-01-23T10:30:00Z',
-      unit_id: '523e4567-e89b-12d3-a456-426614174001'
+      unit_id: '523e4567-e89b-12d3-a456-426614174001',
+      length: '6.0',
+      breadth: '5.0',
+      height: '3.5',
+      volume: '105.0'
     }
   ],
   assets: [
@@ -118,7 +134,11 @@ const DEMO_DATA = {
       asset_name: 'Forklift Machine',
       asset_type: 'Equipment',
       location_tag_id: '423e4567-e89b-12d3-a456-426614174000',
-      created_at: '2024-01-23T10:30:00Z'
+      created_at: '2024-01-23T10:30:00Z',
+      length: '2.5',
+      breadth: '1.2',
+      height: '3.0',
+      volume: '9.0'
     },
     {
       id: '623e4567-e89b-12d3-a456-426614174001',
@@ -126,7 +146,11 @@ const DEMO_DATA = {
       asset_name: 'Conveyor Belt System',
       asset_type: 'Automation',
       location_tag_id: '423e4567-e89b-12d3-a456-426614174001',
-      created_at: '2024-01-23T10:30:00Z'
+      created_at: '2024-01-23T10:30:00Z',
+      length: '8.0',
+      breadth: '1.5',
+      height: '2.0',
+      volume: '24.0'
     }
   ]
 }
@@ -151,22 +175,26 @@ export default function BulkUploadPage() {
     success: number
     errors: string[]
     total: number
-  } | null>(null)
-  const [isImporting, setIsImporting] = useState(false)
-  const [importResults, setImportResults] = useState<{
-    imported: number
-    failed: number
-    errors: string[]
-  } | null>(null)
-  const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([])
-  const [selectedOrgUnit, setSelectedOrgUnit] = useState<string>("")
+  }>({
+    success: 0,
+    errors: [],
+    total: 0
+  })
   const [crudOperation, setCrudOperation] = useState<CrudOperation>("create")
+  const [selectedOrgUnit, setSelectedOrgUnit] = useState<string>("")
   const [isOperationConfirmed, setIsOperationConfirmed] = useState(false)
   const [isCreatingOrgUnit, setIsCreatingOrgUnit] = useState(false)
   const [newOrgUnitName, setNewOrgUnitName] = useState("")
   const [newOrgUnitType, setNewOrgUnitType] = useState<"warehouse" | "production" | "office">("warehouse")
   const [newOrgUnitDescription, setNewOrgUnitDescription] = useState("")
   const [newOrgUnitOrganizationId, setNewOrgUnitOrganizationId] = useState("")
+  const [importResults, setImportResults] = useState<{
+    imported: number
+    failed: number
+    errors: string[]
+  } | null>(null)
+  const [isImporting, setIsImporting] = useState(false)
+  const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([])
   const [displayedData, setDisplayedData] = useState<any[]>([])
 
   // Load displayed data whenever uploadType or selectedOrgUnit changes
@@ -444,6 +472,37 @@ export default function BulkUploadPage() {
         }
       }
 
+      // L×B×H validation for assets and location tags
+      if (type === 'assets' || type === 'location_tags') {
+        const length = parseFloat(row.length) || 0;
+        const breadth = parseFloat(row.breadth) || 0;
+        const height = parseFloat(row.height) || 0;
+        const volume = parseFloat(row.volume) || 0;
+        
+        // Check if any dimension is provided
+        const hasAnyDimension = row.length || row.breadth || row.height || row.volume;
+        
+        if (hasAnyDimension) {
+          // If any dimension is provided, all must be provided and positive
+          if (!row.length || !row.breadth || !row.height) {
+            rowErrors.push('If you provide one dimension, you must provide all three (Length, Breadth, Height)');
+            isValid = false;
+          } else if (length <= 0 || breadth <= 0 || height <= 0) {
+            rowErrors.push('All dimensions must be positive numbers');
+            isValid = false;
+          } else {
+            // Calculate expected volume
+            const expectedVolume = length * breadth * height;
+            const volumeTolerance = 0.01; // Allow small floating point differences
+            
+            if (row.volume && Math.abs(volume - expectedVolume) > volumeTolerance) {
+              rowErrors.push(`Volume ${volume} does not match calculated volume (Length × Breadth × Height = ${expectedVolume.toFixed(2)})`);
+              isValid = false;
+            }
+          }
+        }
+      }
+
       if (rowErrors.length > 0) {
         errors.push(`Row ${index + 1}: ${rowErrors.join('; ')}`)
       }
@@ -677,6 +736,51 @@ export default function BulkUploadPage() {
     // Default: convert to string and truncate if too long
     const stringValue = String(value)
     return stringValue.length > 50 ? `${stringValue.substring(0, 47)}...` : stringValue
+  }
+
+  // Custom table helper functions
+  const getCustomTableHeaders = (uploadType: string) => {
+    const schema = BACKEND_SCHEMAS[uploadType as keyof typeof BACKEND_SCHEMAS];
+    const hasDimensions = uploadType === 'assets' || uploadType === 'location_tags';
+    
+    if (hasDimensions) {
+      // Filter out individual dimension fields and replace with combined dimensions
+      const dimensionFields = ['length', 'breadth', 'height', 'volume'];
+      const filteredFields = schema.fields.filter(field => !dimensionFields.includes(field));
+      
+      return [
+        ...filteredFields.map(field => ({
+          field,
+          label: field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+        })),
+        {
+          field: 'dimensions',
+          label: 'Dimensions (L×B×H = Volume)'
+        }
+      ];
+    }
+    
+    return schema.fields.map(field => ({
+      field,
+      label: field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    }));
+  }
+
+  const getCustomCellValue = (row: any, field: string, uploadType: string) => {
+    if (field === 'dimensions') {
+      const length = parseFloat(row.length) || 0;
+      const breadth = parseFloat(row.breadth) || 0;
+      const height = parseFloat(row.height) || 0;
+      const volume = parseFloat(row.volume) || 0;
+      
+      if (length > 0 && breadth > 0 && height > 0) {
+        return `${length} × ${breadth} × ${height} = ${volume}`;
+      } else {
+        return '-';
+      }
+    }
+    
+    return formatCellValue(row[field], field);
   }
 
   return (
@@ -1075,9 +1179,9 @@ export default function BulkUploadPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      {Object.keys(parsedData[0]).map((key) => (
-                        <TableHead key={key}>
-                          {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      {getCustomTableHeaders(uploadType).map((header) => (
+                        <TableHead key={header.field}>
+                          {header.label}
                         </TableHead>
                       ))}
                     </TableRow>
@@ -1085,9 +1189,9 @@ export default function BulkUploadPage() {
                   <TableBody>
                     {parsedData.slice(0, 5).map((row, index) => (
                       <TableRow key={index}>
-                        {Object.values(row).map((value: any, cellIndex) => (
-                          <TableCell key={cellIndex}>
-                            {formatCellValue(value, Object.keys(parsedData[0])[cellIndex])}
+                        {getCustomTableHeaders(uploadType).map((header) => (
+                          <TableCell key={header.field}>
+                            {getCustomCellValue(row, header.field, uploadType)}
                           </TableCell>
                         ))}
                       </TableRow>
@@ -1230,9 +1334,9 @@ export default function BulkUploadPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                {BACKEND_SCHEMAS[uploadType as keyof typeof BACKEND_SCHEMAS].fields.map((field) => (
-                  <TableHead key={field}>
-                    {field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                {getCustomTableHeaders(uploadType).map((header) => (
+                  <TableHead key={header.field}>
+                    {header.label}
                   </TableHead>
                 ))}
               </TableRow>
@@ -1244,9 +1348,9 @@ export default function BulkUploadPage() {
                     key={index} 
                     className={index < 2 ? 'bg-blue-50/30 dark:bg-blue-900/20' : ''}
                   >
-                    {BACKEND_SCHEMAS[uploadType as keyof typeof BACKEND_SCHEMAS].fields.map((field) => (
-                      <TableCell key={field} className="font-medium">
-                        {formatCellValue((row as any)[field], field)}
+                    {getCustomTableHeaders(uploadType).map((header) => (
+                      <TableCell key={header.field} className="font-medium">
+                        {getCustomCellValue(row, header.field, uploadType)}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -1254,7 +1358,7 @@ export default function BulkUploadPage() {
               ) : (
                 <TableRow>
                   <TableCell 
-                    colSpan={BACKEND_SCHEMAS[uploadType as keyof typeof BACKEND_SCHEMAS].fields.length} 
+                    colSpan={getCustomTableHeaders(uploadType).length} 
                     className="h-24 text-center text-gray-500 dark:text-gray-400"
                   >
                     No data available. Upload a file to get started.

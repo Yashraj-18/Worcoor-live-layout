@@ -63,15 +63,30 @@ import { toast } from "@/components/ui/use-toast"
 // Types
 interface LocationTag {
   location_tag_name: string
-  capacity: number
+  // Volume capacity fields
+  length?: number
+  breadth?: number
+  height?: number
+  volume?: number // Calculated: L x B x H
   current_items: number
 }
 
 // Form schema
 const locationTagSchema = z.object({
   location_tag_name: z.string().min(1, "Location Tag Name is required").max(100, "Name must be less than 100 characters"),
-  capacity: z.coerce.number().int("Capacity must be an integer").min(0, "Capacity must be 0 or greater"),
-})
+  // Volume capacity fields
+  length: z.number().positive("Length must be positive").optional(),
+  breadth: z.number().positive("Breadth must be positive").optional(),
+  height: z.number().positive("Height must be positive").optional(),
+}).refine((data) => {
+  // If any dimension is provided, all must be provided
+  const hasAnyDimension = data.length || data.breadth || data.height;
+  const hasAllDimensions = data.length && data.breadth && data.height;
+  return !hasAnyDimension || hasAllDimensions;
+}, {
+  message: "If you provide one dimension, you must provide all three (Length, Breadth, Height)",
+  path: ["length"],
+});
 
 type LocationTagFormValues = z.infer<typeof locationTagSchema>
 
@@ -79,17 +94,26 @@ type LocationTagFormValues = z.infer<typeof locationTagSchema>
 const defaultLocationTags: LocationTag[] = [
   {
     location_tag_name: "Warehouse A - Rack 1",
-    capacity: 100,
+    length: 10,
+    breadth: 5,
+    height: 2,
+    volume: 100, // 10 x 5 x 2
     current_items: 0,
   },
   {
     location_tag_name: "Warehouse A - Loading Dock",
-    capacity: 50,
+    length: 5,
+    breadth: 5,
+    height: 2,
+    volume: 50, // 5 x 5 x 2
     current_items: 0,
   },
   {
     location_tag_name: "Warehouse B - Quality Check",
-    capacity: 25,
+    length: 5,
+    breadth: 2.5,
+    height: 2,
+    volume: 25, // 5 x 2.5 x 2
     current_items: 0,
   },
 ]
@@ -112,7 +136,9 @@ export default function LocationTagsPage() {
     resolver: zodResolver(locationTagSchema),
     defaultValues: {
       location_tag_name: "",
-      capacity: 0,
+      length: undefined,
+      breadth: undefined,
+      height: undefined,
     },
   })
 
@@ -155,20 +181,21 @@ export default function LocationTagsPage() {
     return matchesSearch
   })
 
-  const getUtilizationPercentage = (tag: LocationTag) => {
-    const cap = Number(tag.capacity) || 0
-    const cur = Number(tag.current_items) || 0
-    if (cap <= 0) return 0
-    return Math.round((cur / cap) * 100)
-  }
-
   // Handle add new tag
   const handleAddTag = (data: LocationTagFormValues) => {
     setIsSubmitting(true)
 
+    // Calculate volume if dimensions are provided
+    const calculatedVolume = (data.length && data.breadth && data.height) 
+      ? data.length * data.breadth * data.height 
+      : undefined
+
     const newTag: LocationTag = {
       location_tag_name: data.location_tag_name,
-      capacity: Number(data.capacity),
+      length: data.length,
+      breadth: data.breadth,
+      height: data.height,
+      volume: calculatedVolume,
       current_items: 0,
     }
 
@@ -190,10 +217,18 @@ export default function LocationTagsPage() {
 
     setIsSubmitting(true)
 
+    // Calculate volume if dimensions are provided
+    const calculatedVolume = (data.length && data.breadth && data.height) 
+      ? data.length * data.breadth * data.height 
+      : undefined
+
     const updatedTag: LocationTag = {
       ...editingTag,
       location_tag_name: data.location_tag_name,
-      capacity: Number(data.capacity),
+      length: data.length,
+      breadth: data.breadth,
+      height: data.height,
+      volume: calculatedVolume,
       current_items: editingTag.current_items,
     }
 
@@ -232,7 +267,9 @@ export default function LocationTagsPage() {
     setEditingTag(tag)
     form.reset({
       location_tag_name: tag.location_tag_name,
-      capacity: tag.capacity,
+      length: tag.length,
+      breadth: tag.breadth,
+      height: tag.height,
     })
     setIsEditDialogOpen(true)
   }
@@ -280,7 +317,7 @@ export default function LocationTagsPage() {
               <Input
                 type="search"
                 placeholder="Search locations..."
-                className="pl-8 w-[200px] lg:w-[300px]"
+                className="pl-8 w-[200px] lg:w-[300px] text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -291,36 +328,43 @@ export default function LocationTagsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Location Tag Name</TableHead>
-                <TableHead>Capacity</TableHead>
-                <TableHead>Current Items</TableHead>
-                <TableHead>Utilization %</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-foreground font-semibold">Location Tag Name</TableHead>
+                <TableHead className="text-foreground font-semibold">Dimensions (L×B×H)</TableHead>
+                <TableHead className="text-foreground font-semibold">Volume</TableHead>
+                <TableHead className="text-foreground font-semibold">Current Items</TableHead>
+                <TableHead className="text-right text-foreground font-semibold">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredTags.length > 0 ? (
                 filteredTags.map((tag, idx) => (
                   <TableRow key={`${tag.location_tag_name}-${idx}`}>
-                    <TableCell className="font-medium">{tag.location_tag_name}</TableCell>
-                    <TableCell>{tag.capacity}</TableCell>
-                    <TableCell>{tag.current_items}</TableCell>
-                    <TableCell>{getUtilizationPercentage(tag)}%</TableCell>
+                    <TableCell className="font-medium text-foreground">{tag.location_tag_name}</TableCell>
+                    <TableCell className="text-foreground">
+                      {tag.length && tag.breadth && tag.height 
+                        ? `${tag.length}×${tag.breadth}×${tag.height}`
+                        : "Not specified"
+                      }
+                    </TableCell>
+                    <TableCell className="text-foreground font-medium">
+                      {tag.volume ? tag.volume.toLocaleString() : "Not specified"}
+                    </TableCell>
+                    <TableCell className="text-foreground">{tag.current_items}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted">
                             <MoreVertical className="h-4 w-4" />
                             <span className="sr-only">Actions</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEditClick(tag)}>
+                          <DropdownMenuItem onClick={() => handleEditClick(tag)} className="cursor-pointer">
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="text-red-600"
+                            className="text-red-600 cursor-pointer hover:bg-red-50"
                             onClick={() => handleDeleteClick(tag)}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -333,7 +377,7 @@ export default function LocationTagsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                     {locationTags.length === 0
                       ? "No location tags found. Add your first location to get started."
                       : "No locations match your current filters."}
@@ -372,38 +416,122 @@ export default function LocationTagsPage() {
                 name="location_tag_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Location Tag Name</FormLabel>
+                    <FormLabel className="text-foreground font-medium">Location Tag Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter location tag name" {...field} />
+                      <Input 
+                        placeholder="Enter location tag name" 
+                        className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
+                        {...field} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="capacity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Capacity</FormLabel>
-                    <FormControl>
-                      <Input type="number" step={1} placeholder="Enter capacity" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+              {/* Volume Capacity Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b">
+                  <span className="text-sm font-medium text-foreground">Volume Capacity (Optional)</span>
+                  <span className="text-xs text-muted-foreground">L × B × H = Volume</span>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="length"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Length</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            min="0"
+                            step="0.01"
+                            className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="breadth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Breadth</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            min="0"
+                            step="0.01"
+                            className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="height"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Height</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            min="0"
+                            step="0.01"
+                            className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Calculated Volume Display */}
+                {(form.watch("length") || form.watch("breadth") || form.watch("height")) && (
+                  <div className="p-3 bg-muted/50 rounded-md">
+                    <div className="text-sm font-medium text-foreground">Calculated Volume:</div>
+                    <div className="text-lg font-bold text-primary">
+                      {(() => {
+                        const length = form.watch("length") || 0;
+                        const breadth = form.watch("breadth") || 0;
+                        const height = form.watch("height") || 0;
+                        const volume = length * breadth * height;
+                        return volume > 0 ? `${volume.toLocaleString()} cubic units` : "Enter all dimensions";
+                      })()}
+                    </div>
+                  </div>
                 )}
-              />
+              </div>
 
               {editingTag && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Current Items</Label>
-                    <p className="text-sm">{editingTag.current_items}</p>
+                    <Label className="text-sm font-medium text-foreground">Current Items</Label>
+                    <p className="text-sm text-foreground font-medium mt-1">{editingTag.current_items}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Utilization Percentage</Label>
-                    <p className="text-sm">{getUtilizationPercentage(editingTag)}%</p>
+                    <Label className="text-sm font-medium text-foreground">Volume Capacity</Label>
+                    <p className="text-sm text-foreground font-medium mt-1">
+                      {editingTag.volume ? `${editingTag.volume.toLocaleString()} cubic units` : "Not specified"}
+                    </p>
                   </div>
                 </div>
               )}

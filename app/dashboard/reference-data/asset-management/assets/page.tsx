@@ -19,7 +19,8 @@ import { PageHeader } from "@/components/dashboard/page-header"
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/src/utils/AuthContext";
 import { notification } from '@/src/services/notificationService'
-import { apiService } from "@/src/services/apiService";
+import { mockReferenceDataService } from '@/src/services/mockReferenceDataService'
+import { mockAssetService } from '@/src/services/mockAssetService'
 import { api_url } from "@/src/constants/api_url";
 import { useInfiniteScroll } from "@/src/lib/use-infinite-scroll";
 import { getPaginatedRequestParams } from "@/src/lib/pagination";
@@ -34,7 +35,19 @@ const assetFormSchema = z.object({
     required_error: "Please select an asset type.",
   }),
   location_tag_id: z.string().optional(),
-})
+  // Dimensions for volume calculation
+  length: z.number().positive("Length must be positive").optional(),
+  breadth: z.number().positive("Breadth must be positive").optional(),
+  height: z.number().positive("Height must be positive").optional(),
+}).refine((data) => {
+  // If any dimension is provided, all must be provided
+  const hasAnyDimension = data.length || data.breadth || data.height;
+  const hasAllDimensions = data.length && data.breadth && data.height;
+  return !hasAnyDimension || hasAllDimensions;
+}, {
+  message: "If you provide one dimension, you must provide all three (Length, Breadth, Height)",
+  path: ["length"],
+});
 
 type AssetFormValues = z.infer<typeof assetFormSchema>
 
@@ -211,15 +224,12 @@ export default function AssetManagementPage() {
     defaultLabel: string;
   }) => {
     try {
-      const response = await apiService.get({
-        path: `${api_url.worCoorService.referenceDataTable.listTableEntry}/${apiId}`,
-        isAuth: true,
-      });
+      const response = await mockReferenceDataService.getTableEntry(apiId);
 
-      let rawData = response.data?.data || [];
+      let rawData = response.data || [];
       if (defaultLabel == 'Departments') {
-        setDepartmentDetails(response.data?.data || []);
-        setFilterDepartment(response.data?.data || []);
+        setDepartmentDetails(response.data || []);
+        setFilterDepartment(response.data || []);
       }
       if (defaultLabel == 'ParentResources') {
         rawData = rawData.filter(
@@ -233,7 +243,8 @@ export default function AssetManagementPage() {
 
       setState([...formattedData]);
     } catch (error) {
-      notification.error(`Failed to load ${defaultLabel}.`);
+      console.error(`Failed to fetch ${defaultLabel}:`, error);
+      setState([{ value: "", label: `All ${defaultLabel}` }]);
     }
   };
 
@@ -305,11 +316,7 @@ export default function AssetManagementPage() {
         requestData.refFilter = filters;
       }
       
-      const response = await apiService.post({
-        path: api_url.worCoorService.asset.assetlist,
-        data: requestData,
-        isAuth: true,
-      });
+      const response = await mockAssetService.getAssetList(requestData);
 
       const list = Array.isArray(response.data?.data?.list) ? response.data.data.list : [];
       const totalCount = response.data?.data?.total || 0;
@@ -334,6 +341,9 @@ export default function AssetManagementPage() {
       asset_name: "",
       asset_type: "forklift" as any,
       location_tag_id: undefined,
+      length: undefined,
+      breadth: undefined,
+      height: undefined,
     },
   })
 
@@ -366,6 +376,9 @@ export default function AssetManagementPage() {
       asset_name: asset.asset_name ?? asset.name ?? "",
       asset_type: asset.asset_type ?? asset.type ?? "forklift",
       location_tag_id: asset.location_tag_id ?? asset.locationId ?? undefined,
+      length: asset.length,
+      breadth: asset.breadth,
+      height: asset.height,
     })
     setIsEditAssetOpen(true)
   }
@@ -399,6 +412,12 @@ export default function AssetManagementPage() {
           return
         }
         const locationTagId = data.location_tag_id || undefined;
+        
+        // Calculate volume if dimensions are provided
+        const calculatedVolume = (data.length && data.breadth && data.height) 
+          ? data.length * data.breadth * data.height 
+          : undefined;
+
         const reqBody = {
           asset_name: data.asset_name,
           asset_type: data.asset_type,
@@ -408,16 +427,37 @@ export default function AssetManagementPage() {
           type: data.asset_type,
           locationId: locationTagId,
 
+          // Dimensions and volume
+          length: data.length,
+          breadth: data.breadth,
+          height: data.height,
+          volume: calculatedVolume,
+
           departmentId: departmentFilter,
           unitId: unitFilter || undefined,
           categoryId: categoryFilter || undefined,
           statusId: statusFilter || undefined,
         };
 
-        const response = await apiService.post({
-          path: api_url.worCoorService.asset.addAsset,
-          isAuth: true,
-          data: reqBody,
+        const response = await mockAssetService.addAsset({
+          asset_name: data.asset_name,
+          asset_type: data.asset_type,
+          location_tag_id: locationTagId || undefined,
+
+          name: data.asset_name,
+          type: data.asset_type,
+          locationId: locationTagId,
+
+          // Dimensions and volume
+          length: data.length,
+          breadth: data.breadth,
+          height: data.height,
+          volume: calculatedVolume,
+
+          departmentId: departmentFilter,
+          unitId: unitFilter || undefined,
+          categoryId: categoryFilter || undefined,
+          statusId: statusFilter || undefined,
         });
 
         if (response.data.status === "OK") {
@@ -458,6 +498,12 @@ export default function AssetManagementPage() {
           return
         }
         const locationTagId = data.location_tag_id || undefined;
+        
+        // Calculate volume if dimensions are provided
+        const calculatedVolume = (data.length && data.breadth && data.height) 
+          ? data.length * data.breadth * data.height 
+          : undefined;
+
         const reqBody = {
           id: selectedAsset.id,
           asset_name: data.asset_name,
@@ -468,16 +514,38 @@ export default function AssetManagementPage() {
           type: data.asset_type,
           locationId: locationTagId,
 
+          // Dimensions and volume
+          length: data.length,
+          breadth: data.breadth,
+          height: data.height,
+          volume: calculatedVolume,
+
           departmentId: departmentFilter,
           unitId: unitFilter || undefined,
           categoryId: categoryFilter || undefined,
           statusId: statusFilter || undefined,
         };
 
-        const response = await apiService.put({
-          path: `${api_url.worCoorService.asset.updateAsset}`,
-          isAuth: true,
-          data: reqBody,
+        const response = await mockAssetService.updateAsset({
+          asset_name: data.asset_name,
+          asset_type: data.asset_type,
+          location_tag_id: locationTagId || undefined,
+          id: selectedAsset.id,
+
+          name: data.asset_name,
+          type: data.asset_type,
+          locationId: locationTagId,
+
+          // Dimensions and volume
+          length: data.length,
+          breadth: data.breadth,
+          height: data.height,
+          volume: calculatedVolume,
+
+          departmentId: departmentFilter,
+          unitId: unitFilter || undefined,
+          categoryId: categoryFilter || undefined,
+          statusId: statusFilter || undefined,
         });
 
         if (response.data.status === "OK") {
@@ -518,10 +586,7 @@ export default function AssetManagementPage() {
     if (!selectedAsset) return;
     setIsDeleting(true);
     try {
-      const response = await apiService.delete({
-        path: `${api_url.worCoorService.asset.deleteAsset}/${selectedAsset.id}`,
-        isAuth: true,
-      });
+      const response = await mockAssetService.deleteAsset(selectedAsset.id);
 
       if (response.data?.status === "OK") {
         // Show success message
@@ -886,6 +951,98 @@ export default function AssetManagementPage() {
                         )}
                       />
 
+                      {/* Dimensions Section */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 pb-2 border-b">
+                          <span className="text-sm font-medium text-foreground">Asset Dimensions (Optional)</span>
+                          <span className="text-xs text-muted-foreground">L × B × H = Volume</span>
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="length"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Length</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="0"
+                                    min="0"
+                                    step="0.01"
+                                    className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
+                                    {...field}
+                                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="breadth"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Breadth</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="0"
+                                    min="0"
+                                    step="0.01"
+                                    className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
+                                    {...field}
+                                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="height"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Height</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="0"
+                                    min="0"
+                                    step="0.01"
+                                    className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
+                                    {...field}
+                                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        {/* Calculated Volume Display */}
+                        {(form.watch("length") || form.watch("breadth") || form.watch("height")) && (
+                          <div className="p-3 bg-muted/50 rounded-md">
+                            <div className="text-sm font-medium text-foreground">Calculated Volume:</div>
+                            <div className="text-lg font-bold text-primary">
+                              {(() => {
+                                const length = form.watch("length") || 0;
+                                const breadth = form.watch("breadth") || 0;
+                                const height = form.watch("height") || 0;
+                                const volume = length * breadth * height;
+                                return volume > 0 ? `${volume.toLocaleString()} cubic units` : "Enter all dimensions";
+                              })()}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       <DialogFooter className="py-4 gap-2">
                         <Button type="button" variant="outline"
                           onClick={() => {
@@ -1027,6 +1184,99 @@ export default function AssetManagementPage() {
                     </FormItem>
                   )}
                 />
+
+                {/* Dimensions Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b">
+                    <span className="text-sm font-medium text-foreground">Asset Dimensions (Optional)</span>
+                    <span className="text-xs text-muted-foreground">L × B × H = Volume</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="length"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Length</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              min="0"
+                              step="0.01"
+                              className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="breadth"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Breadth</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              min="0"
+                              step="0.01"
+                              className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="height"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Height</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              min="0"
+                              step="0.01"
+                              className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Calculated Volume Display */}
+                  {(form.watch("length") || form.watch("breadth") || form.watch("height")) && (
+                    <div className="p-3 bg-muted/50 rounded-md">
+                      <div className="text-sm font-medium text-foreground">Calculated Volume:</div>
+                      <div className="text-lg font-bold text-primary">
+                        {(() => {
+                          const length = form.watch("length") || 0;
+                          const breadth = form.watch("breadth") || 0;
+                          const height = form.watch("height") || 0;
+                          const volume = length * breadth * height;
+                          return volume > 0 ? `${volume.toLocaleString()} cubic units` : "Enter all dimensions";
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <DialogFooter className="py-4 gap-2">
                   <Button variant="outline" onClick={() => setIsEditAssetOpen(false)}>
                     Cancel

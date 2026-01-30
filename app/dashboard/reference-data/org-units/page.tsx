@@ -67,6 +67,11 @@ interface OrgUnit {
   unit_type: "warehouse" | "office" | "production"
   status: "LIVE" | "OFFLINE" | "MAINTENANCE" | "PLANNING"
   description?: string
+  // Volume capacity fields
+  length?: number
+  breadth?: number
+  height?: number
+  volume?: number // Calculated: L x B x H
 }
 
 // Form schema
@@ -79,7 +84,19 @@ const orgUnitSchema = z.object({
     required_error: "Please select a status",
   }),
   description: z.string().optional(),
-})
+  // Volume capacity fields
+  length: z.number().positive("Length must be positive").optional(),
+  breadth: z.number().positive("Breadth must be positive").optional(),
+  height: z.number().positive("Height must be positive").optional(),
+}).refine((data) => {
+  // If any dimension is provided, all must be provided
+  const hasAnyDimension = data.length || data.breadth || data.height;
+  const hasAllDimensions = data.length && data.breadth && data.height;
+  return !hasAnyDimension || hasAllDimensions;
+}, {
+  message: "If you provide one dimension, you must provide all three (Length, Breadth, Height)",
+  path: ["length"],
+});
 
 type OrgUnitFormValues = z.infer<typeof orgUnitSchema>
 
@@ -90,18 +107,30 @@ const defaultOrgUnits: OrgUnit[] = [
     unit_type: "warehouse",
     status: "LIVE",
     description: "Main warehouse for finished goods storage",
+    length: 100,
+    breadth: 50,
+    height: 10,
+    volume: 50000, // 100 x 50 x 10
   },
   {
     unit_name: "Production Unit 1",
     unit_type: "production",
     status: "PLANNING",
     description: "Primary production line for assembly operations",
+    length: 80,
+    breadth: 40,
+    height: 8,
+    volume: 25600, // 80 x 40 x 8
   },
   {
     unit_name: "Main Office",
     unit_type: "office",
     status: "OFFLINE",
     description: "Administrative offices and management",
+    length: 30,
+    breadth: 20,
+    height: 4,
+    volume: 2400, // 30 x 20 x 4
   },
 ]
 
@@ -127,6 +156,9 @@ export default function OrgUnitsPage() {
       unit_type: "warehouse",
       status: "LIVE",
       description: "",
+      length: undefined,
+      breadth: undefined,
+      height: undefined,
     },
   })
 
@@ -175,11 +207,20 @@ export default function OrgUnitsPage() {
   const handleAddUnit = (data: OrgUnitFormValues) => {
     setIsSubmitting(true)
 
+    // Calculate volume if dimensions are provided
+    const calculatedVolume = (data.length && data.breadth && data.height) 
+      ? data.length * data.breadth * data.height 
+      : undefined
+
     const newUnit: OrgUnit = {
       unit_name: data.unit_name,
       unit_type: data.unit_type,
       status: data.status,
       description: data.description,
+      length: data.length,
+      breadth: data.breadth,
+      height: data.height,
+      volume: calculatedVolume,
     }
 
     setOrgUnits((prev) => [...prev, newUnit])
@@ -188,7 +229,7 @@ export default function OrgUnitsPage() {
 
     toast({
       title: "Organizational unit created",
-      description: `${newUnit.unit_name} has been added successfully.`,
+      description: `${newUnit.unit_name} has been added successfully.${calculatedVolume ? ` Volume: ${calculatedVolume.toLocaleString()} cubic units` : ''}`,
     })
 
     setIsSubmitting(false)
@@ -200,12 +241,21 @@ export default function OrgUnitsPage() {
 
     setIsSubmitting(true)
 
+    // Calculate volume if dimensions are provided
+    const calculatedVolume = (data.length && data.breadth && data.height) 
+      ? data.length * data.breadth * data.height 
+      : undefined
+
     const updatedUnit: OrgUnit = {
       ...editingUnit,
       unit_name: data.unit_name,
       unit_type: data.unit_type,
       status: data.status,
       description: data.description,
+      length: data.length,
+      breadth: data.breadth,
+      height: data.height,
+      volume: calculatedVolume,
     }
 
     setOrgUnits((prev) =>
@@ -217,7 +267,7 @@ export default function OrgUnitsPage() {
 
     toast({
       title: "Organizational unit updated",
-      description: `${updatedUnit.unit_name} has been updated successfully.`,
+      description: `${updatedUnit.unit_name} has been updated successfully.${calculatedVolume ? ` Volume: ${calculatedVolume.toLocaleString()} cubic units` : ''}`,
     })
 
     setIsSubmitting(false)
@@ -246,6 +296,9 @@ export default function OrgUnitsPage() {
       unit_type: unit.unit_type,
       status: unit.status,
       description: unit.description || "",
+      length: unit.length,
+      breadth: unit.breadth,
+      height: unit.height,
     })
     setIsEditDialogOpen(true)
   }
@@ -328,6 +381,7 @@ export default function OrgUnitsPage() {
                 <TableHead>Unit Name</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Volume Capacity</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -350,6 +404,16 @@ export default function OrgUnitsPage() {
                         />
                         <span>{unit.status}</span>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {unit.volume ? (
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{unit.volume.toLocaleString()}</span>
+                          <span className="text-sm text-muted-foreground">cubic units</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Not specified</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -378,7 +442,7 @@ export default function OrgUnitsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center">
                     {orgUnits.length === 0
                       ? "No organizational units found. Add your first unit to get started."
                       : "No units match your current filters."}
@@ -490,6 +554,95 @@ export default function OrgUnitsPage() {
                   </FormItem>
                 )}
               />
+
+              {/* Volume Capacity Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b">
+                  <span className="text-sm font-medium">Volume Capacity (Optional)</span>
+                  <span className="text-xs text-muted-foreground">L × B × H = Volume</span>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="length"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Length</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            min="0"
+                            step="0.01"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="breadth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Breadth</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            min="0"
+                            step="0.01"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="height"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Height</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            min="0"
+                            step="0.01"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Calculated Volume Display */}
+                {(form.watch("length") || form.watch("breadth") || form.watch("height")) && (
+                  <div className="p-3 bg-muted/50 rounded-md">
+                    <div className="text-sm font-medium">Calculated Volume:</div>
+                    <div className="text-lg font-bold text-primary">
+                      {(() => {
+                        const length = form.watch("length") || 0;
+                        const breadth = form.watch("breadth") || 0;
+                        const height = form.watch("height") || 0;
+                        const volume = length * breadth * height;
+                        return volume > 0 ? `${volume.toLocaleString()} cubic units` : "Enter all dimensions";
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <DialogFooter>
                 <Button

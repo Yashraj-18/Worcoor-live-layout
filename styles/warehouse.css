@@ -10078,7 +10078,7 @@ body, html {
 
   border: 2px solid #00BCD4;
 
-  background: #E0F7FA !important;
+  background: transparent !important;
 
   border-radius: 4px;
 
@@ -10142,7 +10142,7 @@ body, html {
 
   border-radius: 2px;
 
-  background: #E0F7FA !important;
+  background: transparent !important;
 
   box-shadow: none;
 
@@ -10174,7 +10174,7 @@ body, html {
 
   border-color: #0097A7;
 
-  background: #B2EBF2 !important;
+  background: transparent !important;
 
   transform: none;
 
@@ -10187,7 +10187,7 @@ body, html {
 
   border-color: #006064;
 
-  background: #80DEEA !important;
+  background: transparent !important;
 
   border-width: 2px;
 
@@ -10201,7 +10201,7 @@ body, html {
 
   border-color: #00BCD4;
 
-  background: #E0F7FA !important;
+  background: transparent !important;
 
 }
 
@@ -10211,7 +10211,7 @@ body, html {
 
   border-color: #4FC3F7;
 
-  background: #E1F5FE !important;
+  background: transparent !important;
 
 }
 
@@ -10221,7 +10221,7 @@ body, html {
 
   border-color: #81D4FA;
 
-  background: #F3E5F5 !important;
+  background: transparent !important;
 
 }
 
@@ -10231,7 +10231,7 @@ body, html {
 
   border-color: #B39DDB;
 
-  background: #F3E5F5 !important;
+  background: transparent !important;
 
 }
 

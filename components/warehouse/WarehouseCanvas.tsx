@@ -120,11 +120,11 @@ const WarehouseCanvas = ({
 
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: [DRAG_TYPES.COMPONENT, DRAG_TYPES.WAREHOUSE_ITEM],
-    drop: (draggedItem, monitor) => {
+    drop: (draggedItem: any, monitor: any) => {
       console.log('Drop detected:', draggedItem);
       // Check if this is a drawing tool
-      if (draggedItem.drawingTool) {
-        console.log('Activating drawing mode for:', draggedItem.name);
+      if ((draggedItem as any).drawingTool) {
+        console.log('Activating drawing mode for:', (draggedItem as any).name);
         setDrawingMode(draggedItem);
         // Show visual feedback that drawing mode is active
         if (canvasRef.current) {
@@ -158,11 +158,19 @@ const WarehouseCanvas = ({
       const x = (rawX - panOffset.x) / zoomLevel;
       const y = (rawY - panOffset.y) / zoomLevel;
       
-      // Debug: log coordinates if needed
-      // console.log('Drop coordinates:', { rawX, rawY, x, y, panOffset, zoomLevel });
+      // Debug: Enhanced coordinate logging for better positioning
+      console.log('Enhanced Drop Coordinates:', { 
+        rawX, rawY, x, y, 
+        panOffset, zoomLevel,
+        draggedItem: (draggedItem as any).type,
+        draggedItemSize: { 
+          width: (draggedItem as any).defaultSize?.width, 
+          height: (draggedItem as any).defaultSize?.height 
+        }
+      });
 
       // Check if dropping onto an existing item for stacking or container placement
-      const targetItem = items.find(item => {
+      const targetItem = items.find((item: any) => {
         return x >= item.x && x <= item.x + item.width &&
                y >= item.y && y <= item.y + item.height;
       });
@@ -170,26 +178,26 @@ const WarehouseCanvas = ({
       // Check if dropping into a container using hierarchical system
       const containerItem = hierarchicalManager.getValidContainer(x, y, draggedItem, items);
 
-      if (draggedItem.id) {
+      if ((draggedItem as any).id) {
         // Check if item position is locked
-        if (draggedItem.isPositionLocked) {
-          console.log('Cannot move position-locked item:', draggedItem.id);
+        if ((draggedItem as any).isPositionLocked) {
+          console.log('Cannot move position-locked item:', (draggedItem as any).id);
           return;
         }
         // Moving existing item
-        if (targetItem && targetItem.id !== draggedItem.id && stackMode === 'enabled') {
+        if (targetItem && targetItem.id !== (draggedItem as any).id && stackMode === 'enabled') {
           // Check if both items can be stacked
-          const draggedItemData = items.find(item => item.id === draggedItem.id);
+          const draggedItemData = items.find((item: any) => item.id === (draggedItem as any).id);
           if (draggedItemData && 
               STACKABLE_COMPONENTS.includes(targetItem.type) && 
               STACKABLE_COMPONENTS.includes(draggedItemData.type)) {
-            onCreateStack(targetItem.id, draggedItem.id);
+            onCreateStack(targetItem.id, (draggedItem as any).id);
             return;
           }
         }
         
         // Check for linking opportunities for structural elements
-        const draggedItemData = items.find(item => item.id === draggedItem.id);
+        const draggedItemData = items.find((item: any) => item.id === (draggedItem as any).id);
         if (draggedItemData && LINKABLE_ELEMENTS.includes(draggedItemData.type)) {
           const tempItem = { ...draggedItemData, x: Math.max(0, x), y: Math.max(0, y) };
           const connections = findAllConnections(tempItem, items);
@@ -197,11 +205,11 @@ const WarehouseCanvas = ({
           if (connections.length > 0) {
             // Auto-snap to the first available connection
             const snappedItem = snapToConnection(tempItem, connections[0].targetElement, connections[0]);
-            onMoveItem(draggedItem.id, snappedItem.x, snappedItem.y);
+            onMoveItem((draggedItem as any).id, snappedItem.x, snappedItem.y);
           } else {
             // Apply grid snapping for moved items
             let snapX = x, snapY = y;
-            if (draggedItem.type === 'square_boundary' || draggedItem.gridAligned) {
+            if ((draggedItem as any).type === 'square_boundary' || (draggedItem as any).gridAligned) {
               const majorGridSize = 60;
               snapX = Math.round(x / majorGridSize) * majorGridSize;
               snapY = Math.round(y / majorGridSize) * majorGridSize;
@@ -210,73 +218,85 @@ const WarehouseCanvas = ({
               snapX = Math.round(x / subGridSize) * subGridSize;
               snapY = Math.round(y / subGridSize) * subGridSize;
             }
-            onMoveItem(draggedItem.id, Math.max(0, snapX), Math.max(0, snapY));
+            onMoveItem((draggedItem as any).id, Math.max(0, snapX), Math.max(0, snapY));
           }
         } else {
-          // Enhanced grid snapping for moved items
+          // Enhanced grid snapping for moved items with cursor offset compensation
           let gridSize = 15; // Default sub-grid for most components
           
           // Determine appropriate grid size based on component properties
-          if (draggedItem.type === 'solid_boundary' || draggedItem.type === 'dotted_boundary') {
+          if ((draggedItem as any).type === 'solid_boundary' || (draggedItem as any).type === 'dotted_boundary') {
             // Boundary components use 15px grid for precise positioning
             gridSize = 15;
-          } else if (draggedItem.gridStep) {
+          } else if ((draggedItem as any).gridStep) {
             // Use component's specific grid step if defined
-            gridSize = draggedItem.gridStep;
-          } else if (draggedItem.type === 'square_boundary' || draggedItem.gridAligned) {
+            gridSize = (draggedItem as any).gridStep;
+          } else if ((draggedItem as any).type === 'square_boundary' || (draggedItem as any).gridAligned) {
             // Floor plan components and grid-aligned items use major 60px grid
             gridSize = 60;
           }
           
-          // Apply grid snapping
-          const snapX = Math.round(x / gridSize) * gridSize;
-          const snapY = Math.round(y / gridSize) * gridSize;
+          // Calculate cursor offset from component center for precise positioning
+          const itemWidth = (draggedItem as any).width || 50;
+          const itemHeight = (draggedItem as any).height || 50;
+          const offsetX = itemWidth / 2; // Half width for center positioning
+          const offsetY = itemHeight / 2; // Half height for center positioning
           
-          onMoveItem(draggedItem.id, Math.max(0, snapX), Math.max(0, snapY));
+          // Apply grid snapping with cursor offset compensation
+          const snapX = Math.round((x - offsetX) / gridSize) * gridSize;
+          const snapY = Math.round((y - offsetY) / gridSize) * gridSize;
+          
+          onMoveItem((draggedItem as any).id, Math.max(0, snapX), Math.max(0, snapY));
         }
       } else {
         // Adding new item from component panel
         if (targetItem && stackMode === 'enabled' && 
             STACKABLE_COMPONENTS.includes(targetItem.type) && 
-            STACKABLE_COMPONENTS.includes(draggedItem.type)) {
+            STACKABLE_COMPONENTS.includes((draggedItem as any).type)) {
           // Create stack with new item
           const newItem = {
             id: uuidv4(),
-            type: draggedItem.type,
-            name: draggedItem.name,
+            type: (draggedItem as any).type,
+            name: (draggedItem as any).name,
             x: targetItem.x,
             y: targetItem.y,
-            width: draggedItem.defaultSize.width,
-            height: draggedItem.defaultSize.height,
-            color: draggedItem.color,
+            width: (draggedItem as any).defaultSize.width,
+            height: (draggedItem as any).defaultSize.height,
+            color: (draggedItem as any).color,
             label: ''
           };
           onCreateStack(targetItem.id, null, newItem);
         } else {
-          // Regular item placement with hierarchical system
+          // Regular item placement with hierarchical system and cursor offset compensation
           let finalX = Math.max(0, x);
           let finalY = Math.max(0, y);
           let containerId = null;
-          let itemName = draggedItem.name;
+          let itemName = (draggedItem as any).name;
 
-          // Enhanced grid snapping for ALL components
+          // Enhanced grid snapping for ALL components with cursor offset compensation
           let gridSize = 15; // Default sub-grid for most components
           
           // Determine appropriate grid size based on component properties
-          if (draggedItem.type === 'solid_boundary' || draggedItem.type === 'dotted_boundary') {
+          if ((draggedItem as any).type === 'solid_boundary' || (draggedItem as any).type === 'dotted_boundary') {
             // Boundary components use 15px grid for precise positioning
             gridSize = 15;
-          } else if (draggedItem.gridStep) {
+          } else if ((draggedItem as any).gridStep) {
             // Use component's specific grid step if defined
-            gridSize = draggedItem.gridStep;
-          } else if (draggedItem.type === 'square_boundary' || draggedItem.gridAligned) {
+            gridSize = (draggedItem as any).gridStep;
+          } else if ((draggedItem as any).type === 'square_boundary' || (draggedItem as any).gridAligned) {
             // Floor plan components and grid-aligned items use major 60px grid
             gridSize = 60;
           }
           
-          // Apply grid snapping
-          finalX = Math.round(finalX / gridSize) * gridSize;
-          finalY = Math.round(finalY / gridSize) * gridSize;
+          // Calculate cursor offset from component center for precise positioning
+          const itemWidth = (draggedItem as any).defaultSize?.width || 50;
+          const itemHeight = (draggedItem as any).defaultSize?.height || 50;
+          const offsetX = itemWidth / 2; // Half width for center positioning
+          const offsetY = itemHeight / 2; // Half height for center positioning
+          
+          // Apply grid snapping with cursor offset compensation
+          finalX = Math.round((finalX - offsetX) / gridSize) * gridSize;
+          finalY = Math.round((finalY - offsetY) / gridSize) * gridSize;
           
           // Ensure minimum position
           finalX = Math.max(0, finalX);
@@ -287,74 +307,74 @@ const WarehouseCanvas = ({
             containerId = containerItem.id;
             // Position relative to container's inner bounds
             const containerBounds = hierarchicalManager.getContainerBounds(containerItem);
-            finalX = Math.max(containerBounds.x, Math.min(finalX, containerBounds.x + containerBounds.width - (draggedItem.defaultSize?.width || 50)));
-            finalY = Math.max(containerBounds.y, Math.min(finalY, containerBounds.y + containerBounds.height - (draggedItem.defaultSize?.height || 50)));
+            finalX = Math.max(containerBounds.x, Math.min(finalX, containerBounds.x + containerBounds.width - ((draggedItem as any).defaultSize?.width || 50)));
+            finalY = Math.max(containerBounds.y, Math.min(finalY, containerBounds.y + containerBounds.height - ((draggedItem as any).defaultSize?.height || 50)));
           }
 
           // Auto-label zones
-          if (draggedItem.autoLabel && draggedItem.zoneType) {
-            const zoneLabel = hierarchicalManager.generateZoneLabel(draggedItem.zoneType);
-            itemName = `${draggedItem.name} ${zoneLabel}`;
+          if ((draggedItem as any).autoLabel && (draggedItem as any).zoneType) {
+            const zoneLabel = hierarchicalManager.generateZoneLabel((draggedItem as any).zoneType);
+            itemName = `${(draggedItem as any).name} ${zoneLabel}`;
           }
 
           // 🐛 DEBUG: Storage Unit Creation
-          if (draggedItem.type === 'storage_unit') {
+          if ((draggedItem as any).type === 'storage_unit') {
             console.group('🎨 STORAGE UNIT COLOR DEBUG - WarehouseCanvas.tsx (Creation)');
-            console.log('DraggedItem Type:', draggedItem.type);
-            console.log('DraggedItem Color:', draggedItem.color);
-            console.log('DraggedItem Category:', draggedItem.category);
-            console.log('getComponentColor Result:', getComponentColor(draggedItem.type, draggedItem.category));
-            console.log('Final Color Will Be:', draggedItem.color || getComponentColor(draggedItem.type, draggedItem.category) || '#e3f2fd');
+            console.log('DraggedItem Type:', (draggedItem as any).type);
+            console.log('DraggedItem Color:', (draggedItem as any).color);
+            console.log('DraggedItem Category:', (draggedItem as any).category);
+            console.log('getComponentColor Result:', getComponentColor((draggedItem as any).type, (draggedItem as any).category));
+            console.log('Final Color Will Be:', (draggedItem as any).color || getComponentColor((draggedItem as any).type, (draggedItem as any).category) || '#e3f2fd');
             console.groupEnd();
           }
 
           const newItem = {
             id: uuidv4(),
-            type: draggedItem.type,
+            type: (draggedItem as any).type,
             name: itemName,
             x: finalX,
             y: finalY,
-            width: draggedItem.defaultSize?.width || 50,
-            height: draggedItem.defaultSize?.height || 50,
-            color: draggedItem.color || 
-       (draggedItem.type === 'sku_holder' || draggedItem.type === 'vertical_sku_holder') ? 'transparent' :
-       getComponentColor(draggedItem.type, draggedItem.category) || '#e3f2fd',
-            label: draggedItem.autoLabel && draggedItem.zoneType ? hierarchicalManager.generateZoneLabel(draggedItem.zoneType) : '',
-            icon: draggedItem.icon,
-            isShape: draggedItem.isShape || false,
-            isContainer: draggedItem.isContainer || false,
-            containerLevel: draggedItem.containerLevel,
-            containerPadding: draggedItem.containerPadding,
-            zoneType: draggedItem.zoneType,
-            unitType: draggedItem.unitType,
+            width: (draggedItem as any).defaultSize?.width || 50,
+            height: (draggedItem as any).defaultSize?.height || 50,
+            color: (draggedItem as any).color || 
+       ((draggedItem as any).type === 'sku_holder' || (draggedItem as any).type === 'vertical_sku_holder') ? 'transparent' :
+       getComponentColor((draggedItem as any).type, (draggedItem as any).category) || '#e3f2fd',
+            label: (draggedItem as any).autoLabel && (draggedItem as any).zoneType ? hierarchicalManager.generateZoneLabel((draggedItem as any).zoneType) : '',
+            icon: (draggedItem as any).icon,
+            isShape: (draggedItem as any).isShape || false,
+            isContainer: (draggedItem as any).isContainer || false,
+            containerLevel: (draggedItem as any).containerLevel,
+            containerPadding: (draggedItem as any).containerPadding,
+            zoneType: (draggedItem as any).zoneType,
+            unitType: (draggedItem as any).unitType,
             containerId: containerId,
             // Floor Plan Component properties
-            isBoundary: draggedItem.isBoundary || false,
-            isHollow: draggedItem.isHollow || false,
-            borderWidth: draggedItem.borderWidth,
-            snapToGrid: draggedItem.snapToGrid || false,
-            resizable: draggedItem.resizable || false,
-            minSize: draggedItem.minSize,
-            maxSize: draggedItem.maxSize,
-            gridStep: draggedItem.gridStep || 60,
+            isBoundary: (draggedItem as any).isBoundary || false,
+            isHollow: (draggedItem as any).isHollow || false,
+            borderWidth: (draggedItem as any).borderWidth,
+            snapToGrid: (draggedItem as any).snapToGrid || false,
+            resizable: (draggedItem as any).resizable || false,
+            minSize: (draggedItem as any).minSize,
+            maxSize: (draggedItem as any).maxSize,
+            gridStep: (draggedItem as any).gridStep || 60,
             // SKU-related properties
-            hasSku: draggedItem.hasSku || false,
-            singleSku: draggedItem.singleSku || false,
-            skuGrid: draggedItem.skuGrid || false,
-            skuCompartments: draggedItem.skuCompartments,
-            compartmentSize: draggedItem.compartmentSize,
-            showCompartments: draggedItem.showCompartments || false,
-            allowEmpty: draggedItem.allowEmpty || false,
-            maxSKUsPerCompartment: draggedItem.maxSKUsPerCompartment || 1,
-            supportsMultipleLocationIds: draggedItem.supportsMultipleLocationIds || false,
-            supportsMultipleTags: draggedItem.supportsMultipleTags || false,
-            compartmentContents: (draggedItem.type === 'sku_holder' || draggedItem.type === 'vertical_sku_holder') ? {} : undefined // Initialize empty for user to populate
+            hasSku: (draggedItem as any).hasSku || false,
+            singleSku: (draggedItem as any).singleSku || false,
+            skuGrid: (draggedItem as any).skuGrid || false,
+            skuCompartments: (draggedItem as any).skuCompartments,
+            compartmentSize: (draggedItem as any).compartmentSize,
+            showCompartments: (draggedItem as any).showCompartments || false,
+            allowEmpty: (draggedItem as any).allowEmpty || false,
+            maxSKUsPerCompartment: (draggedItem as any).maxSKUsPerCompartment || 1,
+            supportsMultipleLocationIds: (draggedItem as any).supportsMultipleLocationIds || false,
+            supportsMultipleTags: (draggedItem as any).supportsMultipleTags || false,
+            compartmentContents: ((draggedItem as any).type === 'sku_holder' || (draggedItem as any).type === 'vertical_sku_holder') ? {} : undefined // Initialize empty for user to populate
           };
           
           console.log('Creating new item:', newItem);
           
           // Check for linking opportunities for new structural elements
-          if (LINKABLE_ELEMENTS.includes(draggedItem.type)) {
+          if (LINKABLE_ELEMENTS.includes((draggedItem as any).type)) {
             const connections = findAllConnections(newItem, items);
             
             if (connections.length > 0) {

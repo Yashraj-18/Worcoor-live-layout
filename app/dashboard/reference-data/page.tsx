@@ -90,7 +90,7 @@ export default function InventoryManagementPage() {
                   <Warehouse className="h-6 w-6" />
                 </div>
                 <div className="flex-1 space-y-2">
-                  <h3 className="font-semibold text-foreground dark:text-slate-50 text-lg">Manage Org Units</h3>
+                  <h3 className="font-semibold text-foreground dark:text-slate-50 text-lg">Org Unit Data</h3>
                   <p className="text-sm text-slate-600 dark:text-slate-200 leading-relaxed">
                     Define units or places for layouts (warehouses, production units, office floors)
                   </p>
@@ -109,7 +109,7 @@ export default function InventoryManagementPage() {
                 className="w-full mt-16 mx-2 px-6 py-3 border border-slate-200/50 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-sm hover:shadow-md transition-all duration-200 rounded-lg"
               >
                 <Link href="/dashboard/reference-data/org-units" className="flex items-center justify-center gap-2">
-                  Manage Org Units
+                  Org Unit Data
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -125,7 +125,7 @@ export default function InventoryManagementPage() {
                   <Package className="h-6 w-6" />
                 </div>
                 <div className="flex-1 space-y-2">
-                  <h3 className="font-semibold text-foreground dark:text-slate-50 text-lg">Location Tags</h3>
+                  <h3 className="font-semibold text-foreground dark:text-slate-50 text-lg">Location Tag Data</h3>
                   <p className="text-sm text-slate-600 dark:text-slate-200 leading-relaxed">
                     Manage and organize location tags and categories
                   </p>
@@ -144,7 +144,7 @@ export default function InventoryManagementPage() {
                 className="w-full mt-16 mx-2 px-6 py-3 border border-slate-200/50 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-sm hover:shadow-md transition-all duration-200 rounded-lg"
               >
                 <Link href="/dashboard/reference-data/location-tags" className="flex items-center justify-center gap-2">
-                  Manage Tags
+                  Location Tag Data
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -160,7 +160,7 @@ export default function InventoryManagementPage() {
                   <Box className="h-6 w-6" />
                 </div>
                 <div className="flex-1 space-y-2">
-                  <h3 className="font-semibold text-foreground dark:text-slate-50 text-lg">SKU Management</h3>
+                  <h3 className="font-semibold text-foreground dark:text-slate-50 text-lg">SKU Data</h3>
                   <p className="text-sm text-slate-600 dark:text-slate-200 leading-relaxed">
                     Manage SKUs and inventory levels
                   </p>
@@ -179,7 +179,7 @@ export default function InventoryManagementPage() {
                 className="w-full mt-16 mx-2 px-6 py-3 border border-slate-200/50 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200 rounded-lg"
               >
                 <Link href="/dashboard/reference-data/skus" className="flex items-center justify-center gap-2">
-                  Manage SKUs
+                  SKU Data
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -195,7 +195,7 @@ export default function InventoryManagementPage() {
                   <Package className="h-6 w-6" />
                 </div>
                 <div className="flex-1 space-y-2">
-                  <h3 className="font-semibold text-foreground dark:text-slate-50 text-lg">Asset Management</h3>
+                  <h3 className="font-semibold text-foreground dark:text-slate-50 text-lg">Asset Data</h3>
                   <p className="text-sm text-slate-600 dark:text-slate-200 leading-relaxed">
                     Manage and track warehouse assets and equipment
                   </p>
@@ -213,8 +213,8 @@ export default function InventoryManagementPage() {
                 asChild
                 className="w-full mt-16 mx-2 px-6 py-3 border border-slate-200/50 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white shadow-sm hover:shadow-md transition-all duration-200 rounded-lg"
               >
-                <Link href="/dashboard/reference-data/asset-management/assets" className="flex items-center justify-center gap-2">
-                  Manage Assets
+                <Link href="/dashboard/reference-data/asset-management" className="flex items-center justify-center gap-2">
+                  Asset Data
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>

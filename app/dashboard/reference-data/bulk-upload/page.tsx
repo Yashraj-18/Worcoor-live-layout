@@ -21,153 +21,208 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 
-// Backend schema definitions
+// Backend schema definitions - matching exact form fields
 const BACKEND_SCHEMAS = {
-  skus: {
-    fields: ['id', 'organization_id', 'sku_name', 'sku_category', 'sku_unit', 'quantity', 'effective_date', 'expiry_date', 'location_tag_id', 'created_at'],
-    required: ['sku_name', 'organization_id'],
+  org_units: {
+    fields: ['unit_id', 'unit_name', 'unit_type', 'status', 'description', 'area'],
+    required: ['unit_id', 'unit_name', 'unit_type', 'status'],
     types: {
-      id: 'uuid4',
-      organization_id: 'uuid4',
+      unit_id: 'varchar',
+      unit_name: 'varchar',
+      unit_type: 'varchar',
+      status: 'varchar',
+      description: 'varchar',
+      area: 'varchar'
+    }
+  },
+  skus: {
+    fields: ['sku_id', 'sku_name', 'sku_category', 'sku_unit', 'quantity', 'effective_date', 'expiry_date', 'location_tag_id', 'description'],
+    required: ['sku_name', 'sku_category', 'sku_unit', 'quantity', 'effective_date'],
+    types: {
+      sku_id: 'varchar',
       sku_name: 'varchar',
       sku_category: 'varchar',
       sku_unit: 'varchar',
       quantity: 'numeric',
       effective_date: 'date',
       expiry_date: 'date',
-      location_tag_id: 'uuid4',
-      created_at: 'timestamptz'
+      location_tag_id: 'varchar',
+      description: 'varchar'
     }
   },
   location_tags: {
-    fields: ['id', 'organization_id', 'location_tag_name', 'capacity', 'created_at', 'unit_id', 'length', 'breadth', 'height', 'volume'],
-    required: ['location_tag_name', 'organization_id'],
+    fields: ['location_tag', 'unit_id', 'length', 'breadth', 'height', 'unit_of_measurement', 'description'],
+    required: ['location_tag', 'unit_id'],
     types: {
-      id: 'uuid4',
-      organization_id: 'uuid4',
-      location_tag_name: 'varchar',
-      capacity: 'int4',
-      created_at: 'timestamptz',
-      unit_id: 'uuid4',
+      location_tag: 'varchar',
+      unit_id: 'varchar',
       length: 'numeric',
       breadth: 'numeric', 
       height: 'numeric',
-      volume: 'numeric'
+      unit_of_measurement: 'varchar',
+      description: 'varchar'
     }
   },
   assets: {
-    fields: ['id', 'organization_id', 'asset_name', 'asset_type', 'location_tag_id', 'created_at', 'length', 'breadth', 'height', 'volume'],
-    required: ['asset_name', 'organization_id'],
+    fields: ['asset_id', 'asset_name', 'asset_type', 'location_tag_id', 'length', 'breadth', 'height', 'unit_of_measurement', 'description'],
+    required: ['asset_name', 'asset_type'],
     types: {
-      id: 'uuid4',
-      organization_id: 'uuid4',
+      asset_id: 'varchar',
       asset_name: 'varchar',
       asset_type: 'varchar',
-      location_tag_id: 'uuid4',
-      created_at: 'timestamptz',
+      location_tag_id: 'varchar',
       length: 'numeric',
       breadth: 'numeric',
       height: 'numeric',
-      volume: 'numeric'
+      unit_of_measurement: 'varchar',
+      description: 'varchar'
     }
   }
 }
 
-// Demo data for each type
+// Demo data for each type - matching exact form fields
 const DEMO_DATA = {
-  skus: [
+  org_units: [
     {
-      id: '123e4567-e89b-12d3-a456-426614174001',
-      organization_id: '223e4567-e89b-12d3-a456-426614174000',
-      sku_name: 'Oak Wood Panel',
-      sku_category: 'Raw Materials',
-      sku_unit: 'pieces',
-      quantity: '150.5',
-      effective_date: '2024-01-15',
-      expiry_date: '2025-01-15',
-      location_tag_id: '323e4567-e89b-12d3-a456-426614174000',
-      created_at: '2024-01-23T10:30:00Z'
+      unit_id: 'WH-001',
+      unit_name: 'Warehouse 1',
+      unit_type: 'warehouse',
+      status: 'LIVE',
+      description: 'Main warehouse facility for storage operations',
+      area: 'North Wing'
     },
     {
-      id: '123e4567-e89b-12d3-a456-426614174002',
-      organization_id: '223e4567-e89b-12d3-a456-426614174000',
+      unit_id: 'OFF-001',
+      unit_name: 'Main Office',
+      unit_type: 'office',
+      status: 'LIVE',
+      description: 'Administrative office building',
+      area: 'Building A'
+    },
+    {
+      unit_id: 'PROD-001',
+      unit_name: 'Production Line 1',
+      unit_type: 'production',
+      status: 'MAINTENANCE',
+      description: 'Primary manufacturing facility',
+      area: 'Factory Floor'
+    }
+  ],
+  skus: [
+    {
+      sku_id: 'SKU-001',
+      sku_name: 'Oak Wood Panel',
+      sku_category: 'raw_material',
+      sku_unit: 'pieces',
+      quantity: 150,
+      effective_date: '2024-01-15',
+      expiry_date: '',
+      location_tag_id: 'LOC-001',
+      description: 'Premium oak wood panels for furniture manufacturing'
+    },
+    {
+      sku_id: 'SKU-002',
       sku_name: 'Steel Beam',
-      sku_category: 'Construction',
-      sku_unit: 'units',
-      quantity: '75',
+      sku_category: 'raw_material',
+      sku_unit: 'kg',
+      quantity: 500,
       effective_date: '2024-01-10',
-      expiry_date: '2025-01-10',
-      location_tag_id: '323e4567-e89b-12d3-a456-426614174001',
-      created_at: '2024-01-23T10:30:00Z'
+      expiry_date: '',
+      location_tag_id: 'LOC-002',
+      description: 'Structural steel beams for construction'
+    },
+    {
+      sku_id: 'SKU-003',
+      sku_name: 'Office Chair',
+      sku_category: 'finished_good',
+      sku_unit: 'pieces',
+      quantity: 25,
+      effective_date: '2024-01-20',
+      expiry_date: '',
+      location_tag_id: 'LOC-003',
+      description: 'Ergonomic office chairs with lumbar support'
     }
   ],
   location_tags: [
     {
-      id: '423e4567-e89b-12d3-a456-426614174000',
-      organization_id: '223e4567-e89b-12d3-a456-426614174000',
-      location_tag_name: 'Warehouse Zone A',
-      capacity: '1000',
-      created_at: '2024-01-23T10:30:00Z',
-      unit_id: '523e4567-e89b-12d3-a456-426614174000',
-      length: '10.5',
-      breadth: '8.2',
-      height: '4.0',
-      volume: '344.4'
+      location_tag: 'Warehouse Zone A',
+      unit_id: 'WH-001',
+      length: 10.5,
+      breadth: 8.2,
+      height: 4.0,
+      unit_of_measurement: 'meters',
+      description: 'Primary storage zone for raw materials'
     },
     {
-      id: '423e4567-e89b-12d3-a456-426614174001',
-      organization_id: '223e4567-e89b-12d3-a456-426614174000',
-      location_tag_name: 'Cold Storage Unit',
-      capacity: '500',
-      created_at: '2024-01-23T10:30:00Z',
-      unit_id: '523e4567-e89b-12d3-a456-426614174001',
-      length: '6.0',
-      breadth: '5.0',
-      height: '3.5',
-      volume: '105.0'
+      location_tag: 'Cold Storage Unit',
+      unit_id: 'WH-001',
+      length: 6.0,
+      breadth: 5.0,
+      height: 3.5,
+      unit_of_measurement: 'meters',
+      description: 'Temperature-controlled storage for perishable items'
+    },
+    {
+      location_tag: 'Office Storage',
+      unit_id: 'OFF-001',
+      length: 4.2,
+      breadth: 3.8,
+      height: 2.5,
+      unit_of_measurement: 'meters',
+      description: 'Storage area for office supplies and equipment'
     }
   ],
   assets: [
     {
-      id: '623e4567-e89b-12d3-a456-426614174000',
-      organization_id: '223e4567-e89b-12d3-a456-426614174000',
-      asset_name: 'Forklift Machine',
-      asset_type: 'Equipment',
-      location_tag_id: '423e4567-e89b-12d3-a456-426614174000',
-      created_at: '2024-01-23T10:30:00Z',
-      length: '2.5',
-      breadth: '1.2',
-      height: '3.0',
-      volume: '9.0'
+      asset_id: 'AST-001',
+      asset_name: 'Forklift 001',
+      asset_type: 'forklift',
+      location_tag_id: 'LOC-001',
+      length: 2.5,
+      breadth: 1.2,
+      height: 3.0,
+      unit_of_measurement: 'meters',
+      description: 'Heavy-duty forklift for warehouse operations'
     },
     {
-      id: '623e4567-e89b-12d3-a456-426614174001',
-      organization_id: '223e4567-e89b-12d3-a456-426614174000',
-      asset_name: 'Conveyor Belt System',
-      asset_type: 'Automation',
-      location_tag_id: '423e4567-e89b-12d3-a456-426614174001',
-      created_at: '2024-01-23T10:30:00Z',
-      length: '8.0',
-      breadth: '1.5',
-      height: '2.0',
-      volume: '24.0'
+      asset_id: 'AST-002',
+      asset_name: 'Pallet Jack 001',
+      asset_type: 'pallet_jack',
+      location_tag_id: 'LOC-002',
+      length: 1.8,
+      breadth: 0.8,
+      height: 1.5,
+      unit_of_measurement: 'meters',
+      description: 'Manual pallet jack for small loads'
+    },
+    {
+      asset_id: 'AST-003',
+      asset_name: 'Barcode Scanner 001',
+      asset_type: 'scanner',
+      location_tag_id: 'LOC-003',
+      length: 0.15,
+      breadth: 0.08,
+      height: 0.25,
+      unit_of_measurement: 'meters',
+      description: 'Handheld barcode scanner for inventory management'
     }
   ]
 }
 
 interface OrgUnit {
+  unit_id: string
   unit_name: string
   unit_type: "warehouse" | "production" | "office"
   status: "LIVE" | "OFFLINE" | "MAINTENANCE" | "PLANNING"
   description?: string
-  organization_id: string
+  area?: string
 }
 
 type CrudOperation = "create" | "update" | "delete"
 
 export default function BulkUploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [uploadType, setUploadType] = useState<string>("skus")
+  const [uploadType, setUploadType] = useState<string>("org_units")
   const [isDragOver, setIsDragOver] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [parsedData, setParsedData] = useState<any[]>([])
@@ -458,13 +513,31 @@ export default function BulkUploadPage() {
         }
       }
 
+      // CRUD operation validation - use appropriate ID field for each type
       if (operation === 'delete' || operation === 'update') {
-        const idField = 'id'
+        let idField = 'id';
+        
+        // Use appropriate ID field for each type
+        switch (type) {
+          case 'org_units':
+            idField = 'unit_id';
+            break;
+          case 'skus':
+            idField = 'sku_id';
+            break;
+          case 'assets':
+            idField = 'asset_id';
+            break;
+          case 'location_tags':
+            idField = 'location_tag';
+            break;
+        }
+        
         if (!row[idField]) {
           rowErrors.push(`Missing ${idField} for ${operation} operation`)
           isValid = false
         } else {
-          const exists = existingData.some(item => item.id === row[idField])
+          const exists = existingData.some(item => item[idField] === row[idField])
           if (!exists) {
             rowErrors.push(`Record with ${idField} ${row[idField]} not found for ${operation} operation`)
             isValid = false
@@ -472,15 +545,14 @@ export default function BulkUploadPage() {
         }
       }
 
-      // L×B×H validation for assets and location tags
+      // L×B×H validation for assets and location tags (matching form validation)
       if (type === 'assets' || type === 'location_tags') {
         const length = parseFloat(row.length) || 0;
         const breadth = parseFloat(row.breadth) || 0;
         const height = parseFloat(row.height) || 0;
-        const volume = parseFloat(row.volume) || 0;
         
         // Check if any dimension is provided
-        const hasAnyDimension = row.length || row.breadth || row.height || row.volume;
+        const hasAnyDimension = row.length || row.breadth || row.height;
         
         if (hasAnyDimension) {
           // If any dimension is provided, all must be provided and positive
@@ -491,12 +563,9 @@ export default function BulkUploadPage() {
             rowErrors.push('All dimensions must be positive numbers');
             isValid = false;
           } else {
-            // Calculate expected volume
-            const expectedVolume = length * breadth * height;
-            const volumeTolerance = 0.01; // Allow small floating point differences
-            
-            if (row.volume && Math.abs(volume - expectedVolume) > volumeTolerance) {
-              rowErrors.push(`Volume ${volume} does not match calculated volume (Length × Breadth × Height = ${expectedVolume.toFixed(2)})`);
+            // Check if unit_of_measurement is provided when dimensions are provided
+            if (!row.unit_of_measurement) {
+              rowErrors.push('Unit of measurement is required when dimensions are provided');
               isValid = false;
             }
           }
@@ -536,14 +605,47 @@ export default function BulkUploadPage() {
       if (operation === 'delete') {
         const initialCount = existingData.length
         existingData = existingData.filter(item => {
-          const shouldDelete = data.some(row => row.id === item.id)
+          // Use appropriate ID field for matching
+          const shouldDelete = data.some(row => {
+            switch (type) {
+              case 'org_units':
+                return row.unit_id === item.unit_id;
+              case 'skus':
+                return row.sku_id === item.sku_id;
+              case 'assets':
+                return row.asset_id === item.asset_id;
+              case 'location_tags':
+                return row.location_tag === item.location_tag;
+              default:
+                return row.id === item.id;
+            }
+          })
           if (shouldDelete) imported++
           return !shouldDelete
         })
         failed = data.length - imported
       } else if (operation === 'update') {
         for (const row of data) {
-          const existingIndex = existingData.findIndex(item => item.id === row.id)
+          let existingIndex = -1;
+          
+          // Find existing record using appropriate ID field
+          switch (type) {
+            case 'org_units':
+              existingIndex = existingData.findIndex(item => item.unit_id === row.unit_id);
+              break;
+            case 'skus':
+              existingIndex = existingData.findIndex(item => item.sku_id === row.sku_id);
+              break;
+            case 'assets':
+              existingIndex = existingData.findIndex(item => item.asset_id === row.asset_id);
+              break;
+            case 'location_tags':
+              existingIndex = existingData.findIndex(item => item.location_tag === row.location_tag);
+              break;
+            default:
+              existingIndex = existingData.findIndex(item => item.id === row.id);
+          }
+          
           if (existingIndex >= 0) {
             existingData[existingIndex] = {
               ...existingData[existingIndex],
@@ -552,7 +654,11 @@ export default function BulkUploadPage() {
             }
             imported++
           } else {
-            errors.push(`Record with ID ${row.id} not found for update`)
+            const idField = type === 'org_units' ? 'unit_id' : 
+                           type === 'skus' ? 'sku_id' : 
+                           type === 'assets' ? 'asset_id' : 
+                           type === 'location_tags' ? 'location_tag' : 'id';
+            errors.push(`Record with ${idField} ${row[idField]} not found for update`)
             failed++
           }
         }
@@ -562,14 +668,32 @@ export default function BulkUploadPage() {
           try {
             const newRecord = {
               ...row,
-              id: row.id || crypto.randomUUID(),
               created_at: row.created_at || new Date().toISOString()
             }
-            console.log("Creating record:", newRecord.id)
-
-            const duplicate = existingData.find(item => item.id === newRecord.id)
+            
+            // Check for duplicates using appropriate ID field
+            let duplicate = null;
+            switch (type) {
+              case 'org_units':
+                duplicate = existingData.find(item => item.unit_id === newRecord.unit_id);
+                break;
+              case 'skus':
+                duplicate = existingData.find(item => item.sku_id === newRecord.sku_id);
+                break;
+              case 'assets':
+                duplicate = existingData.find(item => item.asset_id === newRecord.asset_id);
+                break;
+              case 'location_tags':
+                duplicate = existingData.find(item => item.location_tag === newRecord.location_tag);
+                break;
+            }
+            
             if (duplicate) {
-              errors.push(`Record with ID ${newRecord.id} already exists`)
+              const idField = type === 'org_units' ? 'unit_id' : 
+                             type === 'skus' ? 'sku_id' : 
+                             type === 'assets' ? 'asset_id' : 
+                             type === 'location_tags' ? 'location_tag' : 'id';
+              errors.push(`Record with ${idField} ${newRecord[idField]} already exists`)
               failed++
               continue
             }
@@ -666,6 +790,13 @@ export default function BulkUploadPage() {
 
   const uploadTypes = [
     {
+      id: "org_units",
+      name: "Org Units",
+      icon: Building,
+      description: "Upload organizational units data",
+      color: "orange"
+    },
+    {
       id: "skus",
       name: "SKUs",
       icon: Package,
@@ -690,6 +821,8 @@ export default function BulkUploadPage() {
 
   const getTableTitle = () => {
     switch (uploadType) {
+      case 'org_units':
+        return 'Org Units Data'
       case 'skus':
         return 'SKUs Data'
       case 'location_tags':

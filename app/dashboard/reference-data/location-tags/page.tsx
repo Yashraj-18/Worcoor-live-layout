@@ -62,29 +62,34 @@ import { toast } from "@/components/ui/use-toast"
 
 // Types
 interface LocationTag {
-  location_tag_name: string
+  location_tag: string
+  unit_id?: string // Reference to organizational unit
   // Volume capacity fields
   length?: number
   breadth?: number
   height?: number
-  volume?: number // Calculated: L x B x H
+  unit_of_measurement?: "meters" | "feet" | "inches" | "centimeters"
+  capacity?: number // Calculated: L x B x H (NUMERIC(15,3))
   current_items: number
 }
 
 // Form schema
 const locationTagSchema = z.object({
-  location_tag_name: z.string().min(1, "Location Tag Name is required").max(100, "Name must be less than 100 characters"),
+  location_tag: z.string().min(1, "Location Tag is required").max(100, "Name must be less than 100 characters"),
+  unit_id: z.string().min(1, "Unit ID is required"),
   // Volume capacity fields
-  length: z.number().positive("Length must be positive").optional(),
-  breadth: z.number().positive("Breadth must be positive").optional(),
-  height: z.number().positive("Height must be positive").optional(),
+  length: z.number().positive("Length must be positive").max(999999.999, "Length must be less than 999999.999").optional(),
+  breadth: z.number().positive("Breadth must be positive").max(999999.999, "Breadth must be less than 999999.999").optional(),
+  height: z.number().positive("Height must be positive").max(999999.999, "Height must be less than 999999.999").optional(),
+  unit_of_measurement: z.enum(["meters", "feet", "inches", "centimeters"]).optional(),
 }).refine((data) => {
-  // If any dimension is provided, all must be provided
+  // If any dimension is provided, all dimensions and unit must be provided
   const hasAnyDimension = data.length || data.breadth || data.height;
   const hasAllDimensions = data.length && data.breadth && data.height;
-  return !hasAnyDimension || hasAllDimensions;
+  const hasUnit = data.unit_of_measurement;
+  return !hasAnyDimension || (hasAllDimensions && hasUnit);
 }, {
-  message: "If you provide one dimension, you must provide all three (Length, Breadth, Height)",
+  message: "If you provide one dimension, you must provide all three dimensions and unit of measurement",
   path: ["length"],
 });
 
@@ -93,27 +98,33 @@ type LocationTagFormValues = z.infer<typeof locationTagSchema>
 // Default data
 const defaultLocationTags: LocationTag[] = [
   {
-    location_tag_name: "Warehouse A - Rack 1",
+    location_tag: "Warehouse A - Rack 1",
+    unit_id: "WH-001",
     length: 10,
     breadth: 5,
     height: 2,
-    volume: 100, // 10 x 5 x 2
+    unit_of_measurement: "meters",
+    capacity: 100.000, // 10 x 5 x 2
     current_items: 0,
   },
   {
-    location_tag_name: "Warehouse A - Loading Dock",
+    location_tag: "Warehouse A - Loading Dock",
+    unit_id: "WH-001",
     length: 5,
     breadth: 5,
     height: 2,
-    volume: 50, // 5 x 5 x 2
+    unit_of_measurement: "meters",
+    capacity: 50.000, // 5 x 5 x 2
     current_items: 0,
   },
   {
-    location_tag_name: "Warehouse B - Quality Check",
+    location_tag: "Warehouse B - Quality Check",
+    unit_id: "WH-002",
     length: 5,
     breadth: 2.5,
     height: 2,
-    volume: 25, // 5 x 2.5 x 2
+    unit_of_measurement: "meters",
+    capacity: 25.000, // 5 x 2.5 x 2
     current_items: 0,
   },
 ]
@@ -124,7 +135,9 @@ const ORG_UNITS_STORAGE_KEY = "worcoor-org-units"
 
 export default function LocationTagsPage() {
   const [locationTags, setLocationTags] = useState<LocationTag[]>([])
+  const [orgUnits, setOrgUnits] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
+  const [selectedUnitId, setSelectedUnitId] = useState<string>("all")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingTag, setEditingTag] = useState<LocationTag | null>(null)
@@ -135,10 +148,12 @@ export default function LocationTagsPage() {
   const form = useForm<LocationTagFormValues>({
     resolver: zodResolver(locationTagSchema),
     defaultValues: {
-      location_tag_name: "",
+      location_tag: "",
+      unit_id: "",
       length: undefined,
       breadth: undefined,
       height: undefined,
+      unit_of_measurement: undefined,
     },
   })
 
@@ -162,6 +177,19 @@ export default function LocationTagsPage() {
       localStorage.setItem(LOCATION_TAGS_STORAGE_KEY, JSON.stringify(defaultLocationTags))
     }
 
+    // Load organizational units
+    const storedOrgUnits = localStorage.getItem(ORG_UNITS_STORAGE_KEY)
+    if (storedOrgUnits) {
+      try {
+        const parsedOrgUnits = JSON.parse(storedOrgUnits)
+        setOrgUnits(parsedOrgUnits)
+      } catch (error) {
+        console.error("Error parsing stored org units:", error)
+        setOrgUnits([])
+      }
+    } else {
+      setOrgUnits([])
+    }
   }, [])
 
   // Save to localStorage whenever locationTags changes
@@ -174,28 +202,31 @@ export default function LocationTagsPage() {
   // Filter tags based on search and filters
   const filteredTags = locationTags.filter((tag) => {
     const search = searchTerm.toLowerCase()
-    const tagName = (tag.location_tag_name ?? (tag as any).name ?? "").toString().toLowerCase()
+    const tagName = (tag.location_tag ?? (tag as any).name ?? "").toString().toLowerCase()
 
     const matchesSearch = tagName.includes(search)
+    const matchesUnit = selectedUnitId === "all" || tag.unit_id === selectedUnitId
 
-    return matchesSearch
+    return matchesSearch && matchesUnit
   })
 
   // Handle add new tag
   const handleAddTag = (data: LocationTagFormValues) => {
     setIsSubmitting(true)
 
-    // Calculate volume if dimensions are provided
-    const calculatedVolume = (data.length && data.breadth && data.height) 
-      ? data.length * data.breadth * data.height 
+    // Calculate capacity if dimensions are provided
+    const calculatedCapacity = (data.length && data.breadth && data.height) 
+      ? parseFloat((data.length * data.breadth * data.height).toFixed(3))
       : undefined
 
     const newTag: LocationTag = {
-      location_tag_name: data.location_tag_name,
+      location_tag: data.location_tag,
+      unit_id: data.unit_id,
       length: data.length,
       breadth: data.breadth,
       height: data.height,
-      volume: calculatedVolume,
+      unit_of_measurement: data.unit_of_measurement,
+      capacity: calculatedCapacity,
       current_items: 0,
     }
 
@@ -205,7 +236,7 @@ export default function LocationTagsPage() {
 
     toast({
       title: "Location tag created",
-      description: `${newTag.location_tag_name} has been added successfully.`,
+      description: `${newTag.location_tag} has been added successfully.`,
     })
 
     setIsSubmitting(false)
@@ -217,18 +248,20 @@ export default function LocationTagsPage() {
 
     setIsSubmitting(true)
 
-    // Calculate volume if dimensions are provided
-    const calculatedVolume = (data.length && data.breadth && data.height) 
-      ? data.length * data.breadth * data.height 
+    // Calculate capacity if dimensions are provided
+    const calculatedCapacity = (data.length && data.breadth && data.height) 
+      ? parseFloat((data.length * data.breadth * data.height).toFixed(3))
       : undefined
 
     const updatedTag: LocationTag = {
       ...editingTag,
-      location_tag_name: data.location_tag_name,
+      location_tag: data.location_tag,
+      unit_id: data.unit_id,
       length: data.length,
       breadth: data.breadth,
       height: data.height,
-      volume: calculatedVolume,
+      unit_of_measurement: data.unit_of_measurement,
+      capacity: calculatedCapacity,
       current_items: editingTag.current_items,
     }
 
@@ -241,7 +274,7 @@ export default function LocationTagsPage() {
 
     toast({
       title: "Location tag updated",
-      description: `${updatedTag.location_tag_name} has been updated successfully.`,
+      description: `${updatedTag.location_tag} has been updated successfully.`,
     })
 
     setIsSubmitting(false)
@@ -255,7 +288,7 @@ export default function LocationTagsPage() {
 
     toast({
       title: "Location tag deleted",
-      description: `${deleteTag.location_tag_name} has been deleted successfully.`,
+      description: `${deleteTag.location_tag} has been deleted successfully.`,
       variant: "destructive",
     })
 
@@ -266,10 +299,12 @@ export default function LocationTagsPage() {
   const handleEditClick = (tag: LocationTag) => {
     setEditingTag(tag)
     form.reset({
-      location_tag_name: tag.location_tag_name,
+      location_tag: tag.location_tag,
+      unit_id: tag.unit_id,
       length: tag.length,
       breadth: tag.breadth,
       height: tag.height,
+      unit_of_measurement: tag.unit_of_measurement,
     })
     setIsEditDialogOpen(true)
   }
@@ -312,6 +347,25 @@ export default function LocationTagsPage() {
             All Location Tags ({filteredTags.length} of {locationTags.length})
           </CardTitle>
           <div className="flex items-center gap-2">
+            <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
+              <SelectTrigger className="w-[200px] text-foreground border-border focus:border-primary">
+                <SelectValue placeholder="Filter by Unit ID" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" key="all">All Units</SelectItem>
+                {orgUnits.length > 0 ? (
+                  orgUnits.map((unit) => (
+                    <SelectItem key={unit.unit_id} value={unit.unit_id}>
+                      {unit.unit_id} - {unit.unit_name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" disabled key="none">
+                    No units available
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -328,9 +382,9 @@ export default function LocationTagsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-foreground font-semibold">Location Tag Name</TableHead>
-                <TableHead className="text-foreground font-semibold">Dimensions (L×B×H)</TableHead>
-                <TableHead className="text-foreground font-semibold">Volume</TableHead>
+                <TableHead className="text-foreground font-semibold">Location Tag</TableHead>
+                <TableHead className="text-foreground font-semibold">Dimensions</TableHead>
+                <TableHead className="text-foreground font-semibold">Capacity</TableHead>
                 <TableHead className="text-foreground font-semibold">Current Items</TableHead>
                 <TableHead className="text-right text-foreground font-semibold">Actions</TableHead>
               </TableRow>
@@ -338,16 +392,19 @@ export default function LocationTagsPage() {
             <TableBody>
               {filteredTags.length > 0 ? (
                 filteredTags.map((tag, idx) => (
-                  <TableRow key={`${tag.location_tag_name}-${idx}`}>
-                    <TableCell className="font-medium text-foreground">{tag.location_tag_name}</TableCell>
+                  <TableRow key={`${tag.location_tag}-${tag.unit_id || 'no-unit'}-${idx}`}>
+                    <TableCell className="font-medium text-foreground">{tag.location_tag}</TableCell>
                     <TableCell className="text-foreground">
-                      {tag.length && tag.breadth && tag.height 
-                        ? `${tag.length}×${tag.breadth}×${tag.height}`
+                      {tag.length && tag.breadth && tag.height && tag.unit_of_measurement 
+                        ? `${tag.length}×${tag.breadth}×${tag.height} ${tag.unit_of_measurement}`
                         : "Not specified"
                       }
                     </TableCell>
                     <TableCell className="text-foreground font-medium">
-                      {tag.volume ? tag.volume.toLocaleString() : "Not specified"}
+                      {tag.capacity && tag.unit_of_measurement 
+                        ? `${tag.capacity.toFixed(3)} cubic ${tag.unit_of_measurement}`
+                        : "Not specified"
+                      }
                     </TableCell>
                     <TableCell className="text-foreground">{tag.current_items}</TableCell>
                     <TableCell className="text-right">
@@ -359,13 +416,14 @@ export default function LocationTagsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEditClick(tag)} className="cursor-pointer">
+                          <DropdownMenuItem onClick={() => handleEditClick(tag)} className="cursor-pointer" key="edit">
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-red-600 cursor-pointer hover:bg-red-50"
                             onClick={() => handleDeleteClick(tag)}
+                            key="delete"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete
@@ -413,13 +471,44 @@ export default function LocationTagsPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="location_tag_name"
+                name="unit_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-foreground font-medium">Location Tag Name</FormLabel>
+                    <FormLabel className="text-foreground font-medium">Unit ID *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="text-foreground border-border focus:border-primary">
+                          <SelectValue placeholder="Select organizational unit" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {orgUnits.length > 0 ? (
+                          orgUnits.map((unit) => (
+                            <SelectItem key={unit.unit_id} value={unit.unit_id}>
+                              {unit.unit_id} - {unit.unit_name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="" disabled key="no-units">
+                            No organizational units available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="location_tag"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-foreground font-medium">Location Tag</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="Enter location tag name" 
+                        placeholder="Enter location tag" 
                         className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
                         {...field} 
                       />
@@ -432,11 +521,11 @@ export default function LocationTagsPage() {
               {/* Volume Capacity Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b">
-                  <span className="text-sm font-medium text-foreground">Volume Capacity (Optional)</span>
-                  <span className="text-xs text-muted-foreground">L × B × H = Volume</span>
+                  <span className="text-sm font-medium text-foreground">Capacity (Optional)</span>
+                  <span className="text-xs text-muted-foreground">L × B × H = Capacity</span>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                   <FormField
                     control={form.control}
                     name="length"
@@ -448,7 +537,7 @@ export default function LocationTagsPage() {
                             type="number"
                             placeholder="0"
                             min="0"
-                            step="0.01"
+                            step="0.001"
                             className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
                             {...field}
                             onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
@@ -470,7 +559,7 @@ export default function LocationTagsPage() {
                             type="number"
                             placeholder="0"
                             min="0"
-                            step="0.01"
+                            step="0.001"
                             className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
                             {...field}
                             onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
@@ -492,7 +581,7 @@ export default function LocationTagsPage() {
                             type="number"
                             placeholder="0"
                             min="0"
-                            step="0.01"
+                            step="0.001"
                             className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
                             {...field}
                             onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
@@ -502,19 +591,48 @@ export default function LocationTagsPage() {
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="unit_of_measurement"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Unit</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="text-foreground border-border focus:border-primary">
+                              <SelectValue placeholder="Select unit" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="meters" key="meters">Meters</SelectItem>
+                            <SelectItem value="feet" key="feet">Feet</SelectItem>
+                            <SelectItem value="inches" key="inches">Inches</SelectItem>
+                            <SelectItem value="centimeters" key="centimeters">Centimeters</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
-                {/* Calculated Volume Display */}
+                {/* Calculated Capacity Display */}
                 {(form.watch("length") || form.watch("breadth") || form.watch("height")) && (
                   <div className="p-3 bg-muted/50 rounded-md">
-                    <div className="text-sm font-medium text-foreground">Calculated Volume:</div>
+                    <div className="text-sm font-medium text-foreground">Calculated Capacity:</div>
                     <div className="text-lg font-bold text-primary">
                       {(() => {
                         const length = form.watch("length") || 0;
                         const breadth = form.watch("breadth") || 0;
                         const height = form.watch("height") || 0;
-                        const volume = length * breadth * height;
-                        return volume > 0 ? `${volume.toLocaleString()} cubic units` : "Enter all dimensions";
+                        const unit = form.watch("unit_of_measurement");
+                        const capacity = parseFloat((length * breadth * height).toFixed(3));
+                        return capacity > 0 && unit 
+                          ? `${capacity.toFixed(3)} cubic ${unit}` 
+                          : capacity > 0 
+                            ? `${capacity.toFixed(3)} cubic units`
+                            : "Enter all dimensions and unit";
                       })()}
                     </div>
                   </div>
@@ -528,9 +646,12 @@ export default function LocationTagsPage() {
                     <p className="text-sm text-foreground font-medium mt-1">{editingTag.current_items}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-foreground">Volume Capacity</Label>
+                    <Label className="text-sm font-medium text-foreground">Capacity</Label>
                     <p className="text-sm text-foreground font-medium mt-1">
-                      {editingTag.volume ? `${editingTag.volume.toLocaleString()} cubic units` : "Not specified"}
+                      {editingTag.capacity && editingTag.unit_of_measurement 
+                        ? `${editingTag.capacity.toFixed(3)} cubic ${editingTag.unit_of_measurement}`
+                        : "Not specified"
+                      }
                     </p>
                   </div>
                 </div>
@@ -565,7 +686,7 @@ export default function LocationTagsPage() {
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the location tag
-              "{deleteTag?.location_tag_name}" and remove all associated data.
+              "{deleteTag?.location_tag}" and remove all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

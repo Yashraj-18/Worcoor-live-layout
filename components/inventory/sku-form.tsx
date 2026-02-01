@@ -14,6 +14,7 @@ import { notification } from '@/src/services/notificationService'
 const LOCATION_TAG_NONE_VALUE = "__none__"
 
 const skuFormSchema = z.object({
+  sku_id: z.string().max(100, "SKU ID must be less than 100 characters").optional(),
   sku_name: z.string().min(1, { message: "SKU Name is required." }).transform((val) => val.trim()),
   sku_category: z.enum(["raw_material", "finished_good"], {
     required_error: "Please select a SKU Category.",
@@ -42,6 +43,7 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags }: 
   const form = useForm<SkuFormValues>({
     resolver: zodResolver(skuFormSchema) as any,
     defaultValues: {
+      sku_id: initialData?.sku_id || "",
       sku_name: initialData?.sku_name || "",
       sku_category: (initialData?.sku_category as any) || "raw_material",
       quantity: (initialData?.quantity as any) ?? 0,
@@ -74,6 +76,18 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags }: 
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <div className="space-y-6 flex-grow-1 overflow-y-auto px-4 md:px-6">
           <div className="space-y-4">
+            {/* SKU ID */}
+            <FormField control={form.control} name="sku_id"
+              render={({ field }) => (
+                <FormItem className="space-y-1 gap-2">
+                  <FormLabel className="text-sm font-medium leading-none">SKU ID</FormLabel>
+                  <FormControl>
+                    <Input className="h-12 rounded-md border border-input bg-white/100 dark:bg-slate-800/80 dark:border-slate-700" placeholder="e.g., SKU-001, STEEL-B-001" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             {/* SKU Name */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField control={form.control} name="sku_name"
@@ -161,8 +175,6 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags }: 
                   </FormItem>
                 )}
               />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField control={form.control} name="expiry_date"
                 render={({ field }) => (
                   <FormItem className="space-y-1 gap-2">
@@ -174,7 +186,6 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags }: 
                   </FormItem>
                 )}
               />
-              <div />
             </div>
             {/* Location Tag (optional) */}
             <FormField control={form.control} name="location_tag_id"

@@ -1,6 +1,7 @@
 // Mock Asset Service for asset management operations
 interface Asset {
   id: string;
+  asset_id?: string;
   asset_name: string;
   asset_type: "forklift" | "pallet_jack" | "scanner";
   location_tag_id?: string;
@@ -17,6 +18,7 @@ interface Asset {
   breadth?: number;
   height?: number;
   volume?: number;
+  unit_of_measurement?: "meters" | "feet" | "inches" | "centimeters";
 }
 
 interface AssetListResponse {
@@ -41,6 +43,7 @@ interface AssetResponse {
 const mockAssets: Asset[] = [
   {
     id: "asset-001",
+    asset_id: "AST-001",
     asset_name: "Forklift 001",
     asset_type: "forklift",
     location_tag_id: "loc-001",
@@ -56,6 +59,7 @@ const mockAssets: Asset[] = [
     breadth: 1.2,
     height: 3.0,
     volume: 9.0, // 2.5 x 1.2 x 3.0
+    unit_of_measurement: "meters",
   },
   {
     id: "asset-002",
@@ -74,6 +78,7 @@ const mockAssets: Asset[] = [
     breadth: 0.8,
     height: 1.2,
     volume: 1.44, // 1.5 x 0.8 x 1.2
+    unit_of_measurement: "meters",
   },
   {
     id: "asset-003",
@@ -92,6 +97,7 @@ const mockAssets: Asset[] = [
     breadth: 0.2,
     height: 0.15,
     volume: 0.009, // 0.3 x 0.2 x 0.15
+    unit_of_measurement: "meters",
   },
   {
     id: "asset-004",
@@ -110,6 +116,7 @@ const mockAssets: Asset[] = [
     breadth: 1.5,
     height: 3.5,
     volume: 15.75, // 3.0 x 1.5 x 3.5
+    unit_of_measurement: "meters",
   },
   {
     id: "asset-005",
@@ -128,6 +135,7 @@ const mockAssets: Asset[] = [
     breadth: 0.6,
     height: 1.0,
     volume: 0.72, // 1.2 x 0.6 x 1.0
+    unit_of_measurement: "meters",
   },
 ];
 

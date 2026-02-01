@@ -28,6 +28,7 @@ type BackendSkuUnit = "kg" | "liters" | "pieces"
 
 interface BackendSku {
   id: string
+  sku_id?: string
   sku_name: string
   sku_category: BackendSkuCategory
   quantity: number
@@ -40,6 +41,7 @@ interface BackendSku {
 const sampleSkus: BackendSku[] = [
   {
     id: "SKU-001",
+    sku_id: "SKU-001",
     sku_name: "Oak Wood Panel",
     sku_category: "raw_material",
     quantity: 150,
@@ -116,6 +118,7 @@ export default function SkuManagementPage() {
   const handleAddSku = (data: Omit<BackendSku, "id"> & Partial<Pick<BackendSku, "id">>) => {
     const newSku: BackendSku = {
       id: `SKU-${Date.now()}`,
+      sku_id: data.sku_id || undefined,
       sku_name: data.sku_name,
       sku_category: data.sku_category,
       quantity: Number(data.quantity ?? 0),
@@ -135,6 +138,7 @@ export default function SkuManagementPage() {
         s.id === selectedSku.id
           ? {
               ...s,
+              sku_id: data.sku_id || undefined,
               sku_name: data.sku_name,
               sku_category: data.sku_category,
               quantity: Number(data.quantity ?? 0),
@@ -187,6 +191,7 @@ export default function SkuManagementPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>SKU ID</TableHead>
                 <TableHead>SKU Name</TableHead>
                 <TableHead>SKU Category</TableHead>
                 <TableHead>Quantity</TableHead>
@@ -201,6 +206,7 @@ export default function SkuManagementPage() {
               {filteredSkus.length ? (
                 filteredSkus.map((sku) => (
                   <TableRow key={sku.id}>
+                    <TableCell>{sku.sku_id || "-"}</TableCell>
                     <TableCell className="font-medium">{sku.sku_name}</TableCell>
                     <TableCell>{sku.sku_category}</TableCell>
                     <TableCell>{sku.quantity}</TableCell>
@@ -239,7 +245,7 @@ export default function SkuManagementPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
+                  <TableCell colSpan={9} className="h-24 text-center">
                     No SKUs found.
                   </TableCell>
                 </TableRow>

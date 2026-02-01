@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Upload, FileText, Database, Package, ArrowRight, CheckCircle, AlertCircle, Loader2, RefreshCw, Plus, Edit, Trash2, Building, Save, X, Download, Clock } from "lucide-react"
+import { Upload, FileText, Database, Package, ArrowRight, CheckCircle, AlertCircle, Loader2, RefreshCw, Plus, Edit, Trash2, Save, X, Download, Clock } from "lucide-react"
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
 import Link from "next/link"
@@ -23,18 +23,6 @@ import { Input } from "@/components/ui/input"
 
 // Backend schema definitions - matching exact form fields
 const BACKEND_SCHEMAS = {
-  org_units: {
-    fields: ['unit_id', 'unit_name', 'unit_type', 'status', 'description', 'area'],
-    required: ['unit_id', 'unit_name', 'unit_type', 'status'],
-    types: {
-      unit_id: 'varchar',
-      unit_name: 'varchar',
-      unit_type: 'varchar',
-      status: 'varchar',
-      description: 'varchar',
-      area: 'varchar'
-    }
-  },
   skus: {
     fields: ['sku_id', 'sku_name', 'sku_category', 'sku_unit', 'quantity', 'effective_date', 'expiry_date', 'location_tag_id', 'description'],
     required: ['sku_name', 'sku_category', 'sku_unit', 'quantity', 'effective_date'],
@@ -82,32 +70,6 @@ const BACKEND_SCHEMAS = {
 
 // Demo data for each type - matching exact form fields
 const DEMO_DATA = {
-  org_units: [
-    {
-      unit_id: 'WH-001',
-      unit_name: 'Warehouse 1',
-      unit_type: 'warehouse',
-      status: 'LIVE',
-      description: 'Main warehouse facility for storage operations',
-      area: 'North Wing'
-    },
-    {
-      unit_id: 'OFF-001',
-      unit_name: 'Main Office',
-      unit_type: 'office',
-      status: 'LIVE',
-      description: 'Administrative office building',
-      area: 'Building A'
-    },
-    {
-      unit_id: 'PROD-001',
-      unit_name: 'Production Line 1',
-      unit_type: 'production',
-      status: 'MAINTENANCE',
-      description: 'Primary manufacturing facility',
-      area: 'Factory Floor'
-    }
-  ],
   skus: [
     {
       sku_id: 'SKU-001',
@@ -222,7 +184,7 @@ type CrudOperation = "create" | "update" | "delete"
 
 export default function BulkUploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [uploadType, setUploadType] = useState<string>("org_units")
+  const [uploadType, setUploadType] = useState<string>("skus")
   const [isDragOver, setIsDragOver] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [parsedData, setParsedData] = useState<any[]>([])
@@ -239,10 +201,12 @@ export default function BulkUploadPage() {
   const [selectedOrgUnit, setSelectedOrgUnit] = useState<string>("")
   const [isOperationConfirmed, setIsOperationConfirmed] = useState(false)
   const [isCreatingOrgUnit, setIsCreatingOrgUnit] = useState(false)
+  const [newOrgUnitId, setNewOrgUnitId] = useState("")
   const [newOrgUnitName, setNewOrgUnitName] = useState("")
   const [newOrgUnitType, setNewOrgUnitType] = useState<"warehouse" | "production" | "office">("warehouse")
+  const [newOrgUnitStatus, setNewOrgUnitStatus] = useState<"LIVE" | "OFFLINE" | "MAINTENANCE" | "PLANNING">("LIVE")
   const [newOrgUnitDescription, setNewOrgUnitDescription] = useState("")
-  const [newOrgUnitOrganizationId, setNewOrgUnitOrganizationId] = useState("")
+  const [newOrgUnitArea, setNewOrgUnitArea] = useState("")
   const [importResults, setImportResults] = useState<{
     imported: number
     failed: number
@@ -367,15 +331,16 @@ export default function BulkUploadPage() {
   }
 
   const handleCreateOrgUnit = () => {
-    if (!newOrgUnitName.trim() || !newOrgUnitOrganizationId.trim()) return
+    if (!newOrgUnitId.trim() || !newOrgUnitName.trim()) return
 
     try {
       const newOrgUnit: OrgUnit = {
+        unit_id: newOrgUnitId.trim(),
         unit_name: newOrgUnitName.trim(),
         unit_type: newOrgUnitType,
-        status: "LIVE",
+        status: newOrgUnitStatus,
         description: newOrgUnitDescription.trim(),
-        organization_id: newOrgUnitOrganizationId.trim()
+        area: newOrgUnitArea.trim()
       }
 
       const updatedOrgUnits = [...orgUnits, newOrgUnit]
@@ -384,10 +349,12 @@ export default function BulkUploadPage() {
       
       setSelectedOrgUnit(newOrgUnit.unit_name)
       
+      setNewOrgUnitId("")
       setNewOrgUnitName("")
       setNewOrgUnitType("warehouse")
+      setNewOrgUnitStatus("LIVE")
       setNewOrgUnitDescription("")
-      setNewOrgUnitOrganizationId("")
+      setNewOrgUnitArea("")
       setIsCreatingOrgUnit(false)
     } catch (error) {
       console.error("Error creating org unit:", error)
@@ -790,13 +757,6 @@ export default function BulkUploadPage() {
 
   const uploadTypes = [
     {
-      id: "org_units",
-      name: "Org Units",
-      icon: Building,
-      description: "Upload organizational units data",
-      color: "orange"
-    },
-    {
       id: "skus",
       name: "SKUs",
       icon: Package,
@@ -821,8 +781,6 @@ export default function BulkUploadPage() {
 
   const getTableTitle = () => {
     switch (uploadType) {
-      case 'org_units':
-        return 'Org Units Data'
       case 'skus':
         return 'SKUs Data'
       case 'location_tags':
@@ -968,57 +926,90 @@ export default function BulkUploadPage() {
                     size="sm"
                     onClick={() => {
                       setIsCreatingOrgUnit(false)
+                      setNewOrgUnitId("")
                       setNewOrgUnitName("")
                       setNewOrgUnitType("warehouse")
+                      setNewOrgUnitStatus("LIVE")
                       setNewOrgUnitDescription("")
-                      setNewOrgUnitOrganizationId("")
+                      setNewOrgUnitArea("")
                     }}
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                <Input
-                  placeholder="Org Unit Name"
-                  value={newOrgUnitName}
-                  onChange={(e) => setNewOrgUnitName(e.target.value)}
-                  className="w-full"
-                />
-                <Input
-                  placeholder="Organization ID"
-                  value={newOrgUnitOrganizationId}
-                  onChange={(e) => setNewOrgUnitOrganizationId(e.target.value)}
-                  className="w-full"
-                />
-                <Input
-                  placeholder="Description (optional)"
-                  value={newOrgUnitDescription}
-                  onChange={(e) => setNewOrgUnitDescription(e.target.value)}
-                  className="w-full"
-                />
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={handleCreateOrgUnit}
-                    disabled={!newOrgUnitName.trim() || !newOrgUnitOrganizationId.trim()}
-                    className="flex-1"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Save
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setIsCreatingOrgUnit(false)
-                      setNewOrgUnitName("")
-                      setNewOrgUnitType("warehouse")
-                      setNewOrgUnitDescription("")
-                      setNewOrgUnitOrganizationId("")
-                    }}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
+                <div className="space-y-3">
+                  <Input
+                    placeholder="Unit Id"
+                    value={newOrgUnitId}
+                    onChange={(e) => setNewOrgUnitId(e.target.value)}
+                    className="w-full"
+                  />
+                  <Input
+                    placeholder="Unit Name"
+                    value={newOrgUnitName}
+                    onChange={(e) => setNewOrgUnitName(e.target.value)}
+                    className="w-full"
+                  />
+                  <Select value={newOrgUnitType} onValueChange={(value: "warehouse" | "production" | "office") => setNewOrgUnitType(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Unit Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="warehouse">Warehouse</SelectItem>
+                      <SelectItem value="office">Office</SelectItem>
+                      <SelectItem value="production">Production</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={newOrgUnitStatus} onValueChange={(value: "LIVE" | "OFFLINE" | "MAINTENANCE" | "PLANNING") => setNewOrgUnitStatus(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="LIVE">LIVE</SelectItem>
+                      <SelectItem value="OFFLINE">OFFLINE</SelectItem>
+                      <SelectItem value="MAINTENANCE">MAINTENANCE</SelectItem>
+                      <SelectItem value="PLANNING">PLANNING</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="Description (optional)"
+                    value={newOrgUnitDescription}
+                    onChange={(e) => setNewOrgUnitDescription(e.target.value)}
+                    className="w-full"
+                  />
+                  <Input
+                    placeholder="Area (optional)"
+                    value={newOrgUnitArea}
+                    onChange={(e) => setNewOrgUnitArea(e.target.value)}
+                    className="w-full"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleCreateOrgUnit}
+                      disabled={!newOrgUnitId.trim() || !newOrgUnitName.trim()}
+                      className="flex-1"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Save
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsCreatingOrgUnit(false)
+                        setNewOrgUnitId("")
+                        setNewOrgUnitName("")
+                        setNewOrgUnitType("warehouse")
+                        setNewOrgUnitStatus("LIVE")
+                        setNewOrgUnitDescription("")
+                        setNewOrgUnitArea("")
+                      }}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}

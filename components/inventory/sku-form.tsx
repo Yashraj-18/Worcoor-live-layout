@@ -9,23 +9,26 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { DialogFooter } from "@/components/ui/dialog"
-import { notification } from '@/src/services/notificationService'
 
 const LOCATION_TAG_NONE_VALUE = "__none__"
 
 const skuFormSchema = z.object({
-  sku_id: z.string().max(100, "SKU ID must be less than 100 characters").optional(),
-  sku_name: z.string().min(1, { message: "SKU Name is required." }).transform((val) => val.trim()),
-  sku_category: z.enum(["raw_material", "finished_good"], {
+  skuId: z
+    .string()
+    .max(100, "SKU ID must be less than 100 characters")
+    .optional()
+    .transform((val) => (val?.trim() ? val.trim() : undefined)),
+  skuName: z.string().min(1, { message: "SKU Name is required." }).transform((val) => val.trim()),
+  skuCategory: z.enum(["raw_material", "finished_good"], {
     required_error: "Please select a SKU Category.",
   }),
   quantity: z.coerce.number().min(0, { message: "Quantity must be a positive number." }),
-  sku_unit: z.enum(["kg", "liters", "pieces"], {
+  skuUnit: z.enum(["kg", "liters", "pieces", "boxes"], {
     required_error: "Please select a Unit of Measure.",
   }),
-  effective_date: z.string().min(1, { message: "Effective Date is required." }),
-  expiry_date: z.string().optional(),
-  location_tag_id: z.string().optional(),
+  effectiveDate: z.string().min(1, { message: "Effective Date is required." }),
+  expiryDate: z.string().optional(),
+  locationTagId: z.string().optional(),
 })
 
 // Explicitly define the form values type to match zod schema
@@ -36,21 +39,22 @@ interface SkuFormProps {
   onSubmit: (data: SkuFormValues) => void
   onCancel: () => void
   locationTags: { label: string; value: string }[]
+  isSubmitting?: boolean
 }
 
-export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags }: SkuFormProps) {
+export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags, isSubmitting }: SkuFormProps) {
   // Initialize form with default values or initial data
   const form = useForm<SkuFormValues>({
     resolver: zodResolver(skuFormSchema) as any,
     defaultValues: {
-      sku_id: initialData?.sku_id || "",
-      sku_name: initialData?.sku_name || "",
-      sku_category: (initialData?.sku_category as any) || "raw_material",
+      skuId: initialData?.skuId || "",
+      skuName: initialData?.skuName || "",
+      skuCategory: (initialData?.skuCategory as any) || "raw_material",
       quantity: (initialData?.quantity as any) ?? 0,
-      sku_unit: (initialData?.sku_unit as any) || "kg",
-      effective_date: initialData?.effective_date || "",
-      expiry_date: initialData?.expiry_date || "",
-      location_tag_id: initialData?.location_tag_id || undefined,
+      skuUnit: (initialData?.skuUnit as any) || "kg",
+      effectiveDate: initialData?.effectiveDate || "",
+      expiryDate: initialData?.expiryDate || "",
+      locationTagId: initialData?.locationTagId || undefined,
     },
   })
 
@@ -61,23 +65,13 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags }: 
     form.reset()
   }
 
-  const onUploadSuccess = (res: any) => {
-    if (res.length) {
-      notification.success("Attachment Uploaded.");
-    }
-  };
-  
-  const onUploadError = (res: any) => {
-    notification.error(res);
-  };
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <div className="space-y-6 flex-grow-1 overflow-y-auto px-4 md:px-6">
           <div className="space-y-4">
             {/* SKU ID */}
-            <FormField control={form.control} name="sku_id"
+            <FormField control={form.control} name="skuId"
               render={({ field }) => (
                 <FormItem className="space-y-1 gap-2">
                   <FormLabel className="text-sm font-medium leading-none">SKU ID</FormLabel>
@@ -90,7 +84,7 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags }: 
             />
             {/* SKU Name */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField control={form.control} name="sku_name"
+              <FormField control={form.control} name="skuName"
                 render={({ field }) => (
                   <FormItem className="space-y-1 gap-2">
                     <FormLabel className="text-sm font-medium leading-none">SKU Name <span className="text-destructive">*</span></FormLabel>
@@ -101,7 +95,7 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags }: 
                   </FormItem>
                 )}
               />
-              <FormField control={form.control} name="sku_category"
+              <FormField control={form.control} name="skuCategory"
                 render={({ field }) => (
                   <FormItem className="space-y-1 gap-2">
                     <FormLabel className="text-sm font-medium leading-none">SKU Category <span className="text-destructive">*</span></FormLabel>
@@ -141,7 +135,7 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags }: 
                   </FormItem>
                 )}
               />
-              <FormField control={form.control} name="sku_unit"
+              <FormField control={form.control} name="skuUnit"
                 render={({ field }) => (
                   <FormItem className="space-y-1 gap-2">
                     <FormLabel className="text-sm font-medium leading-none">Unit of Measure <span className="text-destructive">*</span></FormLabel>
@@ -155,6 +149,7 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags }: 
                         <SelectItem value="kg">kg</SelectItem>
                         <SelectItem value="liters">liters</SelectItem>
                         <SelectItem value="pieces">pieces</SelectItem>
+                        <SelectItem value="boxes">boxes</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -164,7 +159,7 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags }: 
             </div>
             {/* Effective Date + Expiry Date */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField control={form.control} name="effective_date"
+              <FormField control={form.control} name="effectiveDate"
                 render={({ field }) => (
                   <FormItem className="space-y-1 gap-2">
                     <FormLabel className="text-sm font-medium leading-none">Effective Date <span className="text-destructive">*</span></FormLabel>
@@ -175,7 +170,7 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags }: 
                   </FormItem>
                 )}
               />
-              <FormField control={form.control} name="expiry_date"
+              <FormField control={form.control} name="expiryDate"
                 render={({ field }) => (
                   <FormItem className="space-y-1 gap-2">
                     <FormLabel className="text-sm font-medium leading-none">Expiry Date</FormLabel>
@@ -188,7 +183,7 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags }: 
               />
             </div>
             {/* Location Tag (optional) */}
-            <FormField control={form.control} name="location_tag_id"
+            <FormField control={form.control} name="locationTagId"
               render={({ field }) => (
                 <FormItem className="space-y-1 gap-2">
                   <FormLabel className="text-sm font-medium leading-none">Location Tag</FormLabel>
@@ -220,7 +215,9 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags }: 
           <Button variant="outline" className="text-sm font-medium" type="button" onClick={onCancel}>
             Cancel
           </Button>
-          <Button className="bg-darkblue text-sm font-medium" type="submit">{initialData?.sku_name ? "Update SKU" : "Add SKU"}</Button>
+          <Button className="bg-darkblue text-sm font-medium" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : initialData?.skuName ? "Update SKU" : "Add SKU"}
+          </Button>
         </DialogFooter>
       </form>
     </Form>

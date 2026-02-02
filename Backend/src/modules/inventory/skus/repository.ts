@@ -41,6 +41,7 @@ export class SkusRepository {
       quantity: skus.quantity,
       effectiveDate: skus.effectiveDate,
       expiryDate: skus.expiryDate,
+      skuId: skus.skuId,
       locationTagId: skus.locationTagId,
       organizationId: skus.organizationId,
       createdAt: skus.createdAt,
@@ -83,6 +84,7 @@ export class SkusRepository {
         quantity: skus.quantity,
         effectiveDate: skus.effectiveDate,
         expiryDate: skus.expiryDate,
+        skuId: skus.skuId,
         locationTagId: skus.locationTagId,
         organizationId: skus.organizationId,
         createdAt: skus.createdAt,
@@ -95,6 +97,16 @@ export class SkusRepository {
       .limit(1);
 
     return result[0] ?? null;
+  }
+
+  async findBySkuId(organizationId: string, skuId: string) {
+    const [result] = await db
+      .select()
+      .from(skus)
+      .where(and(eq(skus.organizationId, organizationId), eq(skus.skuId, skuId)))
+      .limit(1);
+
+    return result ?? null;
   }
 
   async create(payload: CreateSkuDto): Promise<SkuEntity> {

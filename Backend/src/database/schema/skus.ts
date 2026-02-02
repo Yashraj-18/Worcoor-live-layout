@@ -16,6 +16,7 @@ export const skus = pgTable(
     quantity: numeric('quantity', { precision: 10, scale: 2 }).notNull(),
     effectiveDate: date('effective_date').notNull(),
     expiryDate: date('expiry_date'),
+    skuId: text('sku_id'),
     locationTagId: uuid('location_tag_id').references(() => locationTags.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },

@@ -3,9 +3,10 @@ export const createSkuBodySchema = {
   required: ['skuName', 'skuCategory', 'skuUnit', 'quantity', 'effectiveDate'],
   additionalProperties: false,
   properties: {
+    skuId: { type: ['string', 'null'], minLength: 1, maxLength: 100 },
     skuName: { type: 'string', minLength: 1, maxLength: 255 },
     skuCategory: { type: 'string', minLength: 1, maxLength: 100 },
-    skuUnit: { type: 'string', minLength: 1, maxLength: 50 },
+    skuUnit: { type: 'string', enum: ['kg', 'liters', 'pieces', 'boxes'] },
     quantity: { type: 'number', exclusiveMinimum: 0 },
     effectiveDate: { type: 'string', format: 'date' },
     expiryDate: { type: ['string', 'null'], format: 'date' },
@@ -38,9 +39,10 @@ export const moveSkuBodySchema = {
 } as const;
 
 export type CreateSkuInput = {
+  skuId?: string | null;
   skuName: string;
   skuCategory: string;
-  skuUnit: string;
+  skuUnit: 'kg' | 'liters' | 'pieces' | 'boxes';
   quantity: number;
   effectiveDate: string;
   expiryDate?: string | null;

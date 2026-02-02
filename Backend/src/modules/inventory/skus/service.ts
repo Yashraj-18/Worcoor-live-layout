@@ -28,6 +28,13 @@ export class SkusService {
     };
   }
 
+  private async assertSkuIdUnique(orgId: string, skuId: string, excludeSkuId?: string) {
+    const existing = await this.repository.findBySkuId(orgId, skuId);
+    if (existing && existing.id !== excludeSkuId) {
+      throw new Error('SKU_ID_NOT_UNIQUE');
+    }
+  }
+
   private async assertLocationTag(tagId: string, organizationId: string) {
     const tag = await this.locationTagsRepository.findById(tagId, organizationId);
     if (!tag) {
@@ -123,6 +130,17 @@ export class SkusService {
       if (!ok) return;
     }
 
+    if (request.body.skuId) {
+      try {
+        await this.assertSkuIdUnique(orgId, request.body.skuId);
+      } catch (error) {
+        if (error instanceof Error && error.message === 'SKU_ID_NOT_UNIQUE') {
+          return reply.code(409).send({ error: 'SKU ID already in use' });
+        }
+        throw error;
+      }
+    }
+
     const sku = await this.repository.create({
       skuName: request.body.skuName,
       skuCategory: request.body.skuCategory,
@@ -130,8 +148,10 @@ export class SkusService {
       quantity: request.body.quantity.toString(),
       effectiveDate: request.body.effectiveDate,
       expiryDate: request.body.expiryDate ?? null,
+      skuId: request.body.skuId ?? null,
       locationTagId: request.body.locationTagId ?? null,
       organizationId: orgId,
+      
     });
 
     reply.code(201).send(this.serializeSku(sku));
@@ -166,6 +186,17 @@ export class SkusService {
       if (!ok) return;
     }
 
+    if (request.body.skuId) {
+      try {
+        await this.assertSkuIdUnique(orgId, request.body.skuId, skuId);
+      } catch (error) {
+        if (error instanceof Error && error.message === 'SKU_ID_NOT_UNIQUE') {
+          return reply.code(409).send({ error: 'SKU ID already in use' });
+        }
+        throw error;
+      }
+    }
+
     const updated = await this.repository.update(skuId, orgId, {
       skuName: request.body.skuName ?? existing.skuName,
       skuCategory: request.body.skuCategory ?? existing.skuCategory,
@@ -175,6 +206,10 @@ export class SkusService {
       expiryDate:
         request.body.expiryDate !== undefined ? request.body.expiryDate : existing.expiryDate ?? null,
       locationTagId: nextLocationTagId ?? null,
+      skuId:
+        request.body.skuId !== undefined
+          ? request.body.skuId
+          : existing.skuId ?? null,
     });
 
     reply.send(this.serializeSku(updated));

@@ -14,6 +14,7 @@ const skuResponseSchema = {
   type: 'object',
   properties: {
     id: { type: 'string', format: 'uuid' },
+    skuId: { type: ['string', 'null'], maxLength: 100 },
     skuName: { type: 'string' },
     skuCategory: { type: 'string' },
     skuUnit: { type: 'string' },

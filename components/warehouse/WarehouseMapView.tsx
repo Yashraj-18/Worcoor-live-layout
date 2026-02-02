@@ -86,9 +86,10 @@ interface WarehouseMapViewProps {
   facilityData?: FacilityData;
   initialSelectedLayoutId?: string | null;
   onModalClose?: () => void;
+  fullscreenMode?: boolean;
 }
 
-const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initialSelectedLayoutId, onModalClose }) => {
+const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initialSelectedLayoutId, onModalClose, fullscreenMode }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const layoutId = searchParams?.get('layoutId');
@@ -147,6 +148,11 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       setSelectedUnitForDemo(layoutId);
       setShowDemoMapModal(true);
     }
+
+    if (fullscreenMode && initialSelectedLayoutId) {
+      setSelectedUnitForDemo(initialSelectedLayoutId);
+      setShowDemoMapModal(true);
+    }
   }, [layoutId]);
 
   // Handle browser back button to close modal
@@ -178,6 +184,13 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       onModalClose();
     }
   }, [onModalClose]);
+
+  const handleOpenFullscreenTab = useCallback(() => {
+    if (!selectedUnitForDemo) return;
+
+    const url = `/dashboard/warehouse-management/warehouse-map/fullscreen?layoutId=${encodeURIComponent(selectedUnitForDemo)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, [selectedUnitForDemo]);
 
   useEffect(() => {
     refreshSavedLayouts();
@@ -1299,12 +1312,32 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       {/* Live Map Modal */}
       {showDemoMapModal && selectedUnitForDemo && (
           <div 
-            className="demo-map-modal-overlay" 
-            onClick={() => setShowDemoMapModal(false)}
+            className={`demo-map-modal-overlay ${fullscreenMode ? 'fullscreen-mode' : ''}`}
+            onClick={() => {
+              if (fullscreenMode) return;
+              setShowDemoMapModal(false);
+            }}
+            style={fullscreenMode ? {
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              background: '#0b1220',
+              zIndex: 99999,
+              padding: 0
+            } : undefined}
           >
             <div 
               className="demo-map-modal-content" 
               onClick={(e) => e.stopPropagation()}
+              style={fullscreenMode ? {
+                width: '100%',
+                height: '100%',
+                maxWidth: '100%',
+                maxHeight: '100%',
+                borderRadius: 0
+              } : undefined}
             >
               <div className="demo-map-header">
                 <div className="demo-map-title">
@@ -1382,10 +1415,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                 <div className="demo-map-controls">
                   <button 
                     className="demo-map-fullscreen-btn" 
-                    onClick={() => {
-                      // TODO: Implement fullscreen preview functionality
-                      console.log('Fullscreen preview clicked - to be implemented');
-                    }}
+                    onClick={handleOpenFullscreenTab}
                     title="Fullscreen Preview"
                   >
                     ⛶

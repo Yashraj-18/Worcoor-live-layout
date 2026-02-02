@@ -803,10 +803,28 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
   const storageUnitTextColor = storageUnitColor ? '#000000' : '#FFFFFF'; // Black text for transparent background
   const hasHighlightedCompartments = Array.isArray(highlightedCompartments) && highlightedCompartments.length > 0;
 
+  const canvasIconSize = 48;
+
+  const isIconOnly = [
+    'fire_exit_marking',
+    'security_area',
+    'restrooms_area',
+    'seating_area',
+    'dispatch_gates',
+    'inbound_gates',
+    'pathways_arrows',
+    'conference_room',
+    'meeting_rooms',
+    'pantry_area',
+    'open_stage',
+    'booths',
+    'general_area'
+  ].includes(normalizedType);
+
   const resolvedLocationId = (item?.locationId
     || item?.locationData?.primaryLocationId
-    || item?.locationData?.locationId
-    || item?.locationData?.uniqueId
+    || item?.inventoryData?.locationId
+    || item?.inventoryData?.uniqueId
     || item?.locationCode
     || item?.sku
     || '')
@@ -834,19 +852,19 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
         height: item.height,
         background: isStorageRack ? 'transparent' : undefined,
         backgroundImage: isStorageRack ? 'none' : undefined,
-        backgroundColor: item.isHollow ? 'transparent' :
+        backgroundColor: isIconOnly ? 'transparent' : (item.isHollow ? 'transparent' :
           (isStorageComponentType ? 'transparent' :
            isStorageRack ? 'transparent' :
            isSpareUnit ? spareUnitColor :
            isContainer ? 'transparent' :
-           getComponentColor(normalizedType, item.category)),
-        border: isStorageComponentType || isSpareUnit ? 'none' :
+           getComponentColor(normalizedType, item.category))),
+        border: isIconOnly ? 'none' : (isStorageComponentType || isSpareUnit ? 'none' :
                isStorageRack ? 'none' :
                (normalizedType === 'square_boundary' ? '4px solid #000000' :
                (isMainBoundary ? '4px solid #263238' :
                (isZone ? `3px solid ${getComponentColor(normalizedType)}` :
                (isContainer ? `3px solid ${getComponentColor(normalizedType)}` :
-               (isContained ? `2px dashed ${getComponentColor(normalizedType) || statusColor}` : `3px solid ${getComponentColor(normalizedType) || statusColor}`))))),
+               (isContained ? `2px dashed ${getComponentColor(normalizedType) || statusColor}` : `3px solid ${getComponentColor(normalizedType) || statusColor}`)))))),
         borderRadius: '0px',
         boxShadow: isHighlighted && !hasHighlightedCompartments ? '0 0 12px 3px rgba(79, 70, 229, 0.6)' : 'none',
         opacity: isDragging ? 0.7 : 1,
@@ -1029,6 +1047,64 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
         );
       })()}
 
+      {(['pathways_arrows', 'conference_room', 'meeting_rooms', 'pantry_area', 'open_stage', 'booths', 'general_area'].includes(item.type) && item.icon) && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            borderRadius: '4px'
+          }}
+          title={item.name}
+        >
+          <img
+            src={encodeURI(item.icon)}
+            alt={item.name}
+            style={{
+              width: `${canvasIconSize}px`,
+              height: `${canvasIconSize}px`,
+              objectFit: 'contain',
+              borderRadius: '4px',
+              boxSizing: 'border-box'
+            }}
+            onError={(e: any) => {
+              if (e?.target?.dataset?.fallbackApplied === 'true') return;
+              if (e?.target?.dataset) {
+                e.target.dataset.fallbackApplied = 'true';
+              }
+              console.warn('Failed to load icon image, showing fallback');
+              e.target.style.display = 'none';
+              const fallback = document.createElement('div');
+              fallback.innerHTML = `
+                <div style="
+                  background-color: #334155;
+                  color: white;
+                  font-weight: bold;
+                  text-align: center;
+                  padding: 10px;
+                  font-size: 12px;
+                  border-radius: 4px;
+                  width: 90%;
+                  height: 60px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                ">
+                  ${item.name}
+                </div>
+              `;
+              e.target.parentNode.appendChild(fallback);
+            }}
+          />
+        </div>
+      )}
+
       {/* Fire Exit Marking - Custom Image Display */}
       {item.type === 'fire_exit_marking' && (
         <div
@@ -1042,42 +1118,49 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
               alignItems: 'center',
               justifyContent: 'center',
               overflow: 'hidden',
-              borderRadius: '4px',
-              backgroundColor: item.color || '#F44336' // Fallback background
+              borderRadius: '4px'
             }}
             title="Fire Exit - Emergency Evacuation Route"
           >
             {/* Fire Exit Image */}
             <img
-              src="/assets/images/icons/fire-exit.jpg"
+              src={encodeURI(item.icon || "/assets/images/icons/Fire Exit Markings.png")}
               alt="Fire Exit"
               style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                borderRadius: '4px'
+                width: `${canvasIconSize}px`,
+                height: `${canvasIconSize}px`,
+                objectFit: 'contain',
+                borderRadius: '4px',
+                boxSizing: 'border-box'
                 // No border - clean image display
               }}
               onError={(e: any) => {
-                console.error('Failed to load fire exit image, showing fallback');
+                if (e?.target?.dataset?.fallbackApplied === 'true') return;
+                if (e?.target?.dataset) {
+                  e.target.dataset.fallbackApplied = 'true';
+                }
+                console.warn('Failed to load fire exit image, showing fallback');
                 // Show fallback text
                 e.target.style.display = 'none';
                 const fallback = document.createElement('div');
                 fallback.innerHTML = `
                   <div style="
+                    background-color: rgba(244, 67, 54, 0.9);
                     color: white;
                     font-weight: bold;
                     text-align: center;
                     padding: 10px;
                     font-size: 12px;
+                    border-radius: 4px;
+                    width: 90%;
                   ">
-                    🚪<br/>FIRE EXIT
+                    FIRE EXIT
                   </div>
                 `;
                 e.target.parentNode.appendChild(fallback);
               }}
             />
-          </div>
+        </div>
       )}
 
       {/* Security Area - Custom Image Display */}
@@ -1100,23 +1183,27 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           >
             {/* Security Area Image */}
             <img
-              src="/assets/images/icons/security-area.png"
+              src={encodeURI(item.icon || "/assets/images/icons/security area.png")}
               alt="Security Area"
               style={{
-                width: '90%',
-                height: '60px', // Fixed height to 60px as expected
-                objectFit: 'contain', // Show full image properly
-                borderRadius: '2px',
-                backgroundColor: '#FFFFFF' // Ensure white background
+                width: `${canvasIconSize}px`,
+                height: `${canvasIconSize}px`,
+                objectFit: 'contain',
+                borderRadius: '4px',
+                boxSizing: 'border-box'
               }}
               onError={(e: any) => {
-                console.error('Failed to load security area image, showing fallback');
+                if (e?.target?.dataset?.fallbackApplied === 'true') return;
+                if (e?.target?.dataset) {
+                  e.target.dataset.fallbackApplied = 'true';
+                }
+                console.warn('Failed to load security area image, showing fallback');
                 // Show fallback text
                 e.target.style.display = 'none';
                 const fallback = document.createElement('div');
                 fallback.innerHTML = `
                   <div style="
-                    background-color: #9C27B0;
+                    background-color: rgba(33, 150, 243, 0.9);
                     color: white;
                     font-weight: bold;
                     text-align: center;
@@ -1124,18 +1211,14 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
                     font-size: 12px;
                     border-radius: 4px;
                     width: 90%;
-                    height: 60px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
                   ">
-                    🔒<br/>SECURITY
+                    SECURITY
                   </div>
                 `;
                 e.target.parentNode.appendChild(fallback);
               }}
             />
-          </div>
+        </div>
       )}
 
       {/* Restrooms Area - Custom Image Display */}
@@ -1158,23 +1241,27 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           >
             {/* Restrooms Area Image */}
             <img
-              src="/assets/images/icons/restroom.png"
+              src={encodeURI(item.icon || "/assets/images/icons/restroom area.png")}
               alt="Restrooms"
               style={{
-                width: '90%',
-                height: '60px', // Fixed height to 60px as expected
-                objectFit: 'contain', // Show full image properly
-                borderRadius: '2px',
-                backgroundColor: '#FFFFFF' // Ensure white background
+                width: `${canvasIconSize}px`,
+                height: `${canvasIconSize}px`,
+                objectFit: 'contain',
+                borderRadius: '4px',
+                boxSizing: 'border-box'
               }}
               onError={(e: any) => {
-                console.error('Failed to load restrooms image, showing fallback');
+                if (e?.target?.dataset?.fallbackApplied === 'true') return;
+                if (e?.target?.dataset) {
+                  e.target.dataset.fallbackApplied = 'true';
+                }
+                console.warn('Failed to load restrooms image, showing fallback');
                 // Show fallback text
                 e.target.style.display = 'none';
                 const fallback = document.createElement('div');
                 fallback.innerHTML = `
                   <div style="
-                    background-color: #607D8B;
+                    background-color: rgba(76, 175, 80, 0.9);
                     color: white;
                     font-weight: bold;
                     text-align: center;
@@ -1182,18 +1269,14 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
                     font-size: 12px;
                     border-radius: 4px;
                     width: 90%;
-                    height: 60px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
                   ">
-                    🚻<br/>RESTROOM
+                    RESTROOMS
                   </div>
                 `;
                 e.target.parentNode.appendChild(fallback);
               }}
             />
-          </div>
+        </div>
       )}
 
       {/* Seating Area - Custom Image Display */}
@@ -1216,23 +1299,27 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           >
             {/* Seating Area Image */}
             <img
-              src="/assets/images/icons/seating.png"
+              src={encodeURI(item.icon || "/assets/images/icons/Seating Area.png")}
               alt="Seating"
               style={{
-                width: '90%',
-                height: '60px', // Fixed height to 60px as expected
-                objectFit: 'contain', // Show full image properly
-                borderRadius: '2px',
-                backgroundColor: '#FFFFFF' // Ensure white background
+                width: `${canvasIconSize}px`,
+                height: `${canvasIconSize}px`,
+                objectFit: 'contain',
+                borderRadius: '4px',
+                boxSizing: 'border-box'
               }}
               onError={(e: any) => {
-                console.error('Failed to load seating image, showing fallback');
+                if (e?.target?.dataset?.fallbackApplied === 'true') return;
+                if (e?.target?.dataset) {
+                  e.target.dataset.fallbackApplied = 'true';
+                }
+                console.warn('Failed to load seating image, showing fallback');
                 // Show fallback text
                 e.target.style.display = 'none';
                 const fallback = document.createElement('div');
                 fallback.innerHTML = `
                   <div style="
-                    background-color: #4CAF50;
+                    background-color: rgba(156, 39, 176, 0.9);
                     color: white;
                     font-weight: bold;
                     text-align: center;
@@ -1240,18 +1327,46 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
                     font-size: 12px;
                     border-radius: 4px;
                     width: 90%;
-                    height: 60px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
                   ">
-                    🪑<br/>SEATING
+                    SEATING
                   </div>
                 `;
                 e.target.parentNode.appendChild(fallback);
               }}
             />
           </div>
+      )}
+
+      {/* Icon Name Label - Shown below icon-only components */}
+      {isIconOnly && item.name && item.name.trim() && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: `translate(-50%, ${canvasIconSize / 2 + 8}px)`,
+            backgroundColor: 'transparent',
+            color: '#000000',
+            padding: '0px',
+            borderRadius: '0px',
+            fontSize: '11px',
+            fontWeight: '600',
+            lineHeight: 1.1,
+            textAlign: 'center',
+            maxWidth: '96px',
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 2,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            zIndex: 10000,
+            textShadow: 'none'
+          }}
+        >
+          {item.name.trim()}
+        </div>
       )}
 
       {/* Dispatch Gates - Custom Image Display */}
@@ -1274,17 +1389,22 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           >
             {/* Dispatch Gates Image */}
             <img
-              src="/assets/images/icons/dispatch-gate.png"
+              src={encodeURI(item.icon || "/assets/images/icons/dispatch-gate.png")}
               alt="Dispatch Gates"
               style={{
-                width: '90%',
-                height: '60px', // Fixed height to 60px as expected
-                objectFit: 'contain', // Show full image properly
-                borderRadius: '2px'
+                width: `${canvasIconSize}px`,
+                height: `${canvasIconSize}px`,
+                objectFit: 'contain',
+                borderRadius: '4px',
+                boxSizing: 'border-box'
                 // No backgroundColor - transparent background
               }}
               onError={(e: any) => {
-                console.error('Failed to load dispatch gates image, showing fallback');
+                if (e?.target?.dataset?.fallbackApplied === 'true') return;
+                if (e?.target?.dataset) {
+                  e.target.dataset.fallbackApplied = 'true';
+                }
+                console.warn('Failed to load dispatch gates image, showing fallback');
                 // Show fallback text
                 e.target.style.display = 'none';
                 const fallback = document.createElement('div');
@@ -1332,17 +1452,22 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           >
             {/* Inbound Gates Image */}
             <img
-              src="/assets/images/icons/inbound-gate.png"
+              src={encodeURI(item.icon || "/assets/images/icons/inbound-gate.png")}
               alt="Inbound Gates"
               style={{
-                width: '90%',
-                height: '60px', // Fixed height to 60px as expected
-                objectFit: 'contain', // Show full image properly
-                borderRadius: '2px'
+                width: `${canvasIconSize}px`,
+                height: `${canvasIconSize}px`,
+                objectFit: 'contain',
+                borderRadius: '4px',
+                boxSizing: 'border-box'
                 // No backgroundColor - transparent background
               }}
               onError={(e: any) => {
-                console.error('Failed to load inbound gates image, showing fallback');
+                if (e?.target?.dataset?.fallbackApplied === 'true') return;
+                if (e?.target?.dataset) {
+                  e.target.dataset.fallbackApplied = 'true';
+                }
+                console.warn('Failed to load inbound gates image, showing fallback');
                 // Show fallback text
                 e.target.style.display = 'none';
                 const fallback = document.createElement('div');

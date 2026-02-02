@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -60,63 +60,41 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { toast } from "@/components/ui/use-toast"
+import { orgUnitService, type OrgUnit } from "@/src/services/orgUnits"
 
-// Types
-interface OrgUnit {
-  unit_id: string
-  unit_name: string
-  unit_type: "warehouse" | "office" | "production"
-  status: "LIVE" | "OFFLINE" | "MAINTENANCE" | "PLANNING"
-  description?: string
-  area?: string // Format: "[number] sq [unit]" - e.g., "200 sq meters"
-}
+const unitIdRegex = /^[a-zA-Z0-9_-]+$/
+const areaRegex = /^\d+(?:\.\d+)?\s+sq\s+[A-Za-z]+$/
 
-// Form schema
 const orgUnitSchema = z.object({
-  unit_id: z.string().min(1, "Unit ID is required").max(100, "Unit ID must be less than 100 characters"),
-  unit_name: z.string().min(1, "Unit Name is required").max(100, "Name must be less than 100 characters"),
-  unit_type: z.enum(["warehouse", "office", "production"], {
+  unitId: z
+    .string()
+    .min(1, "Unit ID is required")
+    .max(100, "Unit ID must be less than 100 characters")
+    .regex(unitIdRegex, "Unit ID can only contain letters, numbers, hyphens, and underscores"),
+  unitName: z
+    .string()
+    .min(1, "Unit Name is required")
+    .max(255, "Name must be less than 255 characters"),
+  unitType: z.enum(["warehouse", "office", "production"], {
     required_error: "Please select a unit type",
   }),
   status: z.enum(["LIVE", "OFFLINE", "MAINTENANCE", "PLANNING"], {
     required_error: "Please select a status",
   }),
-  description: z.string().optional(),
-  area: z.string().max(100, "Area must be less than 100 characters").optional(),
+  description: z
+    .string()
+    .max(1000, "Description must be less than 1000 characters")
+    .optional()
+    .or(z.literal("")),
+  area: z
+    .string()
+    .max(100, "Area must be less than 100 characters")
+    .regex(areaRegex, "Area must be in format: [number] sq [unit] (e.g., 200 sq meters)")
+    .optional()
+    .or(z.literal("")),
 })
 
 type OrgUnitFormValues = z.infer<typeof orgUnitSchema>
-
-// Default data
-const defaultOrgUnits: OrgUnit[] = [
-  {
-    unit_id: "WH-001",
-    unit_name: "Warehouse 1",
-    unit_type: "warehouse",
-    status: "LIVE",
-    description: "Main warehouse for finished goods storage",
-    area: "5000 sq meters",
-  },
-  {
-    unit_id: "PU-001",
-    unit_name: "Production Unit 1",
-    unit_type: "production",
-    status: "PLANNING",
-    description: "Primary production line for assembly operations",
-    area: "3200 sq meters",
-  },
-  {
-    unit_id: "OF-001",
-    unit_name: "Main Office",
-    unit_type: "office",
-    status: "OFFLINE",
-    description: "Administrative offices and management",
-    area: "600 sq feet",
-  },
-]
-
-// localStorage key
-const ORG_UNITS_STORAGE_KEY = "worcoor-org-units"
 
 export default function OrgUnitsPage() {
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([])
@@ -128,142 +106,136 @@ export default function OrgUnitsPage() {
   const [editingUnit, setEditingUnit] = useState<OrgUnit | null>(null)
   const [deleteUnit, setDeleteUnit] = useState<OrgUnit | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Form initialization
   const form = useForm<OrgUnitFormValues>({
     resolver: zodResolver(orgUnitSchema),
     defaultValues: {
-      unit_id: "",
-      unit_name: "",
-      unit_type: "warehouse",
+      unitId: "",
+      unitName: "",
+      unitType: "warehouse",
       status: "LIVE",
       description: "",
       area: "",
     },
   })
 
-  // Load data from localStorage on mount
   useEffect(() => {
-    const storedUnits = localStorage.getItem(ORG_UNITS_STORAGE_KEY)
-    if (storedUnits) {
+    const fetchUnits = async () => {
       try {
-        const parsedUnits = JSON.parse(storedUnits)
-        setOrgUnits(parsedUnits)
-      } catch (error) {
-        console.error("Error parsing stored org units:", error)
-        // Fallback to default data
-        setOrgUnits(defaultOrgUnits)
-        localStorage.setItem(ORG_UNITS_STORAGE_KEY, JSON.stringify(defaultOrgUnits))
+        setLoadError(null)
+        const data = await orgUnitService.list()
+        setOrgUnits(data)
+      } catch (error: any) {
+        console.error("Failed to load organizational units", error)
+        setLoadError("Unable to load organizational units. Please try again.")
+      } finally {
+        setIsLoading(false)
       }
-    } else {
-      // Initialize with default data
-      setOrgUnits(defaultOrgUnits)
-      localStorage.setItem(ORG_UNITS_STORAGE_KEY, JSON.stringify(defaultOrgUnits))
     }
+
+    fetchUnits()
   }, [])
 
-  // Save to localStorage whenever orgUnits changes
-  useEffect(() => {
-    if (orgUnits.length > 0) {
-      localStorage.setItem(ORG_UNITS_STORAGE_KEY, JSON.stringify(orgUnits))
-    }
-  }, [orgUnits])
+  const normalizePayload = (data: OrgUnitFormValues) => ({
+    unitId: data.unitId.trim(),
+    unitName: data.unitName.trim(),
+    unitType: data.unitType,
+    status: data.status,
+    description: data.description?.trim() ? data.description.trim() : null,
+    area: data.area?.trim() ? data.area.trim() : null,
+  })
 
   // Filter units based on search and filters
   const filteredUnits = orgUnits.filter((unit) => {
     const search = searchTerm.toLowerCase()
-    const unitName = (unit.unit_name ?? (unit as any).name ?? "").toString().toLowerCase()
-    const unitDescription = (unit.description ?? "").toString().toLowerCase()
+    const unitName = unit.unitName.toLowerCase()
+    const unitDescription = (unit.description ?? "").toLowerCase()
 
     const matchesSearch = unitName.includes(search) || unitDescription.includes(search)
 
-    const matchesType = filterType === "all" || unit.unit_type === filterType
+    const matchesType = filterType === "all" || unit.unitType === filterType
     const matchesStatus = filterStatus === "all" || unit.status === filterStatus
 
     return matchesSearch && matchesType && matchesStatus
   })
 
   // Handle add new unit
-  const handleAddUnit = (data: OrgUnitFormValues) => {
+  const handleAddUnit = async (data: OrgUnitFormValues) => {
     setIsSubmitting(true)
-
-    const newUnit: OrgUnit = {
-      unit_id: data.unit_id,
-      unit_name: data.unit_name,
-      unit_type: data.unit_type,
-      status: data.status,
-      description: data.description,
-      area: data.area,
+    try {
+      const created = await orgUnitService.create(normalizePayload(data))
+      setOrgUnits((prev) => [...prev, created])
+      setIsAddDialogOpen(false)
+      form.reset()
+      toast({
+        title: "Organizational unit created",
+        description: `${created.unitName} has been added successfully.${created.area ? ` Area: ${created.area}` : ''}`,
+      })
+    } catch (error: any) {
+      const message = error?.response?.data?.error || "Failed to create organizational unit."
+      toast({ title: "Error", description: message, variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
     }
-
-    setOrgUnits((prev) => [...prev, newUnit])
-    setIsAddDialogOpen(false)
-    form.reset()
-
-    toast({
-      title: "Organizational unit created",
-      description: `${newUnit.unit_name} has been added successfully.${newUnit.area ? ` Area: ${newUnit.area}` : ''}`,
-    })
-
-    setIsSubmitting(false)
   }
 
   // Handle edit unit
-  const handleEditUnit = (data: OrgUnitFormValues) => {
+  const handleEditUnit = async (data: OrgUnitFormValues) => {
     if (!editingUnit) return
 
     setIsSubmitting(true)
+    try {
+      const updated = await orgUnitService.update(editingUnit.id, normalizePayload(data))
+      setOrgUnits((prev) => prev.map((unit) => (unit.id === updated.id ? updated : unit)))
+      setIsEditDialogOpen(false)
+      setEditingUnit(null)
+      form.reset()
 
-    const updatedUnit: OrgUnit = {
-      ...editingUnit,
-      unit_id: data.unit_id,
-      unit_name: data.unit_name,
-      unit_type: data.unit_type,
-      status: data.status,
-      description: data.description,
-      area: data.area,
+      toast({
+        title: "Organizational unit updated",
+        description: `${updated.unitName} has been updated successfully.${updated.area ? ` Area: ${updated.area}` : ''}`,
+      })
+    } catch (error: any) {
+      const message = error?.response?.data?.error || "Failed to update organizational unit."
+      toast({ title: "Error", description: message, variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
     }
-
-    setOrgUnits((prev) =>
-      prev.map((unit) => (unit === editingUnit ? updatedUnit : unit))
-    )
-    setIsEditDialogOpen(false)
-    setEditingUnit(null)
-    form.reset()
-
-    toast({
-      title: "Organizational unit updated",
-      description: `${updatedUnit.unit_name} has been updated successfully.${updatedUnit.area ? ` Area: ${updatedUnit.area}` : ''}`,
-    })
-
-    setIsSubmitting(false)
   }
 
   // Handle delete unit
-  const handleDeleteUnit = () => {
+  const handleDeleteUnit = async () => {
     if (!deleteUnit) return
 
-    setOrgUnits((prev) => prev.filter((unit) => unit !== deleteUnit))
-
-    toast({
-      title: "Organizational unit deleted",
-      description: `${deleteUnit.unit_name} has been deleted successfully.`,
-      variant: "destructive",
-    })
-
-    setDeleteUnit(null)
+    try {
+      await orgUnitService.remove(deleteUnit.id)
+      setOrgUnits((prev) => prev.filter((unit) => unit.id !== deleteUnit.id))
+      toast({
+        title: "Organizational unit deleted",
+        description: `${deleteUnit.unitName} has been deleted successfully.`,
+        variant: "destructive",
+      })
+    } catch (error: any) {
+      const message = error?.response?.data?.error || "Failed to delete organizational unit."
+      toast({ title: "Error", description: message, variant: "destructive" })
+    } finally {
+      setDeleteUnit(null)
+    }
   }
 
   // Open edit dialog
   const handleEditClick = (unit: OrgUnit) => {
     setEditingUnit(unit)
     form.reset({
-      unit_id: unit.unit_id,
-      unit_name: unit.unit_name,
-      unit_type: unit.unit_type,
+      unitId: unit.unitId ?? "",
+      unitName: unit.unitName,
+      unitType: unit.unitType,
       status: unit.status,
-      description: unit.description || "",
-      area: unit.area || "",
+      description: unit.description ?? "",
+      area: unit.area ?? "",
     })
     setIsEditDialogOpen(true)
   }
@@ -280,6 +252,23 @@ export default function OrgUnitsPage() {
     } else {
       handleAddUnit(data)
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <p className="text-muted-foreground">Loading organizational units…</p>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
+        <p className="text-muted-foreground">{loadError}</p>
+        <Button onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    )
   }
 
   return (
@@ -322,9 +311,9 @@ export default function OrgUnitsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="Warehouse">Warehouse</SelectItem>
-                <SelectItem value="Production">Production</SelectItem>
-                <SelectItem value="Office">Office</SelectItem>
+                <SelectItem value="warehouse">Warehouse</SelectItem>
+                <SelectItem value="production">Production</SelectItem>
+                <SelectItem value="office">Office</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -333,8 +322,10 @@ export default function OrgUnitsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="LIVE">Live</SelectItem>
+                <SelectItem value="OFFLINE">Offline</SelectItem>
+                <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                <SelectItem value="PLANNING">Planning</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -353,20 +344,26 @@ export default function OrgUnitsPage() {
             </TableHeader>
             <TableBody>
               {filteredUnits.length > 0 ? (
-                filteredUnits.map((unit, idx) => (
-                  <TableRow key={`${unit.unit_id}-${idx}`}>
-                    <TableCell className="font-medium">{unit.unit_id}</TableCell>
-                    <TableCell className="font-medium">{unit.unit_name}</TableCell>
+                filteredUnits.map((unit) => (
+                  <TableRow key={unit.id}>
+                    <TableCell className="font-medium">{unit.unitId ?? "—"}</TableCell>
+                    <TableCell className="font-medium">{unit.unitName}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="capitalize">
-                        {unit.unit_type}
+                        {unit.unitType}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <span
                           className={`h-2 w-2 rounded-full ${
-                            unit.status === "LIVE" ? "bg-green-500" : unit.status === "OFFLINE" ? "bg-gray-400" : unit.status === "MAINTENANCE" ? "bg-amber-500" : "bg-blue-500"
+                            unit.status === "LIVE"
+                              ? "bg-green-500"
+                              : unit.status === "OFFLINE"
+                                ? "bg-gray-400"
+                                : unit.status === "MAINTENANCE"
+                                  ? "bg-amber-500"
+                                  : "bg-blue-500"
                           }`}
                         />
                         <span>{unit.status}</span>
@@ -444,7 +441,7 @@ export default function OrgUnitsPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="unit_id"
+                name="unitId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Unit ID</FormLabel>
@@ -458,7 +455,7 @@ export default function OrgUnitsPage() {
 
               <FormField
                 control={form.control}
-                name="unit_name"
+                name="unitName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Unit Name</FormLabel>
@@ -472,7 +469,7 @@ export default function OrgUnitsPage() {
 
               <FormField
                 control={form.control}
-                name="unit_type"
+                name="unitType"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Unit Type</FormLabel>
@@ -544,7 +541,8 @@ export default function OrgUnitsPage() {
                     <FormControl>
                       <Input
                         placeholder="e.g., 200 sq meters, 500 sq feet"
-                        {...field}
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
                       />
                     </FormControl>
                     <FormMessage />
@@ -581,7 +579,7 @@ export default function OrgUnitsPage() {
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the organizational unit
-              "{deleteUnit?.unit_name}" and remove all associated data.
+              "{deleteUnit?.unitName}" and remove all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

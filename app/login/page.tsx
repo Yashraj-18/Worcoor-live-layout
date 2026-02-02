@@ -1,22 +1,18 @@
 'use client'
-import { mockAuthService } from "@/src/services/mockAuthService";
-
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/src/utils/AuthContext'
 import { apiService } from '@/src/services/apiService'
-import { api_url } from '@/src/constants/api_url'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { notification } from '@/src/services/notificationService'
-import { decodeToken } from '@/src/utils/jwt';
 import { Eye, EyeClosed, LogIn } from 'lucide-react'
 import { Logo } from '@/components/logo'
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -36,29 +32,31 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const response = await mockAuthService.login(username, password);
-  
-      if(response.data.status == "OK") {
-        const { accessToken, refreshToken, fullName, maskEmail, maskContactNo } = response.data.data
-        const decoded = decodeToken(accessToken);
-        login({
-          accessToken,
-          refreshToken,
-          _id: decoded?.sub ?? '',
-          userData: { fullName, maskEmail, maskContactNo },
-          isLogin: true,
-        })
-        setLoading(false);
-        notification.success('Login Successful', `Welcome ${fullName}!`)
-        router.replace('/dashboard')
-      } else {
-        const msg = response.data.message;
-        setError(msg);
-        setLoading(false);
-      }
+      const response = await apiService.post({
+        path: '/api/auth/login',
+        data: {
+          email,
+          password,
+        },
+      })
+
+      const { user } = response.data as { user: { id: string; email: string; role: string } }
+
+      login({
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      })
+      setLoading(false)
+      notification.success('Login Successful', `Welcome back!`)
+      router.replace('/dashboard')
     } catch (error: any) {
-      setLoading(false);
-      setError("Something went wrong. Please try again.");
+      setLoading(false)
+      if (error?.response?.status === 401) {
+        setError('Invalid credentials. Please try again.')
+        return
+      }
+      setError('Something went wrong. Please try again.')
     }
   }
 
@@ -80,15 +78,15 @@ export default function LoginPage() {
               <form onSubmit={handleLogin} className="relative">
                 <div className='grid gap-6'>
                   <div className="grid gap-1">
-                    <Label className='text-sm text-slate-500 font-normal tracking-[0.3px] leading-none mb-[2px]' htmlFor="username">Email / Mobile No./ Username</Label>
+                    <Label className='text-sm text-slate-500 font-normal tracking-[0.3px] leading-none mb-[2px]' htmlFor="username">Email</Label>
                     <Input
                     className='h-12 rounded-lg border border-input'
                       id="username"
-                      type="text"
-                      placeholder="Admin"
+                      type="email"
+                      placeholder="admin@company.com"
                       required
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                     />
                   </div>
                   <div className="relative grid gap-2">

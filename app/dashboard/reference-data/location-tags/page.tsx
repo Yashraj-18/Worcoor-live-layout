@@ -1,10 +1,9 @@
 "use client"
 
-import { Tag, Plus, Search, Filter, MoreVertical, Pencil, Trash2, ChevronDown } from "lucide-react"
+import { Tag, Plus, Search, MoreVertical, Pencil, Trash2, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import Link from "next/link"
 import {
   Table,
   TableBody,
@@ -19,8 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -59,258 +57,274 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { toast } from "@/components/ui/use-toast"
+import { orgUnitService, type OrgUnit } from "@/src/services/orgUnits"
+import {
+  locationTagService,
+  type LocationTag as ApiLocationTag,
+} from "@/src/services/locationTags"
 
-// Types
-interface LocationTag {
-  location_tag: string
-  unit_id?: string // Reference to organizational unit
-  // Volume capacity fields
-  length?: number
-  breadth?: number
-  height?: number
-  unit_of_measurement?: "meters" | "feet" | "inches" | "centimeters"
-  capacity?: number // Calculated: L x B x H (NUMERIC(15,3))
-  current_items: number
-}
+const dimensionField = z
+  .number({ invalid_type_error: "Dimension must be a number" })
+  .positive("Value must be positive")
+  .max(999999.999, "Value must be less than 999999.999")
+  .optional();
 
-// Form schema
-const locationTagSchema = z.object({
-  location_tag: z.string().min(1, "Location Tag is required").max(100, "Name must be less than 100 characters"),
-  unit_id: z.string().min(1, "Unit ID is required"),
-  // Volume capacity fields
-  length: z.number().positive("Length must be positive").max(999999.999, "Length must be less than 999999.999").optional(),
-  breadth: z.number().positive("Breadth must be positive").max(999999.999, "Breadth must be less than 999999.999").optional(),
-  height: z.number().positive("Height must be positive").max(999999.999, "Height must be less than 999999.999").optional(),
-  unit_of_measurement: z.enum(["meters", "feet", "inches", "centimeters"]).optional(),
-}).refine((data) => {
-  // If any dimension is provided, all dimensions and unit must be provided
-  const hasAnyDimension = data.length || data.breadth || data.height;
-  const hasAllDimensions = data.length && data.breadth && data.height;
-  const hasUnit = data.unit_of_measurement;
-  return !hasAnyDimension || (hasAllDimensions && hasUnit);
-}, {
-  message: "If you provide one dimension, you must provide all three dimensions and unit of measurement",
-  path: ["length"],
-});
+const locationTagSchema = z
+  .object({
+    locationTagName: z
+      .string()
+      .min(1, "Location Tag is required")
+      .max(100, "Name must be less than 100 characters"),
+    unitId: z.string().min(1, "Unit is required"),
+    length: dimensionField,
+    breadth: dimensionField,
+    height: dimensionField,
+    unitOfMeasurement: z.enum(["meters", "feet", "inches", "centimeters"]).optional(),
+  })
+  .refine((data) => {
+    const dimensions = [data.length, data.breadth, data.height];
+    const hasAnyDimension = dimensions.some((value) => value !== undefined && value !== null);
+    const hasAllDimensions = dimensions.every((value) => typeof value === "number");
+    const hasUnit = data.unitOfMeasurement !== undefined && data.unitOfMeasurement !== null;
+
+    if (!hasAnyDimension && !hasUnit) {
+      return true;
+    }
+
+    return hasAllDimensions && hasUnit;
+  }, {
+    message: "Provide length, breadth, height, and unit together",
+    path: ["length"],
+  });
 
 type LocationTagFormValues = z.infer<typeof locationTagSchema>
 
-// Default data
-const defaultLocationTags: LocationTag[] = [
-  {
-    location_tag: "Warehouse A - Rack 1",
-    unit_id: "WH-001",
-    length: 10,
-    breadth: 5,
-    height: 2,
-    unit_of_measurement: "meters",
-    capacity: 100.000, // 10 x 5 x 2
-    current_items: 0,
-  },
-  {
-    location_tag: "Warehouse A - Loading Dock",
-    unit_id: "WH-001",
-    length: 5,
-    breadth: 5,
-    height: 2,
-    unit_of_measurement: "meters",
-    capacity: 50.000, // 5 x 5 x 2
-    current_items: 0,
-  },
-  {
-    location_tag: "Warehouse B - Quality Check",
-    unit_id: "WH-002",
-    length: 5,
-    breadth: 2.5,
-    height: 2,
-    unit_of_measurement: "meters",
-    capacity: 25.000, // 5 x 2.5 x 2
-    current_items: 0,
-  },
-]
-
-// localStorage keys
-const LOCATION_TAGS_STORAGE_KEY = "worcoor-location-tags"
-const ORG_UNITS_STORAGE_KEY = "worcoor-org-units"
-
 export default function LocationTagsPage() {
-  const [locationTags, setLocationTags] = useState<LocationTag[]>([])
-  const [orgUnits, setOrgUnits] = useState<any[]>([])
+  const [locationTags, setLocationTags] = useState<ApiLocationTag[]>([])
+  const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedUnitId, setSelectedUnitId] = useState<string>("all")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [editingTag, setEditingTag] = useState<LocationTag | null>(null)
-  const [deleteTag, setDeleteTag] = useState<LocationTag | null>(null)
+  const [editingTag, setEditingTag] = useState<ApiLocationTag | null>(null)
+  const [deleteTag, setDeleteTag] = useState<ApiLocationTag | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const dimensionFieldNames = ["length", "breadth", "height"] as const
+  type DimensionField = typeof dimensionFieldNames[number]
+  const emptyDimensionInputs = useMemo<Record<DimensionField, string>>(
+    () => ({ length: "", breadth: "", height: "" }),
+    [],
+  )
+  const [dimensionInputs, setDimensionInputs] = useState<Record<DimensionField, string>>(emptyDimensionInputs)
+
+  const resetDimensionInputs = useCallback(() => {
+    setDimensionInputs({ ...emptyDimensionInputs })
+  }, [emptyDimensionInputs])
+
+  const setDimensionInputsFromValues = useCallback((values?: Partial<Record<DimensionField, number | null>>) => {
+    setDimensionInputs({
+      length: values?.length !== undefined && values?.length !== null ? values.length.toString() : "",
+      breadth: values?.breadth !== undefined && values?.breadth !== null ? values.breadth.toString() : "",
+      height: values?.height !== undefined && values?.height !== null ? values.height.toString() : "",
+    })
+  }, [])
 
   // Form initialization
   const form = useForm<LocationTagFormValues>({
     resolver: zodResolver(locationTagSchema),
     defaultValues: {
-      location_tag: "",
-      unit_id: "",
+      locationTagName: "",
+      unitId: "",
       length: undefined,
       breadth: undefined,
       height: undefined,
-      unit_of_measurement: undefined,
+      unitOfMeasurement: undefined,
     },
   })
 
-  // Load data from localStorage on mount
-  useEffect(() => {
-    // Load location tags
-    const storedTags = localStorage.getItem(LOCATION_TAGS_STORAGE_KEY)
-    if (storedTags) {
-      try {
-        const parsedTags = JSON.parse(storedTags)
-        setLocationTags(parsedTags)
-      } catch (error) {
-        console.error("Error parsing stored location tags:", error)
-        // Fallback to default data
-        setLocationTags(defaultLocationTags)
-        localStorage.setItem(LOCATION_TAGS_STORAGE_KEY, JSON.stringify(defaultLocationTags))
+  const handleDimensionChange = useCallback(
+    (fieldName: DimensionField, nextValue: string, onChange: (value: number | undefined) => void) => {
+      setDimensionInputs((prev) => ({
+        ...prev,
+        [fieldName]: nextValue,
+      }))
+
+      const trimmed = nextValue.trim()
+
+      if (trimmed === "") {
+        onChange(undefined)
+        return
       }
-    } else {
-      // Initialize with default data
-      setLocationTags(defaultLocationTags)
-      localStorage.setItem(LOCATION_TAGS_STORAGE_KEY, JSON.stringify(defaultLocationTags))
-    }
 
-    // Load organizational units
-    const storedOrgUnits = localStorage.getItem(ORG_UNITS_STORAGE_KEY)
-    if (storedOrgUnits) {
-      try {
-        const parsedOrgUnits = JSON.parse(storedOrgUnits)
-        setOrgUnits(parsedOrgUnits)
-      } catch (error) {
-        console.error("Error parsing stored org units:", error)
-        setOrgUnits([])
+      const parsed = Number(trimmed)
+
+      if (Number.isNaN(parsed)) {
+        return
       }
-    } else {
-      setOrgUnits([])
-    }
-  }, [])
 
-  // Save to localStorage whenever locationTags changes
-  useEffect(() => {
-    if (locationTags.length > 0) {
-      localStorage.setItem(LOCATION_TAGS_STORAGE_KEY, JSON.stringify(locationTags))
-    }
-  }, [locationTags])
+      onChange(parsed)
+    },
+    [],
+  )
 
-  // Filter tags based on search and filters
-  const filteredTags = locationTags.filter((tag) => {
-    const search = searchTerm.toLowerCase()
-    const tagName = (tag.location_tag ?? (tag as any).name ?? "").toString().toLowerCase()
-
-    const matchesSearch = tagName.includes(search)
-    const matchesUnit = selectedUnitId === "all" || tag.unit_id === selectedUnitId
-
-    return matchesSearch && matchesUnit
-  })
-
-  // Handle add new tag
-  const handleAddTag = (data: LocationTagFormValues) => {
-    setIsSubmitting(true)
-
-    // Calculate capacity if dimensions are provided
-    const calculatedCapacity = (data.length && data.breadth && data.height) 
-      ? parseFloat((data.length * data.breadth * data.height).toFixed(3))
-      : undefined
-
-    const newTag: LocationTag = {
-      location_tag: data.location_tag,
-      unit_id: data.unit_id,
-      length: data.length,
-      breadth: data.breadth,
-      height: data.height,
-      unit_of_measurement: data.unit_of_measurement,
-      capacity: calculatedCapacity,
-      current_items: 0,
-    }
-
-    setLocationTags((prev) => [...prev, newTag])
+  const handleDialogClose = useCallback(() => {
     setIsAddDialogOpen(false)
-    form.reset()
-
-    toast({
-      title: "Location tag created",
-      description: `${newTag.location_tag} has been added successfully.`,
-    })
-
-    setIsSubmitting(false)
-  }
-
-  // Handle edit tag
-  const handleEditTag = (data: LocationTagFormValues) => {
-    if (!editingTag) return
-
-    setIsSubmitting(true)
-
-    // Calculate capacity if dimensions are provided
-    const calculatedCapacity = (data.length && data.breadth && data.height) 
-      ? parseFloat((data.length * data.breadth * data.height).toFixed(3))
-      : undefined
-
-    const updatedTag: LocationTag = {
-      ...editingTag,
-      location_tag: data.location_tag,
-      unit_id: data.unit_id,
-      length: data.length,
-      breadth: data.breadth,
-      height: data.height,
-      unit_of_measurement: data.unit_of_measurement,
-      capacity: calculatedCapacity,
-      current_items: editingTag.current_items,
-    }
-
-    setLocationTags((prev) =>
-      prev.map((tag) => (tag === editingTag ? updatedTag : tag))
-    )
     setIsEditDialogOpen(false)
     setEditingTag(null)
     form.reset()
+    resetDimensionInputs()
+  }, [form, resetDimensionInputs])
 
-    toast({
-      title: "Location tag updated",
-      description: `${updatedTag.location_tag} has been updated successfully.`,
+  const openAddDialog = useCallback(() => {
+    setEditingTag(null)
+    resetDimensionInputs()
+    form.reset()
+    setIsEditDialogOpen(false)
+    setIsAddDialogOpen(true)
+  }, [form, resetDimensionInputs])
+
+  const loadInitialData = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setErrorMessage(null)
+
+      const units = await orgUnitService.list()
+      setOrgUnits(units)
+
+      if (units.length === 0) {
+        setLocationTags([])
+        return
+      }
+
+      const tagGroups = await Promise.all(units.map((unit) => locationTagService.listByUnit(unit.id)))
+      setLocationTags(tagGroups.flat())
+    } catch (error) {
+      console.error("Failed to load location tags:", error)
+      setErrorMessage("Failed to load location tags data.")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadInitialData()
+  }, [loadInitialData])
+
+  const unitMap = useMemo(() => {
+    const map = new Map<string, OrgUnit>()
+    orgUnits.forEach((unit) => map.set(unit.id, unit))
+    return map
+  }, [orgUnits])
+
+  const filteredTags = useMemo(() => {
+    const search = searchTerm.toLowerCase()
+
+    return locationTags.filter((tag) => {
+      const matchesSearch = tag.locationTagName.toLowerCase().includes(search)
+      const matchesUnit = selectedUnitId === "all" || tag.unitId === selectedUnitId
+
+      return matchesSearch && matchesUnit
     })
+  }, [locationTags, searchTerm, selectedUnitId])
 
-    setIsSubmitting(false)
+  const getUnitLabel = (unit: OrgUnit) =>
+    unit.unitId ? `${unit.unitId} - ${unit.unitName}` : unit.unitName
+
+  const mapFormValuesToPayload = (values: LocationTagFormValues) => ({
+    unitId: values.unitId,
+    locationTagName: values.locationTagName,
+    length: values.length ?? null,
+    breadth: values.breadth ?? null,
+    height: values.height ?? null,
+    unitOfMeasurement: values.unitOfMeasurement ?? null,
+  })
+
+  const handleAddTag = async (data: LocationTagFormValues) => {
+    setIsSubmitting(true)
+    try {
+      const created = await locationTagService.create(mapFormValuesToPayload(data))
+      setLocationTags((prev) => [...prev, created])
+      handleDialogClose()
+
+      toast({
+        title: "Location tag created",
+        description: `${created.locationTagName} has been added successfully.`,
+      })
+    } catch (error) {
+      console.error("Error creating location tag:", error)
+      setErrorMessage("Failed to create location tag.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  // Handle delete tag
-  const handleDeleteTag = () => {
+  const handleEditTag = async (data: LocationTagFormValues) => {
+    if (!editingTag) return
+
+    setIsSubmitting(true)
+    try {
+      const updated = await locationTagService.update(
+        editingTag.id,
+        mapFormValuesToPayload(data),
+      )
+
+      setLocationTags((prev) => prev.map((tag) => (tag.id === updated.id ? updated : tag)))
+      handleDialogClose()
+
+      toast({
+        title: "Location tag updated",
+        description: `${updated.locationTagName} has been updated successfully.`,
+      })
+    } catch (error) {
+      console.error("Error updating location tag:", error)
+      setErrorMessage("Failed to update location tag.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteTag = async () => {
     if (!deleteTag) return
 
-    setLocationTags((prev) => prev.filter((tag) => tag !== deleteTag))
+    try {
+      await locationTagService.remove(deleteTag.id)
+      setLocationTags((prev) => prev.filter((tag) => tag.id !== deleteTag.id))
 
-    toast({
-      title: "Location tag deleted",
-      description: `${deleteTag.location_tag} has been deleted successfully.`,
-      variant: "destructive",
-    })
-
-    setDeleteTag(null)
+      toast({
+        title: "Location tag deleted",
+        description: `${deleteTag.locationTagName} has been deleted successfully.`,
+        variant: "destructive",
+      })
+    } catch (error) {
+      console.error("Error deleting location tag:", error)
+      setErrorMessage("Failed to delete location tag.")
+    } finally {
+      setDeleteTag(null)
+    }
   }
 
-  // Open edit dialog
-  const handleEditClick = (tag: LocationTag) => {
+  const handleEditClick = (tag: ApiLocationTag) => {
     setEditingTag(tag)
     form.reset({
-      location_tag: tag.location_tag,
-      unit_id: tag.unit_id,
+      locationTagName: tag.locationTagName,
+      unitId: tag.unitId,
+      length: tag.length ?? undefined,
+      breadth: tag.breadth ?? undefined,
+      height: tag.height ?? undefined,
+      unitOfMeasurement: tag.unitOfMeasurement ?? undefined,
+    })
+    setDimensionInputsFromValues({
       length: tag.length,
       breadth: tag.breadth,
       height: tag.height,
-      unit_of_measurement: tag.unit_of_measurement,
     })
+    setIsAddDialogOpen(false)
     setIsEditDialogOpen(true)
   }
 
-  // Open delete confirmation
-  const handleDeleteClick = (tag: LocationTag) => {
+  const handleDeleteClick = (tag: ApiLocationTag) => {
     setDeleteTag(tag)
   }
 
@@ -321,6 +335,15 @@ export default function LocationTagsPage() {
     } else {
       handleAddTag(data)
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center py-32">
+        <Loader2 className="mr-3 h-6 w-6 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Loading location tags...</p>
+      </div>
+    )
   }
 
   return (
@@ -335,7 +358,7 @@ export default function LocationTagsPage() {
             </p>
           </div>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
+        <Button onClick={openAddDialog}>
           <Plus className="mr-2 h-4 w-4" />
           Add New Location
         </Button>
@@ -355,8 +378,8 @@ export default function LocationTagsPage() {
                 <SelectItem value="all" key="all">All Units</SelectItem>
                 {orgUnits.length > 0 ? (
                   orgUnits.map((unit) => (
-                    <SelectItem key={unit.unit_id} value={unit.unit_id}>
-                      {unit.unit_id} - {unit.unit_name}
+                    <SelectItem key={unit.id} value={unit.id}>
+                      {getUnitLabel(unit)}
                     </SelectItem>
                   ))
                 ) : (
@@ -392,21 +415,21 @@ export default function LocationTagsPage() {
             <TableBody>
               {filteredTags.length > 0 ? (
                 filteredTags.map((tag, idx) => (
-                  <TableRow key={`${tag.location_tag}-${tag.unit_id || 'no-unit'}-${idx}`}>
-                    <TableCell className="font-medium text-foreground">{tag.location_tag}</TableCell>
+                  <TableRow key={`${tag.locationTagName}-${tag.unitId || 'no-unit'}-${idx}`}>
+                    <TableCell className="font-medium text-foreground">{tag.locationTagName}</TableCell>
                     <TableCell className="text-foreground">
-                      {tag.length && tag.breadth && tag.height && tag.unit_of_measurement 
-                        ? `${tag.length}×${tag.breadth}×${tag.height} ${tag.unit_of_measurement}`
+                      {tag.length && tag.breadth && tag.height && tag.unitOfMeasurement 
+                        ? `${tag.length}×${tag.breadth}×${tag.height} ${tag.unitOfMeasurement}`
                         : "Not specified"
                       }
                     </TableCell>
                     <TableCell className="text-foreground font-medium">
-                      {tag.capacity && tag.unit_of_measurement 
-                        ? `${tag.capacity.toFixed(3)} cubic ${tag.unit_of_measurement}`
+                      {tag.capacity && tag.unitOfMeasurement 
+                        ? `${tag.capacity.toFixed(3)} cubic ${tag.unitOfMeasurement}`
                         : "Not specified"
                       }
                     </TableCell>
-                    <TableCell className="text-foreground">{tag.current_items}</TableCell>
+                    <TableCell className="text-foreground">{tag.currentItems}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -450,10 +473,7 @@ export default function LocationTagsPage() {
       {/* Add/Edit Dialog */}
       <Dialog open={isAddDialogOpen || isEditDialogOpen} onOpenChange={(open) => {
         if (!open) {
-          setIsAddDialogOpen(false)
-          setIsEditDialogOpen(false)
-          setEditingTag(null)
-          form.reset()
+          handleDialogClose()
         }
       }}>
         <DialogContent className="sm:max-w-[425px]">
@@ -471,10 +491,10 @@ export default function LocationTagsPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="unit_id"
+                name="unitId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-foreground font-medium">Unit ID *</FormLabel>
+                    <FormLabel className="text-foreground font-medium">Unit *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="text-foreground border-border focus:border-primary">
@@ -484,8 +504,8 @@ export default function LocationTagsPage() {
                       <SelectContent>
                         {orgUnits.length > 0 ? (
                           orgUnits.map((unit) => (
-                            <SelectItem key={unit.unit_id} value={unit.unit_id}>
-                              {unit.unit_id} - {unit.unit_name}
+                            <SelectItem key={unit.id} value={unit.id}>
+                              {getUnitLabel(unit)}
                             </SelectItem>
                           ))
                         ) : (
@@ -502,7 +522,7 @@ export default function LocationTagsPage() {
 
               <FormField
                 control={form.control}
-                name="location_tag"
+                name="locationTagName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-foreground font-medium">Location Tag</FormLabel>
@@ -526,75 +546,37 @@ export default function LocationTagsPage() {
                 </div>
                 
                 <div className="grid grid-cols-4 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="length"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Length</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            min="0"
-                            step="0.001"
-                            className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {dimensionFieldNames.map((fieldName) => (
+                    <FormField
+                      key={fieldName}
+                      control={form.control}
+                      name={fieldName}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="capitalize">{fieldName}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              min="0"
+                              step="0.001"
+                              className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
+                              value={dimensionInputs[fieldName]}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              ref={field.ref}
+                              onChange={(event) => handleDimensionChange(fieldName, event.target.value, field.onChange)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ))}
 
                   <FormField
                     control={form.control}
-                    name="breadth"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Breadth</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            min="0"
-                            step="0.001"
-                            className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="height"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Height</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            min="0"
-                            step="0.001"
-                            className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="unit_of_measurement"
+                    name="unitOfMeasurement"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Unit</FormLabel>
@@ -626,7 +608,7 @@ export default function LocationTagsPage() {
                         const length = form.watch("length") || 0;
                         const breadth = form.watch("breadth") || 0;
                         const height = form.watch("height") || 0;
-                        const unit = form.watch("unit_of_measurement");
+                        const unit = form.watch("unitOfMeasurement");
                         const capacity = parseFloat((length * breadth * height).toFixed(3));
                         return capacity > 0 && unit 
                           ? `${capacity.toFixed(3)} cubic ${unit}` 
@@ -643,13 +625,13 @@ export default function LocationTagsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                   <div>
                     <Label className="text-sm font-medium text-foreground">Current Items</Label>
-                    <p className="text-sm text-foreground font-medium mt-1">{editingTag.current_items}</p>
+                    <p className="text-sm text-foreground font-medium mt-1">{editingTag.currentItems}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-foreground">Capacity</Label>
                     <p className="text-sm text-foreground font-medium mt-1">
-                      {editingTag.capacity && editingTag.unit_of_measurement 
-                        ? `${editingTag.capacity.toFixed(3)} cubic ${editingTag.unit_of_measurement}`
+                      {editingTag.capacity && editingTag.unitOfMeasurement 
+                        ? `${editingTag.capacity.toFixed(3)} cubic ${editingTag.unitOfMeasurement}`
                         : "Not specified"
                       }
                     </p>
@@ -686,7 +668,7 @@ export default function LocationTagsPage() {
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the location tag
-              "{deleteTag?.location_tag}" and remove all associated data.
+              "{deleteTag?.locationTagName}" and remove all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

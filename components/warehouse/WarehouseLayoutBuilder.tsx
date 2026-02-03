@@ -46,7 +46,6 @@ import showMessage from '@/lib/warehouse/utils/showMessage';
 interface OrgUnit {
   id: string;
   name: string;
-  location: string;
 }
 
 interface LayoutData {
@@ -1167,7 +1166,7 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
       id: `layout-${Date.now()}`,
       name: layoutName,
       status: operationalStatus,
-      location: selectedOrgUnit?.location || 'Unknown',
+      location: 'Unknown',
       orgUnit: selectedOrgUnit?.name || 'Unknown',
       size: `${operationalMetadata.croppedDimensions.width}x${operationalMetadata.croppedDimensions.height}`,
       items: warehouseItems.length,
@@ -1205,7 +1204,7 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
       ? `\n\nUltra-tight optimization: Removed ${operationalMetadata.whitespaceRemoved.x}px × ${operationalMetadata.whitespaceRemoved.y}px of white space\nFinal size: ${operationalMetadata.croppedDimensions.width}px × ${operationalMetadata.croppedDimensions.height}px\nZero padding applied for maximum focus`
       : '';
     
-    showMessage.success(`Layout "${layoutName}" saved successfully!\n\nOrganizational Unit: ${selectedOrgUnit?.name || 'Unknown'} (${selectedOrgUnit?.location || 'Unknown'})\nStatus: ${statusLabels[operationalStatus as keyof typeof statusLabels] || 'Unknown'}${croppingInfo}\n\nThis layout is now available in the Live Warehouse Maps section.`);
+    showMessage.success(`Layout "${layoutName}" saved successfully!\n\nOrganizational Unit: ${selectedOrgUnit?.name || 'Unknown'}\nStatus: ${statusLabels[operationalStatus as keyof typeof statusLabels] || 'Unknown'}${croppingInfo}\n\nThis layout is now available in the Live Warehouse Maps section.`);
     
     // Close the map type selector modal
     setMapTypeSelectorVisible(false);

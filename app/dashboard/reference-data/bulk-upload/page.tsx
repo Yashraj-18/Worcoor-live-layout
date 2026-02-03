@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Upload, FileText, Database, Package, ArrowRight, CheckCircle, AlertCircle, Loader2, RefreshCw, Plus, Edit, Trash2, Save, X, Download, Clock } from "lucide-react"
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
@@ -11,7 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { PageHeader } from "@/components/dashboard/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import localStorageService from "@/src/services/localStorageService"
 import {
   Select,
   SelectContent,
@@ -20,6 +19,101 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { useToast } from "@/components/ui/use-toast"
+import { orgUnitService } from "@/src/services/orgUnits"
+import { locationTagService, type LocationTag, type MeasurementUnit, type CreateLocationTagInput } from "@/src/services/locationTags"
+import { skuService, type Sku, type CreateSkuInput } from "@/src/services/skus"
+import { assetService, type Asset, type CreateAssetInput } from "@/src/services/assets"
+
+const emptyToUndefined = (value: unknown) => {
+  if (value === undefined || value === null) return undefined
+  const str = String(value).trim()
+  return str.length === 0 ? undefined : str
+}
+
+const parseOptionalNumber = (value: unknown) => {
+  const str = emptyToUndefined(value)
+  if (str === undefined) return undefined
+  const parsed = Number(str)
+  return Number.isNaN(parsed) ? undefined : parsed
+}
+
+const measurementUnits: MeasurementUnit[] = ['meters', 'feet', 'inches', 'centimeters']
+const MAX_FETCH_LIMIT = 100
+
+const toMeasurementUnit = (value: unknown): MeasurementUnit | null => {
+  const str = emptyToUndefined(value)
+  if (!str) return null
+  const lower = str.toLowerCase()
+  return measurementUnits.includes(lower as MeasurementUnit) ? (lower as MeasurementUnit) : null
+}
+
+const normalizeIdentifier = (value: unknown) => {
+  if (value === undefined || value === null) return ""
+  return String(value).trim().toLowerCase()
+}
+
+const findSkuRecord = (records: Sku[], identifier: unknown) => {
+  const normalized = normalizeIdentifier(identifier)
+  if (!normalized) return null
+  return (
+    records.find(
+      (sku) => normalizeIdentifier(sku.id) === normalized || normalizeIdentifier(sku.skuId) === normalized,
+    ) ?? null
+  )
+}
+
+const findAssetRecord = (records: Asset[], identifier: unknown) => {
+  const normalized = normalizeIdentifier(identifier)
+  if (!normalized) return null
+  return (
+    records.find(
+      (asset) => normalizeIdentifier(asset.id) === normalized || normalizeIdentifier(asset.assetId) === normalized,
+    ) ?? null
+  )
+}
+
+const findLocationTagRecord = (records: LocationTag[], identifier: unknown) => {
+  const normalized = normalizeIdentifier(identifier)
+  if (!normalized) return null
+  return (
+    records.find(
+      (tag) =>
+        normalizeIdentifier(tag.id) === normalized || normalizeIdentifier(tag.locationTagName) === normalized,
+    ) ?? null
+  )
+}
+
+const mapSkuToDisplayRow = (sku: Sku) => ({
+  sku_id: sku.skuId ?? "",
+  sku_name: sku.skuName,
+  sku_category: sku.skuCategory,
+  sku_unit: sku.skuUnit,
+  quantity: sku.quantity,
+  effective_date: sku.effectiveDate,
+  expiry_date: sku.expiryDate ?? "",
+  location_tag_id: sku.locationTagId ?? "",
+  description: sku.locationTagName ?? "",
+})
+
+const mapAssetToDisplayRow = (asset: Asset) => ({
+  asset_id: asset.assetId ?? "",
+  asset_name: asset.assetName,
+  asset_type: asset.assetType,
+  location_tag_id: asset.locationTagId ?? "",
+  description: asset.locationTagName ?? "",
+})
+
+const mapLocationTagToDisplayRow = (tag: LocationTag) => ({
+  location_tag_id: tag.id,
+  location_tag: tag.locationTagName,
+  unit_id: tag.unitId,
+  length: tag.length ?? "",
+  breadth: tag.breadth ?? "",
+  height: tag.height ?? "",
+  unit_of_measurement: tag.unitOfMeasurement ?? "",
+  description: tag.locationTagName,
+})
 
 // Backend schema definitions - matching exact form fields
 const BACKEND_SCHEMAS = {
@@ -52,139 +146,41 @@ const BACKEND_SCHEMAS = {
     }
   },
   assets: {
-    fields: ['asset_id', 'asset_name', 'asset_type', 'location_tag_id', 'length', 'breadth', 'height', 'unit_of_measurement', 'description'],
+    fields: ['asset_id', 'asset_name', 'asset_type', 'location_tag_id', 'description'],
     required: ['asset_name', 'asset_type'],
     types: {
       asset_id: 'varchar',
       asset_name: 'varchar',
       asset_type: 'varchar',
       location_tag_id: 'varchar',
-      length: 'numeric',
-      breadth: 'numeric',
-      height: 'numeric',
-      unit_of_measurement: 'varchar',
       description: 'varchar'
     }
   }
 }
 
-// Demo data for each type - matching exact form fields
-const DEMO_DATA = {
-  skus: [
-    {
-      sku_id: 'SKU-001',
-      sku_name: 'Oak Wood Panel',
-      sku_category: 'raw_material',
-      sku_unit: 'pieces',
-      quantity: 150,
-      effective_date: '2024-01-15',
-      expiry_date: '',
-      location_tag_id: 'LOC-001',
-      description: 'Premium oak wood panels for furniture manufacturing'
-    },
-    {
-      sku_id: 'SKU-002',
-      sku_name: 'Steel Beam',
-      sku_category: 'raw_material',
-      sku_unit: 'kg',
-      quantity: 500,
-      effective_date: '2024-01-10',
-      expiry_date: '',
-      location_tag_id: 'LOC-002',
-      description: 'Structural steel beams for construction'
-    },
-    {
-      sku_id: 'SKU-003',
-      sku_name: 'Office Chair',
-      sku_category: 'finished_good',
-      sku_unit: 'pieces',
-      quantity: 25,
-      effective_date: '2024-01-20',
-      expiry_date: '',
-      location_tag_id: 'LOC-003',
-      description: 'Ergonomic office chairs with lumbar support'
-    }
-  ],
-  location_tags: [
-    {
-      location_tag: 'Warehouse Zone A',
-      unit_id: 'WH-001',
-      length: 10.5,
-      breadth: 8.2,
-      height: 4.0,
-      unit_of_measurement: 'meters',
-      description: 'Primary storage zone for raw materials'
-    },
-    {
-      location_tag: 'Cold Storage Unit',
-      unit_id: 'WH-001',
-      length: 6.0,
-      breadth: 5.0,
-      height: 3.5,
-      unit_of_measurement: 'meters',
-      description: 'Temperature-controlled storage for perishable items'
-    },
-    {
-      location_tag: 'Office Storage',
-      unit_id: 'OFF-001',
-      length: 4.2,
-      breadth: 3.8,
-      height: 2.5,
-      unit_of_measurement: 'meters',
-      description: 'Storage area for office supplies and equipment'
-    }
-  ],
-  assets: [
-    {
-      asset_id: 'AST-001',
-      asset_name: 'Forklift 001',
-      asset_type: 'forklift',
-      location_tag_id: 'LOC-001',
-      length: 2.5,
-      breadth: 1.2,
-      height: 3.0,
-      unit_of_measurement: 'meters',
-      description: 'Heavy-duty forklift for warehouse operations'
-    },
-    {
-      asset_id: 'AST-002',
-      asset_name: 'Pallet Jack 001',
-      asset_type: 'pallet_jack',
-      location_tag_id: 'LOC-002',
-      length: 1.8,
-      breadth: 0.8,
-      height: 1.5,
-      unit_of_measurement: 'meters',
-      description: 'Manual pallet jack for small loads'
-    },
-    {
-      asset_id: 'AST-003',
-      asset_name: 'Barcode Scanner 001',
-      asset_type: 'scanner',
-      location_tag_id: 'LOC-003',
-      length: 0.15,
-      breadth: 0.08,
-      height: 0.25,
-      unit_of_measurement: 'meters',
-      description: 'Handheld barcode scanner for inventory management'
-    }
-  ]
+type UploadType = keyof typeof BACKEND_SCHEMAS
+
+interface OrgUnitOption {
+  id: string
+  unitName: string
+  unitType: "warehouse" | "production" | "office"
+  status: "LIVE" | "OFFLINE" | "MAINTENANCE" | "PLANNING"
+  description?: string | null
+  area?: string | null
 }
 
-interface OrgUnit {
-  unit_id: string
-  unit_name: string
-  unit_type: "warehouse" | "production" | "office"
-  status: "LIVE" | "OFFLINE" | "MAINTENANCE" | "PLANNING"
-  description?: string
-  area?: string
+type ApiRecordCache = {
+  skus: Sku[]
+  assets: Asset[]
+  location_tags: LocationTag[]
 }
 
 type CrudOperation = "create" | "update" | "delete"
 
 export default function BulkUploadPage() {
+  const { toast } = useToast()
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [uploadType, setUploadType] = useState<string>("skus")
+  const [uploadType, setUploadType] = useState<UploadType>("skus")
   const [isDragOver, setIsDragOver] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [parsedData, setParsedData] = useState<any[]>([])
@@ -192,13 +188,9 @@ export default function BulkUploadPage() {
     success: number
     errors: string[]
     total: number
-  }>({
-    success: 0,
-    errors: [],
-    total: 0
-  })
+  } | null>(null)
   const [crudOperation, setCrudOperation] = useState<CrudOperation>("create")
-  const [selectedOrgUnit, setSelectedOrgUnit] = useState<string>("")
+  const [selectedOrgUnitId, setSelectedOrgUnitId] = useState<string>("")
   const [isOperationConfirmed, setIsOperationConfirmed] = useState(false)
   const [isCreatingOrgUnit, setIsCreatingOrgUnit] = useState(false)
   const [newOrgUnitId, setNewOrgUnitId] = useState("")
@@ -213,50 +205,113 @@ export default function BulkUploadPage() {
     errors: string[]
   } | null>(null)
   const [isImporting, setIsImporting] = useState(false)
-  const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([])
+  const [orgUnits, setOrgUnits] = useState<OrgUnitOption[]>([])
+  const [isLoadingOrgUnits, setIsLoadingOrgUnits] = useState(false)
+  const [apiRecords, setApiRecords] = useState<ApiRecordCache>({ skus: [], assets: [], location_tags: [] })
+  const [isLoadingData, setIsLoadingData] = useState(false)
   const [displayedData, setDisplayedData] = useState<any[]>([])
+  const selectedOrgUnit = useMemo(() => orgUnits.find((unit) => unit.id === selectedOrgUnitId) ?? null, [orgUnits, selectedOrgUnitId])
 
-  // Load displayed data whenever uploadType or selectedOrgUnit changes
+  const getRecordsForType = (type: UploadType) => {
+    if (type === "skus") return apiRecords.skus
+    if (type === "assets") return apiRecords.assets
+    return apiRecords.location_tags
+  }
+
+  const updateRecordCache = (type: UploadType, records: Sku[] | Asset[] | LocationTag[]) => {
+    setApiRecords((prev) => {
+      if (type === "skus") {
+        return { ...prev, skus: records as Sku[] }
+      }
+      if (type === "assets") {
+        return { ...prev, assets: records as Asset[] }
+      }
+      return { ...prev, location_tags: records as LocationTag[] }
+    })
+  }
+
+  // Load displayed data whenever uploadType or selected org unit changes
   useEffect(() => {
-    loadDisplayedData()
-  }, [uploadType, selectedOrgUnit])
+    void loadDisplayedData()
+  }, [uploadType, selectedOrgUnitId])
 
   // Reset operation confirmation when org unit or operation changes
   useEffect(() => {
     setIsOperationConfirmed(false)
-  }, [selectedOrgUnit, crudOperation])
+  }, [selectedOrgUnitId, crudOperation])
 
-  const loadDisplayedData = () => {
-    if (!selectedOrgUnit) {
-      setDisplayedData(DEMO_DATA[uploadType as keyof typeof DEMO_DATA])
+  const loadOrgUnits = useCallback(async () => {
+    setIsLoadingOrgUnits(true)
+    try {
+      const units = await orgUnitService.list()
+      const warehouseUnits = units.filter((unit) => unit.unitType === "warehouse")
+      setOrgUnits(
+        warehouseUnits.map((unit) => ({
+          id: unit.id,
+          unitName: unit.unitName,
+          unitType: unit.unitType,
+          status: unit.status,
+          description: unit.description ?? null,
+          area: unit.area ?? null,
+        })),
+      )
+      if (!selectedOrgUnitId && warehouseUnits.length > 0) {
+        setSelectedOrgUnitId(warehouseUnits[0].id)
+      }
+    } catch (error) {
+      console.error("Failed to load org units", error)
+      toast({
+        title: "Failed to load org units",
+        description: "Please try again later.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingOrgUnits(false)
+    }
+  }, [selectedOrgUnitId, toast])
+
+  useEffect(() => {
+    void loadOrgUnits()
+  }, [loadOrgUnits])
+
+  const loadDisplayedData = async () => {
+    if (!selectedOrgUnitId) {
+      setDisplayedData([])
+      updateRecordCache(uploadType, [])
       return
     }
 
-    const storageKey = `${uploadType}_${selectedOrgUnit}`
-    const storedData = localStorageService.getItem<any[]>(storageKey)
-    
-    if (storedData && storedData.length > 0) {
-      setDisplayedData(storedData)
-    } else {
-      setDisplayedData(DEMO_DATA[uploadType as keyof typeof DEMO_DATA])
+    setIsLoadingData(true)
+    try {
+      if (uploadType === "skus") {
+        const response = await skuService.list({ unitId: selectedOrgUnitId, limit: MAX_FETCH_LIMIT })
+        updateRecordCache("skus", response.items)
+        const rows = response.items.map(mapSkuToDisplayRow)
+        setDisplayedData(rows)
+      } else if (uploadType === "assets") {
+        const response = await assetService.list({ unitId: selectedOrgUnitId, limit: MAX_FETCH_LIMIT })
+        updateRecordCache("assets", response.items)
+        const rows = response.items.map(mapAssetToDisplayRow)
+        setDisplayedData(rows)
+      } else if (uploadType === "location_tags") {
+        const tags = await locationTagService.listByUnit(selectedOrgUnitId)
+        updateRecordCache("location_tags", tags)
+        const rows = tags.map(mapLocationTagToDisplayRow)
+        setDisplayedData(rows)
+      }
+    } catch (error) {
+      console.error("Failed to load data", error)
+      toast({
+        title: "Failed to load data",
+        description: "Showing demo data instead.",
+        variant: "destructive",
+      })
+      updateRecordCache(uploadType, [])
+      setDisplayedData([])
+    } finally {
+      setIsLoadingData(false)
     }
   }
-
-  useEffect(() => {
-    const storedUnits = localStorage.getItem("worcoor-org-units")
-    if (storedUnits) {
-      try {
-        const parsedUnits = JSON.parse(storedUnits)
-        setOrgUnits(parsedUnits)
-        const activeUnit = parsedUnits.find((unit: OrgUnit) => unit.status === "LIVE")
-        if (activeUnit) {
-          setSelectedOrgUnit(activeUnit.unit_name)
-        }
-      } catch (error) {
-        console.error("Error parsing stored org units:", error)
-      }
-    }
-  }, [])
 
   const validateDataType = (value: any, type: string, fieldName: string): { valid: boolean; error?: string } => {
     if (value === null || value === undefined || value === '') {
@@ -330,25 +385,32 @@ export default function BulkUploadPage() {
     URL.revokeObjectURL(url)
   }
 
-  const handleCreateOrgUnit = () => {
+  const handleCreateOrgUnit = async () => {
     if (!newOrgUnitId.trim() || !newOrgUnitName.trim()) return
 
     try {
-      const newOrgUnit: OrgUnit = {
-        unit_id: newOrgUnitId.trim(),
-        unit_name: newOrgUnitName.trim(),
-        unit_type: newOrgUnitType,
+      const created = await orgUnitService.create({
+        unitId: newOrgUnitId.trim(),
+        unitName: newOrgUnitName.trim(),
+        unitType: newOrgUnitType,
         status: newOrgUnitStatus,
-        description: newOrgUnitDescription.trim(),
-        area: newOrgUnitArea.trim()
-      }
+        description: emptyToUndefined(newOrgUnitDescription) ?? null,
+        area: emptyToUndefined(newOrgUnitArea) ?? null,
+      })
 
-      const updatedOrgUnits = [...orgUnits, newOrgUnit]
-      setOrgUnits(updatedOrgUnits)
-      localStorageService.setItem("worcoor-org-units", updatedOrgUnits)
-      
-      setSelectedOrgUnit(newOrgUnit.unit_name)
-      
+      setOrgUnits((prev) => [
+        ...prev,
+        {
+          id: created.id,
+          unitName: created.unitName,
+          unitType: created.unitType,
+          status: created.status,
+          description: created.description,
+          area: created.area,
+        },
+      ])
+      setSelectedOrgUnitId(created.id)
+
       setNewOrgUnitId("")
       setNewOrgUnitName("")
       setNewOrgUnitType("warehouse")
@@ -356,8 +418,10 @@ export default function BulkUploadPage() {
       setNewOrgUnitDescription("")
       setNewOrgUnitArea("")
       setIsCreatingOrgUnit(false)
+      toast({ title: "Org unit created", description: `${created.unitName} is ready for uploads.` })
     } catch (error) {
       console.error("Error creating org unit:", error)
+      toast({ title: "Failed to create org unit", description: error instanceof Error ? error.message : "Please try again", variant: "destructive" })
     }
   }
 
@@ -438,7 +502,13 @@ export default function BulkUploadPage() {
     })
   }
 
-  const validateData = (data: any[], type: string, operation: CrudOperation, orgUnitId: string): { valid: any[], errors: string[] } => {
+  const validateData = (
+    data: any[],
+    type: UploadType,
+    operation: CrudOperation,
+    existingRecords: Sku[] | Asset[] | LocationTag[],
+    unitId?: string,
+  ): { valid: any[]; errors: string[] } => {
     const errors: string[] = []
     const valid: any[] = []
 
@@ -448,10 +518,11 @@ export default function BulkUploadPage() {
       return { valid: [], errors }
     }
 
-    const storageKey = `${type}_${orgUnitId}`
-    const existingData = localStorageService.getItem<any[]>(storageKey) || []
-
     data.forEach((row, index) => {
+      if (type === 'location_tags' && !row.unit_id && unitId) {
+        row.unit_id = unitId
+      }
+
       let isValid = true
       const rowErrors: string[] = []
 
@@ -482,60 +553,64 @@ export default function BulkUploadPage() {
 
       // CRUD operation validation - use appropriate ID field for each type
       if (operation === 'delete' || operation === 'update') {
-        let idField = 'id';
-        
-        // Use appropriate ID field for each type
-        switch (type) {
-          case 'org_units':
-            idField = 'unit_id';
-            break;
-          case 'skus':
-            idField = 'sku_id';
-            break;
-          case 'assets':
-            idField = 'asset_id';
-            break;
-          case 'location_tags':
-            idField = 'location_tag';
-            break;
-        }
-        
-        if (!row[idField]) {
-          rowErrors.push(`Missing ${idField} for ${operation} operation`)
-          isValid = false
-        } else {
-          const exists = existingData.some(item => item[idField] === row[idField])
-          if (!exists) {
-            rowErrors.push(`Record with ${idField} ${row[idField]} not found for ${operation} operation`)
+        let identifier: string | null = null
+        if (type === 'skus') {
+          identifier = emptyToUndefined(row.sku_id) ?? null
+          if (!identifier) {
+            rowErrors.push(`Missing sku_id for ${operation} operation`)
+            isValid = false
+          } else if (!findSkuRecord(existingRecords as Sku[], identifier)) {
+            rowErrors.push(`SKU ${identifier} not found for ${operation}`)
+            isValid = false
+          }
+        } else if (type === 'assets') {
+          identifier = emptyToUndefined(row.asset_id) ?? null
+          if (!identifier) {
+            rowErrors.push(`Missing asset_id for ${operation} operation`)
+            isValid = false
+          } else if (!findAssetRecord(existingRecords as Asset[], identifier)) {
+            rowErrors.push(`Asset ${identifier} not found for ${operation}`)
+            isValid = false
+          }
+        } else if (type === 'location_tags') {
+          identifier = emptyToUndefined(row.location_tag_id) ?? emptyToUndefined(row.location_tag) ?? null
+          if (!identifier) {
+            rowErrors.push(`Missing location_tag for ${operation} operation`)
+            isValid = false
+          } else if (!findLocationTagRecord(existingRecords as LocationTag[], identifier)) {
+            rowErrors.push(`Location tag ${identifier} not found for ${operation}`)
             isValid = false
           }
         }
       }
 
-      // L×B×H validation for assets and location tags (matching form validation)
-      if (type === 'assets' || type === 'location_tags') {
-        const length = parseFloat(row.length) || 0;
-        const breadth = parseFloat(row.breadth) || 0;
-        const height = parseFloat(row.height) || 0;
-        
-        // Check if any dimension is provided
-        const hasAnyDimension = row.length || row.breadth || row.height;
-        
+      // L×B×H validation for location tags (matching form validation)
+      if (type === 'location_tags') {
+        const length = parseFloat(row.length) || 0
+        const breadth = parseFloat(row.breadth) || 0
+        const height = parseFloat(row.height) || 0
+
+        const hasAnyDimension = row.length || row.breadth || row.height
+
         if (hasAnyDimension) {
-          // If any dimension is provided, all must be provided and positive
           if (!row.length || !row.breadth || !row.height) {
-            rowErrors.push('If you provide one dimension, you must provide all three (Length, Breadth, Height)');
-            isValid = false;
+            rowErrors.push('If you provide one dimension, you must provide all three (Length, Breadth, Height)')
+            isValid = false
           } else if (length <= 0 || breadth <= 0 || height <= 0) {
-            rowErrors.push('All dimensions must be positive numbers');
-            isValid = false;
+            rowErrors.push('All dimensions must be positive numbers')
+            isValid = false
           } else {
-            // Check if unit_of_measurement is provided when dimensions are provided
             if (!row.unit_of_measurement) {
-              rowErrors.push('Unit of measurement is required when dimensions are provided');
-              isValid = false;
+              rowErrors.push('Unit of measurement is required when dimensions are provided')
+              isValid = false
+            } else if (!toMeasurementUnit(row.unit_of_measurement)) {
+              rowErrors.push('Unit of measurement must be one of meters, feet, inches, or centimeters')
+              isValid = false
             }
           }
+        } else if (row.unit_of_measurement && !toMeasurementUnit(row.unit_of_measurement)) {
+          rowErrors.push('Unit of measurement must be one of meters, feet, inches, or centimeters')
+          isValid = false
         }
       }
 
@@ -551,135 +626,185 @@ export default function BulkUploadPage() {
     return { valid, errors }
   }
 
-  const importData = async (data: any[], type: string, orgUnitId: string, operation: CrudOperation): Promise<{ imported: number; failed: number; errors: string[] }> => {
+  const getRecordForRow = (
+    type: UploadType,
+    row: any,
+    existingRecords: Sku[] | Asset[] | LocationTag[],
+  ) => {
+    if (type === 'skus') {
+      return findSkuRecord(existingRecords as Sku[], row.sku_id)
+    }
+    if (type === 'assets') {
+      return findAssetRecord(existingRecords as Asset[], row.asset_id)
+    }
+    return findLocationTagRecord(existingRecords as LocationTag[], row.location_tag_id ?? row.location_tag)
+  }
+
+  const importData = async (
+    data: any[],
+    type: UploadType,
+    operation: CrudOperation,
+    unitId: string,
+    existingRecords: Sku[] | Asset[] | LocationTag[],
+  ): Promise<{ imported: number; failed: number; errors: string[] }> => {
     const errors: string[] = []
     let imported = 0
     let failed = 0
 
-    const storageKey = `${type}_${orgUnitId}`
-    console.log("Import starting with storageKey:", storageKey)
-
     try {
-      let existingData = localStorageService.getItem<any[]>(storageKey) || []
-      console.log("Existing data count:", existingData.length)
-
-      // Add demo data if this is the first time
-      if (existingData.length === 0 && DEMO_DATA[type as keyof typeof DEMO_DATA]) {
-        existingData = [...DEMO_DATA[type as keyof typeof DEMO_DATA]]
-        console.log("Added demo data, new count:", existingData.length)
-      }
-
-      if (operation === 'delete') {
-        const initialCount = existingData.length
-        existingData = existingData.filter(item => {
-          // Use appropriate ID field for matching
-          const shouldDelete = data.some(row => {
-            switch (type) {
-              case 'org_units':
-                return row.unit_id === item.unit_id;
-              case 'skus':
-                return row.sku_id === item.sku_id;
-              case 'assets':
-                return row.asset_id === item.asset_id;
-              case 'location_tags':
-                return row.location_tag === item.location_tag;
-              default:
-                return row.id === item.id;
-            }
-          })
-          if (shouldDelete) imported++
-          return !shouldDelete
-        })
-        failed = data.length - imported
-      } else if (operation === 'update') {
-        for (const row of data) {
-          let existingIndex = -1;
-          
-          // Find existing record using appropriate ID field
-          switch (type) {
-            case 'org_units':
-              existingIndex = existingData.findIndex(item => item.unit_id === row.unit_id);
-              break;
-            case 'skus':
-              existingIndex = existingData.findIndex(item => item.sku_id === row.sku_id);
-              break;
-            case 'assets':
-              existingIndex = existingData.findIndex(item => item.asset_id === row.asset_id);
-              break;
-            case 'location_tags':
-              existingIndex = existingData.findIndex(item => item.location_tag === row.location_tag);
-              break;
-            default:
-              existingIndex = existingData.findIndex(item => item.id === row.id);
-          }
-          
-          if (existingIndex >= 0) {
-            existingData[existingIndex] = {
-              ...existingData[existingIndex],
-              ...row,
-              updated_at: new Date().toISOString()
-            }
-            imported++
-          } else {
-            const idField = type === 'org_units' ? 'unit_id' : 
-                           type === 'skus' ? 'sku_id' : 
-                           type === 'assets' ? 'asset_id' : 
-                           type === 'location_tags' ? 'location_tag' : 'id';
-            errors.push(`Record with ${idField} ${row[idField]} not found for update`)
-            failed++
-          }
-        }
-      } else if (operation === 'create') {
-        console.log("Creating new records, count:", data.length)
-        for (const row of data) {
-          try {
-            const newRecord = {
-              ...row,
-              created_at: row.created_at || new Date().toISOString()
-            }
-            
-            // Check for duplicates using appropriate ID field
-            let duplicate = null;
-            switch (type) {
-              case 'org_units':
-                duplicate = existingData.find(item => item.unit_id === newRecord.unit_id);
-                break;
-              case 'skus':
-                duplicate = existingData.find(item => item.sku_id === newRecord.sku_id);
-                break;
-              case 'assets':
-                duplicate = existingData.find(item => item.asset_id === newRecord.asset_id);
-                break;
-              case 'location_tags':
-                duplicate = existingData.find(item => item.location_tag === newRecord.location_tag);
-                break;
-            }
-            
-            if (duplicate) {
-              const idField = type === 'org_units' ? 'unit_id' : 
-                             type === 'skus' ? 'sku_id' : 
-                             type === 'assets' ? 'asset_id' : 
-                             type === 'location_tags' ? 'location_tag' : 'id';
-              errors.push(`Record with ${idField} ${newRecord[idField]} already exists`)
+      if (type === 'skus') {
+        if (operation === 'delete') {
+          for (const row of data) {
+            try {
+              const record = getRecordForRow('skus', row, existingRecords)
+              if (!record) {
+                failed++
+                errors.push(`SKU ${row.sku_id}: Not found for delete`)
+                continue
+              }
+              await skuService.remove(record.id)
+              imported++
+            } catch (error) {
               failed++
-              continue
+              errors.push(`SKU ${row.sku_id}: ${error instanceof Error ? error.message : 'Delete failed'}`)
             }
-
-            existingData.push(newRecord)
-            imported++
-          } catch (error) {
-            errors.push(`Failed to import record: ${error instanceof Error ? error.message : 'Unknown error'}`)
-            failed++
+          }
+        } else {
+          for (const row of data) {
+            try {
+              if (operation === 'create') {
+                const payload: CreateSkuInput = {
+                  skuId: emptyToUndefined(row.sku_id) ?? null,
+                  skuName: row.sku_name,
+                  skuCategory: row.sku_category,
+                  skuUnit: row.sku_unit,
+                  quantity: Number(row.quantity) || 0,
+                  effectiveDate: row.effective_date,
+                  expiryDate: emptyToUndefined(row.expiry_date) ?? null,
+                  locationTagId: emptyToUndefined(row.location_tag_id) ?? null,
+                }
+                await skuService.create(payload)
+              } else {
+                const quantity = Number(row.quantity)
+                const payload: Partial<CreateSkuInput> = {
+                  skuName: row.sku_name,
+                  skuCategory: row.sku_category,
+                  skuUnit: row.sku_unit,
+                  quantity: Number.isNaN(quantity) ? undefined : quantity,
+                  effectiveDate: row.effective_date,
+                  expiryDate: emptyToUndefined(row.expiry_date) ?? null,
+                  locationTagId: emptyToUndefined(row.location_tag_id) ?? null,
+                }
+                const record = getRecordForRow('skus', row, existingRecords)
+                if (!record) {
+                  throw new Error('Record not found for update')
+                }
+                await skuService.update(record.id, payload)
+              }
+              imported++
+            } catch (error) {
+              failed++
+              errors.push(`SKU ${row.sku_id || row.sku_name}: ${error instanceof Error ? error.message : 'Failed to import'}`)
+            }
           }
         }
-        console.log("After create - imported:", imported, "failed:", failed)
-      }
+      } else if (type === 'assets') {
+        if (operation === 'delete') {
+          for (const row of data) {
+            try {
+              const record = getRecordForRow('assets', row, existingRecords)
+              if (!record) {
+                failed++
+                errors.push(`Asset ${row.asset_id}: Not found for delete`)
+                continue
+              }
+              await assetService.remove(record.id)
+              imported++
+            } catch (error) {
+              failed++
+              errors.push(`Asset ${row.asset_id}: ${error instanceof Error ? error.message : 'Delete failed'}`)
+            }
+          }
+        } else {
+          for (const row of data) {
+            try {
+              if (operation === 'create') {
+                const payload: CreateAssetInput = {
+                  assetId: emptyToUndefined(row.asset_id) ?? null,
+                  assetName: row.asset_name,
+                  assetType: row.asset_type,
+                  locationTagId: emptyToUndefined(row.location_tag_id) ?? null,
+                }
+                await assetService.create(payload)
+              } else {
+                const payload: Partial<CreateAssetInput> = {
+                  assetName: row.asset_name,
+                  assetType: row.asset_type,
+                  locationTagId: emptyToUndefined(row.location_tag_id) ?? null,
+                }
+                const record = getRecordForRow('assets', row, existingRecords)
+                if (!record) {
+                  throw new Error('Record not found for update')
+                }
+                await assetService.update(record.id, payload)
+              }
+              imported++
+            } catch (error) {
+              failed++
+              errors.push(`Asset ${row.asset_id || row.asset_name}: ${error instanceof Error ? error.message : 'Failed to import'}`)
+            }
+          }
+        }
+      } else if (type === 'location_tags') {
+        if (operation === 'delete') {
+          for (const row of data) {
+            try {
+              const record = getRecordForRow('location_tags', row, existingRecords)
+              if (!record) {
+                failed++
+                errors.push(`Location tag ${row.location_tag}: Not found for delete`)
+                continue
+              }
+              await locationTagService.remove(record.id)
+              imported++
+            } catch (error) {
+              failed++
+              errors.push(`Location tag ${row.location_tag}: ${error instanceof Error ? error.message : 'Delete failed'}`)
+            }
+          }
+        } else {
+          for (const row of data) {
+            try {
+              const measurementUnit = toMeasurementUnit(row.unit_of_measurement)
+              const payload: CreateLocationTagInput = {
+                unitId: row.unit_id ?? unitId,
+                locationTagName: row.location_tag,
+                length: parseOptionalNumber(row.length),
+                breadth: parseOptionalNumber(row.breadth),
+                height: parseOptionalNumber(row.height),
+                unitOfMeasurement: measurementUnit,
+              }
+              if (!payload.length && !payload.breadth && !payload.height) {
+                payload.unitOfMeasurement = null
+              }
 
-      console.log("Saving to localStorage, total records:", existingData.length)
-      localStorageService.setItem(storageKey, existingData)
-      console.log("Updating displayedData state")
-      setDisplayedData([...existingData])
-      console.log("Import complete")
+              if (operation === 'create') {
+                await locationTagService.create(payload)
+              } else {
+                const record = getRecordForRow('location_tags', row, existingRecords)
+                if (!record) {
+                  throw new Error('Record not found for update')
+                }
+                await locationTagService.update(record.id, payload)
+              }
+              imported++
+            } catch (error) {
+              failed++
+              errors.push(`Location tag ${row.location_tag}: ${error instanceof Error ? error.message : 'Failed to import'}`)
+            }
+          }
+        }
+      }
     } catch (error) {
       console.error("Import error:", error)
       errors.push(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -689,7 +814,7 @@ export default function BulkUploadPage() {
   }
 
   const handleImport = async () => {
-    if (parsedData.length === 0 || !selectedOrgUnit) {
+    if (parsedData.length === 0 || !selectedOrgUnitId) {
       console.log("Import blocked: parsedData empty or no org unit selected")
       return
     }
@@ -697,7 +822,7 @@ export default function BulkUploadPage() {
     console.log("Starting import with:", {
       dataCount: parsedData.length,
       uploadType,
-      selectedOrgUnit,
+      selectedOrgUnitId,
       operation: crudOperation
     })
 
@@ -705,7 +830,8 @@ export default function BulkUploadPage() {
     setImportResults(null)
 
     try {
-      const results = await importData(parsedData, uploadType, selectedOrgUnit, crudOperation)
+      const existingRecords = getRecordsForType(uploadType)
+      const results = await importData(parsedData, uploadType, crudOperation, selectedOrgUnitId, existingRecords)
       console.log("Import results:", results)
       setImportResults(results)
 
@@ -714,6 +840,7 @@ export default function BulkUploadPage() {
         setSelectedFile(null)
         setParsedData([])
         setUploadResults(null)
+        await loadDisplayedData()
       }
     } catch (error) {
       console.error("Import error:", error)
@@ -736,7 +863,8 @@ export default function BulkUploadPage() {
 
     try {
       const data = await parseFile(selectedFile)
-      const { valid, errors } = validateData(data, uploadType, crudOperation, selectedOrgUnit)
+      const existingRecords = getRecordsForType(uploadType)
+      const { valid, errors } = validateData(data, uploadType, crudOperation, existingRecords, selectedOrgUnitId)
 
       setParsedData(valid)
       setUploadResults({
@@ -757,21 +885,21 @@ export default function BulkUploadPage() {
 
   const uploadTypes = [
     {
-      id: "skus",
+      id: "skus" as UploadType,
       name: "SKUs",
       icon: Package,
       description: "Upload SKU data from CSV/Excel",
       color: "blue"
     },
     {
-      id: "location_tags",
+      id: "location_tags" as UploadType,
       name: "Location Tags",
       icon: Database,
       description: "Upload location tags data",
       color: "green"
     },
     {
-      id: "assets",
+      id: "assets" as UploadType,
       name: "Assets",
       icon: FileText,
       description: "Upload asset and equipment data",
@@ -832,7 +960,7 @@ export default function BulkUploadPage() {
   // Custom table helper functions
   const getCustomTableHeaders = (uploadType: string) => {
     const schema = BACKEND_SCHEMAS[uploadType as keyof typeof BACKEND_SCHEMAS];
-    const hasDimensions = uploadType === 'assets' || uploadType === 'location_tags';
+    const hasDimensions = uploadType === 'location_tags';
     
     if (hasDimensions) {
       // Filter out individual dimension fields and replace with combined dimensions
@@ -890,14 +1018,14 @@ export default function BulkUploadPage() {
           <CardContent>
             {!isCreatingOrgUnit ? (
               <div className="space-y-3">
-                <Select value={selectedOrgUnit} onValueChange={setSelectedOrgUnit}>
+                <Select value={selectedOrgUnitId || undefined} onValueChange={setSelectedOrgUnitId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select org unit" />
                   </SelectTrigger>
                   <SelectContent>
-                    {orgUnits.filter(unit => unit.status === "LIVE").map((unit, index) => (
-                      <SelectItem key={index} value={unit.unit_name}>
-                        {unit.unit_name} ({unit.unit_type})
+                    {orgUnits.filter(unit => unit.status === "LIVE").map((unit) => (
+                      <SelectItem key={unit.id} value={unit.id}>
+                        {unit.unitName} ({unit.unitType})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1051,20 +1179,20 @@ export default function BulkUploadPage() {
                 className={`w-full ${isOperationConfirmed ? "bg-green-600 hover:bg-green-700" : ""}`}
                 onClick={() => {
                   // Confirm operation - could trigger validation or proceed to next step
-                  if (!selectedOrgUnit) {
+                  if (!selectedOrgUnitId) {
                     alert('Please select an organizational unit first.')
                     return
                   }
                   if (!isOperationConfirmed) {
                     setIsOperationConfirmed(true)
                     console.log('Operation confirmed:', {
-                      unit: selectedOrgUnit,
+                      unit: selectedOrgUnitId,
                       type: uploadType,
                       operation: crudOperation
                     })
                   }
                 }}
-                disabled={!selectedOrgUnit}
+                disabled={!selectedOrgUnitId}
               >
                 {isOperationConfirmed ? (
                   <>
@@ -1091,7 +1219,7 @@ export default function BulkUploadPage() {
               <div className="flex justify-between text-sm">
                 <span>Unit:</span>
                 <Badge variant="outline">
-                  {selectedOrgUnit || "None"}
+                  {selectedOrgUnit?.unitName || "None"}
                 </Badge>
               </div>
               <div className="flex justify-between text-sm">
@@ -1448,9 +1576,11 @@ export default function BulkUploadPage() {
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{getTableTitle()}</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            {displayedData.length > 2 
-              ? `Showing ${displayedData.length} records (including 2 demo records)` 
-              : 'Demo sample data - your imported data will appear below'}
+            {selectedOrgUnitId
+              ? displayedData.length > 0
+                ? `Showing ${displayedData.length} record${displayedData.length === 1 ? '' : 's'} for the selected org unit`
+                : 'No records found for the selected org unit yet'
+              : 'Select a warehouse to load existing records'}
           </p>
         </div>
         

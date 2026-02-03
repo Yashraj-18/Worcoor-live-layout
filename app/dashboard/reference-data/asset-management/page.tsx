@@ -4,8 +4,10 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { mockAssetService } from "@/src/services/mockAssetService"
-import { mockReferenceDataService } from "@/src/services/mockReferenceDataService"
+import { assetService } from "@/src/services/assets"
+import type { Asset as AssetDto } from "@/src/services/assets"
+import { locationTagService } from "@/src/services/locationTags"
+import { orgUnitService } from "@/src/services/orgUnits"
 import { toast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,74 +16,45 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Edit2, Trash2, Filter, X, ChevronDown, ChevronUp, ArrowUpDown, MoreHorizontal } from "lucide-react"
+import { Search, Plus, Edit2, Trash2, Filter, X, ChevronDown, ChevronUp, MoreHorizontal } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 const LOCATION_TAG_NONE_VALUE = "__none__"
+const LOCATION_TAG_UNASSIGNED_VALUE = "__unassigned__"
+const LOCATION_TAG_ALL_VALUE = "__all__"
+const ASSET_TYPE_ALL_VALUE = "__all_types__"
+const WAREHOUSE_ALL_VALUE = "__all_warehouses__"
 
 const assetFormSchema = z.object({
-  asset_id: z.string().max(100, "Asset ID must be less than 100 characters").optional(),
-  asset_name: z.string().min(1, { message: "Asset Name is required" }).transform((v) => v.trim()),
-  asset_type: z.enum(["forklift", "pallet_jack", "scanner"], {
+  assetId: z.string().max(100, "Asset ID must be less than 100 characters").optional(),
+  assetName: z.string().min(1, { message: "Asset Name is required" }).transform((v) => v.trim()),
+  assetType: z.enum(["forklift", "pallet_jack", "scanner"], {
     required_error: "Please select an asset type.",
   }),
-  location_tag_id: z.string().optional(),
-  // Dimensions for volume calculation
-  length: z.number().positive("Length must be positive").max(999999.999, "Length must be less than 999999.999").optional(),
-  breadth: z.number().positive("Breadth must be positive").max(999999.999, "Breadth must be less than 999999.999").optional(),
-  height: z.number().positive("Height must be positive").max(999999.999, "Height must be less than 999999.999").optional(),
-  unit_of_measurement: z.enum(["meters", "feet", "inches", "centimeters"]).optional(),
-}).refine((data) => {
-  // If any dimension is provided, all must be provided
-  const hasAnyDimension = data.length || data.breadth || data.height
-  const hasAllDimensions = data.length && data.breadth && data.height
-  return !hasAnyDimension || hasAllDimensions
-}, {
-  message: "If you provide one dimension, you must provide all three dimensions",
-  path: ["length"],
-}).refine((data) => {
-  // If dimensions are provided, unit of measurement is required
-  const hasAnyDimension = data.length || data.breadth || data.height
-  const hasUnitOfMeasurement = data.unit_of_measurement
-  return !hasAnyDimension || hasUnitOfMeasurement
-}, {
-  message: "Unit of measurement is required when dimensions are provided",
-  path: ["unit_of_measurement"],
+  locationTagId: z.string().optional(),
 })
 
 type AssetFormValues = z.infer<typeof assetFormSchema>
 
 interface Asset {
   id: string
-  asset_id?: string
-  asset_name: string
-  asset_type: "forklift" | "pallet_jack" | "scanner"
-  location_tag_id?: string
-  departmentId?: string
+  assetId?: string
+  assetName: string
+  assetType: "forklift" | "pallet_jack" | "scanner"
+  locationTagId?: string
+  locationTagName?: string
   unitId?: string
-  categoryId?: string
-  statusId?: string
-  name?: string
-  type?: string
-  locationId?: string
-  length?: number
-  breadth?: number
-  height?: number
-  volume?: number
-  unit_of_measurement?: "meters" | "feet" | "inches" | "centimeters"
 }
 
-interface LocationTag {
+interface WarehouseOption {
   id: string
-  location_tag_name: string
-  length?: number
-  breadth?: number
-  height?: number
-  unit_of_measurement?: "meters" | "feet" | "inches" | "centimeters"
-  capacity?: number
-  current_items: number
+  name: string
+}
+
+interface LocationTagOption {
+  id: string
+  name: string
+  unitId: string
 }
 
 interface FilterOptions {
@@ -94,9 +67,23 @@ interface FilterOptions {
   status: string
 }
 
+const mapApiAssetToView = (asset: AssetDto): Asset => ({
+  id: asset.id,
+  assetId: asset.assetId || undefined,
+  assetName: asset.assetName,
+  assetType: (asset.assetType as Asset["assetType"]) || "forklift",
+  locationTagId: asset.locationTagId || undefined,
+  locationTagName: asset.locationTagName || undefined,
+  unitId: asset.unitId || undefined,
+})
+
 export default function AssetManagementPage() {
   const [assets, setAssets] = useState<Asset[]>([])
-  const [locationTags, setLocationTags] = useState<LocationTag[]>([])
+  const [warehouses, setWarehouses] = useState<WarehouseOption[]>([])
+  const [allLocationTags, setAllLocationTags] = useState<LocationTagOption[]>([])
+  const [locationTags, setLocationTags] = useState<LocationTagOption[]>([])
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("")
+  const [dialogWarehouseId, setDialogWarehouseId] = useState<string>("")
   const [isLoading, setIsLoading] = useState(true)
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false)
   const [isEditAssetOpen, setIsEditAssetOpen] = useState(false)
@@ -148,14 +135,10 @@ export default function AssetManagementPage() {
   const form = useForm<AssetFormValues>({
     resolver: zodResolver(assetFormSchema),
     defaultValues: {
-      asset_id: "",
-      asset_name: "",
-      asset_type: "forklift" as any,
-      location_tag_id: undefined,
-      length: undefined,
-      breadth: undefined,
-      height: undefined,
-      unit_of_measurement: undefined,
+      assetId: "",
+      assetName: "",
+      assetType: "forklift" as any,
+      locationTagId: undefined,
     },
   })
 
@@ -167,33 +150,30 @@ export default function AssetManagementPage() {
   const fetchAssets = async (page: number = 1, append: boolean = false) => {
     try {
       if (!append) setIsLoading(true)
-      
-      const response = await mockAssetService.getAssetList({
-        page: page - 1,
-        pageSize: 20,
-        searchText: filters.search,
-        refFilter: {
-          assetType: filters.assetType,
-          locationId: filters.locationTag,
-          departmentId: filters.department,
-          unitId: filters.unit,
-          categoryId: filters.category,
-          statusId: filters.status,
-        },
-        sortBy: sortConfig.key,
-        sortOrder: sortConfig.direction,
+
+      const limit = 20
+      const locationTagFilter =
+        filters.locationTag && filters.locationTag !== LOCATION_TAG_NONE_VALUE
+          ? filters.locationTag
+          : undefined
+
+      const response = await assetService.list({
+        search: filters.search || undefined,
+        locationTagId: locationTagFilter,
+        limit,
+        offset: (page - 1) * limit,
       })
 
-      if (response.data.status === "OK" && response.data.data) {
-        const newAssets = response.data.data.list || []
-        if (append) {
-          setAssets((prev) => [...prev, ...newAssets])
-        } else {
-          setAssets(newAssets)
-        }
-        setHasMore(response.data.data.total > page * 20)
-        setCurrentPage(page)
+      const newAssets = response.items.map(mapApiAssetToView)
+
+      if (append) {
+        setAssets((prev) => [...prev, ...newAssets])
+      } else {
+        setAssets(newAssets)
       }
+
+      setHasMore((page - 1) * limit + newAssets.length < response.pagination.total)
+      setCurrentPage(page)
     } catch (error) {
       console.error("Error fetching assets:", error)
       toast({
@@ -216,34 +196,70 @@ export default function AssetManagementPage() {
 
   const fetchLocationTags = async () => {
     try {
-      const response = await mockReferenceDataService.getTableEntry("68565e75f70897486c46853b")
-      if (response.data) {
-        const locationTagData = response.data.map((tag: any) => ({
-          id: tag.id,
-          location_tag_name: tag.detail.name,
-          current_items: 0
-        }))
-        setLocationTags(locationTagData)
+      const units = await orgUnitService.list()
+      const warehouseUnits = units.filter((unit) => unit.unitType === "warehouse")
+      const warehouseOptions: WarehouseOption[] = warehouseUnits.map((unit) => ({
+        id: unit.id,
+        name: unit.unitName,
+      }))
+      setWarehouses(warehouseOptions)
+
+      const tagOptions: LocationTagOption[] = []
+
+      await Promise.all(
+        warehouseUnits.map(async (unit) => {
+          try {
+            const tags = await locationTagService.listByUnit(unit.id)
+            tags.forEach((tag) => {
+              tagOptions.push({
+                id: tag.id,
+                name: tag.locationTagName,
+                unitId: unit.id,
+              })
+            })
+          } catch (error) {
+            console.error(`Failed to load location tags for unit ${unit.unitName}`, error)
+          }
+        }),
+      )
+
+      setAllLocationTags(tagOptions)
+      setLocationTags(selectedWarehouseId ? tagOptions.filter((tag) => tag.unitId === selectedWarehouseId) : tagOptions)
+
+      if (selectedWarehouseId && !warehouseOptions.some((option) => option.id === selectedWarehouseId)) {
+        setSelectedWarehouseId("")
+        setLocationTags(tagOptions)
       }
     } catch (error) {
       console.error("Error fetching location tags:", error)
     }
   }
 
+  const getFilteredLocationTags = (warehouseId: string) => {
+    if (!warehouseId) return allLocationTags
+    return allLocationTags.filter((tag) => tag.unitId === warehouseId)
+  }
+
+  const handleWarehouseChange = (warehouseId: string) => {
+    setDialogWarehouseId(warehouseId)
+    form.setValue("locationTagId", undefined)
+  }
+
   const getLocationTagNameById = (locationTagId?: string) => {
     if (!locationTagId || locationTagId === LOCATION_TAG_NONE_VALUE) return "None"
     const locationTag = locationTags.find((tag) => tag.id === locationTagId)
-    return locationTag?.location_tag_name || "Unknown"
+    return locationTag?.name || "Unknown"
   }
 
   const handleAddAsset = () => {
     setFormMode("add")
     form.reset({
-      asset_id: "",
-      asset_name: "",
-      asset_type: "forklift" as any,
-      location_tag_id: undefined,
+      assetId: "",
+      assetName: "",
+      assetType: "forklift" as any,
+      locationTagId: undefined,
     })
+    setDialogWarehouseId(selectedWarehouseId)
     setFilterDepartment(departmentDetails)
     setIsAddAssetOpen(true)
   }
@@ -252,32 +268,28 @@ export default function AssetManagementPage() {
     setFormMode("edit")
     setSelectedAsset(asset)
     form.reset({
-      asset_id: asset.asset_id || "",
-      asset_name: asset.asset_name ?? asset.name ?? "",
-      asset_type: asset.asset_type ?? asset.type ?? "forklift",
-      location_tag_id: asset.location_tag_id ?? asset.locationId ?? undefined,
-      length: asset.length,
-      breadth: asset.breadth,
-      height: asset.height,
-      unit_of_measurement: asset.unit_of_measurement,
+      assetId: asset.assetId || "",
+      assetName: asset.assetName,
+      assetType: asset.assetType ?? "forklift",
+      locationTagId: asset.locationTagId ?? undefined,
     })
+    const assetWarehouseId = asset.unitId || allLocationTags.find((t) => t.id === asset.locationTagId)?.unitId || ""
+    setDialogWarehouseId(assetWarehouseId)
     setIsEditAssetOpen(true)
   }
 
   const handleDeleteAsset = async (asset: Asset) => {
-    if (!confirm(`Are you sure you want to delete ${asset.asset_name || asset.name || "this asset"}?`)) {
+    if (!confirm(`Are you sure you want to delete ${asset.assetName || "this asset"}?`)) {
       return
     }
 
     try {
-      const response = await mockAssetService.deleteAsset(asset.id)
-      if (response.data.status === "OK") {
-        setAssets((prev) => prev.filter((a) => a.id !== asset.id))
-        toast({
-          title: "Success",
-          description: "Asset deleted successfully.",
-        })
-      }
+      await assetService.remove(asset.id)
+      setAssets((prev) => prev.filter((a) => a.id !== asset.id))
+      toast({
+        title: "Success",
+        description: "Asset deleted successfully.",
+      })
     } catch (error) {
       console.error("Error deleting asset:", error)
       toast({
@@ -287,124 +299,42 @@ export default function AssetManagementPage() {
       })
     }
   }
-
   const onSubmit = async (data: AssetFormValues) => {
     setIsSubmitting(true)
 
     try {
-      const locationTagId = data.location_tag_id === LOCATION_TAG_NONE_VALUE ? undefined : data.location_tag_id
-      
-      // Calculate volume if dimensions are provided
-      const calculatedVolume = data.length && data.breadth && data.height
-        ? parseFloat((data.length * data.breadth * data.height).toFixed(3))
-        : undefined
+      const locationTagId = data.locationTagId === LOCATION_TAG_NONE_VALUE ? undefined : data.locationTagId
 
       if (formMode === "add") {
-        const reqBody = {
-          asset_id: data.asset_id || undefined,
-          asset_name: data.asset_name,
-          asset_type: data.asset_type,
-          location_tag_id: locationTagId,
-
-          name: data.asset_name,
-          type: data.asset_type,
-          locationId: locationTagId,
-
-          // Dimensions and volume
-          length: data.length,
-          breadth: data.breadth,
-          height: data.height,
-          volume: calculatedVolume,
-
-          departmentId: departmentFilter,
-          unitId: unitFilter || undefined,
-          categoryId: categoryFilter || undefined,
-          statusId: statusFilter || undefined,
-        };
-
-        const response = await mockAssetService.addAsset({
-          asset_id: data.asset_id || undefined,
-          asset_name: data.asset_name,
-          asset_type: data.asset_type,
-          location_tag_id: locationTagId || undefined,
-          name: data.asset_name,
-          type: data.asset_type,
-          locationId: locationTagId,
-          length: data.length,
-          breadth: data.breadth,
-          height: data.height,
-          volume: calculatedVolume,
-          unit_of_measurement: data.unit_of_measurement,
-          departmentId: departmentFilter,
-          unitId: unitFilter || undefined,
-          categoryId: categoryFilter || undefined,
-          statusId: statusFilter || undefined,
+        const created = await assetService.create({
+          assetId: data.assetId || null,
+          assetName: data.assetName,
+          assetType: data.assetType,
+          locationTagId: locationTagId || null,
         })
-        
-        if (response.data.status === "OK") {
-          // Refresh the assets list to get the new asset
-          fetchAssets(1, false)
-          setIsAddAssetOpen(false)
-          form.reset()
-          toast({
-            title: "Success",
-            description: "Asset added successfully.",
-          })
-        }
-      } else {
-        const reqBody = {
-          id: selectedAsset?.id,
-          asset_id: data.asset_id || undefined,
-          asset_name: data.asset_name,
-          asset_type: data.asset_type,
-          location_tag_id: locationTagId,
 
-          name: data.asset_name,
-          type: data.asset_type,
-          locationId: locationTagId,
-
-          // Dimensions and volume
-          length: data.length,
-          breadth: data.breadth,
-          height: data.height,
-          volume: calculatedVolume,
-
-          departmentId: departmentFilter,
-          unitId: unitFilter || undefined,
-          categoryId: categoryFilter || undefined,
-          statusId: statusFilter || undefined,
-        };
-
-        const response = await mockAssetService.updateAsset({
-          asset_id: data.asset_id || undefined,
-          asset_name: data.asset_name,
-          asset_type: data.asset_type,
-          location_tag_id: locationTagId || undefined,
-          id: selectedAsset?.id,
-          name: data.asset_name,
-          type: data.asset_type,
-          locationId: locationTagId,
-          length: data.length,
-          breadth: data.breadth,
-          height: data.height,
-          volume: calculatedVolume,
-          unit_of_measurement: data.unit_of_measurement,
-          departmentId: departmentFilter,
-          unitId: unitFilter || undefined,
-          categoryId: categoryFilter || undefined,
-          statusId: statusFilter || undefined,
+        setAssets((prev) => [mapApiAssetToView(created), ...prev])
+        setIsAddAssetOpen(false)
+        form.reset()
+        toast({
+          title: "Success",
+          description: "Asset added successfully.",
         })
-        
-        if (response.data.status === "OK") {
-          // Refresh the assets list to get updated data
-          fetchAssets(1, false)
-          setIsEditAssetOpen(false)
-          setSelectedAsset(null)
-          toast({
-            title: "Success",
-            description: "Asset updated successfully.",
-          })
-        }
+      } else if (selectedAsset) {
+        const updated = await assetService.update(selectedAsset.id, {
+          assetId: data.assetId || null,
+          assetName: data.assetName,
+          assetType: data.assetType,
+          locationTagId: locationTagId ?? null,
+        })
+
+        setAssets((prev) => prev.map((asset) => (asset.id === updated.id ? mapApiAssetToView(updated) : asset)))
+        setIsEditAssetOpen(false)
+        setSelectedAsset(null)
+        toast({
+          title: "Success",
+          description: "Asset updated successfully.",
+        })
       }
     } catch (error) {
       console.error("Error submitting asset:", error)
@@ -452,13 +382,15 @@ export default function AssetManagementPage() {
   }
 
   const filteredAssets = assets.filter((asset) => {
-    const matchesSearch = !filters.search || 
-      (asset.asset_name ?? asset.name ?? "").toLowerCase().includes(filters.search.toLowerCase()) ||
-      (asset.asset_id || "").toLowerCase().includes(filters.search.toLowerCase())
-    const matchesType = !filters.assetType || asset.asset_type === filters.assetType
-    const matchesLocation = !filters.locationTag || 
-      (asset.location_tag_id ?? asset.locationId) === filters.locationTag
-    return matchesSearch && matchesType && matchesLocation
+    const matchesSearch =
+      !filters.search ||
+      asset.assetName.toLowerCase().includes(filters.search.toLowerCase()) ||
+      (asset.assetId || "").toLowerCase().includes(filters.search.toLowerCase())
+    const matchesType = !filters.assetType || asset.assetType === filters.assetType
+    const matchesLocation = !filters.locationTag || asset.locationTagId === filters.locationTag
+    const matchesWarehouse = !selectedWarehouseId || asset.unitId === selectedWarehouseId || 
+      allLocationTags.find((tag) => tag.id === asset.locationTagId)?.unitId === selectedWarehouseId
+    return matchesSearch && matchesType && matchesLocation && matchesWarehouse
   })
 
   const departmentFilter = filterDepartment?.id
@@ -487,6 +419,26 @@ export default function AssetManagementPage() {
               <CardDescription>View and manage your warehouse assets</CardDescription>
             </div>
             <div className="flex items-center space-x-2">
+              <Select
+                value={selectedWarehouseId || WAREHOUSE_ALL_VALUE}
+                onValueChange={(value) => {
+                  const newWarehouseId = value === WAREHOUSE_ALL_VALUE ? "" : value
+                  setSelectedWarehouseId(newWarehouseId)
+                  setLocationTags(newWarehouseId ? allLocationTags.filter((t) => t.unitId === newWarehouseId) : allLocationTags)
+                }}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select warehouse" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={WAREHOUSE_ALL_VALUE}>All Warehouses</SelectItem>
+                  {warehouses.map((wh) => (
+                    <SelectItem key={wh.id} value={wh.id}>
+                      {wh.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -514,12 +466,15 @@ export default function AssetManagementPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="text-sm font-medium mb-2 block">Asset Type</label>
-                  <Select value={filters.assetType} onValueChange={(value) => handleFilterChange("assetType", value)}>
+                  <Select
+                    value={filters.assetType || ASSET_TYPE_ALL_VALUE}
+                    onValueChange={(value) => handleFilterChange("assetType", value === ASSET_TYPE_ALL_VALUE ? "" : value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="All types" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All types</SelectItem>
+                      <SelectItem value={ASSET_TYPE_ALL_VALUE}>All types</SelectItem>
                       <SelectItem value="forklift">Forklift</SelectItem>
                       <SelectItem value="pallet_jack">Pallet Jack</SelectItem>
                       <SelectItem value="scanner">Scanner</SelectItem>
@@ -528,16 +483,21 @@ export default function AssetManagementPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-2 block">Location Tag</label>
-                  <Select value={filters.locationTag} onValueChange={(value) => handleFilterChange("locationTag", value)}>
+                  <Select
+                    value={filters.locationTag ? filters.locationTag : LOCATION_TAG_ALL_VALUE}
+                    onValueChange={(value) =>
+                      handleFilterChange("locationTag", value === LOCATION_TAG_ALL_VALUE ? "" : value)
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="All locations" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All locations</SelectItem>
+                      <SelectItem value={LOCATION_TAG_ALL_VALUE}>All locations</SelectItem>
                       <SelectItem value={LOCATION_TAG_NONE_VALUE}>None</SelectItem>
                       {locationTags.map((tag) => (
                         <SelectItem key={tag.id} value={tag.id}>
-                          {tag.location_tag_name}
+                          {tag.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -580,10 +540,10 @@ export default function AssetManagementPage() {
                       ref={index === filteredAssets.length - 1 ? lastAssetElementRef : null}
                       className="hover:bg-muted/50"
                     >
-                      <TableCell className="p-4 md:p-6">{asset.asset_id || "-"}</TableCell>
-                      <TableCell className="p-4 md:p-6">{asset.asset_name ?? asset.name ?? "-"}</TableCell>
-                      <TableCell className="p-4 md:p-6">{asset.asset_type ?? asset.type ?? "-"}</TableCell>
-                      <TableCell className="p-4 md:p-6">{getLocationTagNameById(asset.location_tag_id ?? asset.locationId)}</TableCell>
+                      <TableCell className="p-4 md:p-6">{asset.assetId || "-"}</TableCell>
+                      <TableCell className="p-4 md:p-6">{asset.assetName}</TableCell>
+                      <TableCell className="p-4 md:p-6">{asset.assetType}</TableCell>
+                      <TableCell className="p-4 md:p-6">{asset.locationTagName || getLocationTagNameById(asset.locationTagId)}</TableCell>
                       <TableCell className="p-4 md:p-6 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -639,7 +599,7 @@ export default function AssetManagementPage() {
               {/* Asset ID */}
               <FormField
                 control={form.control}
-                name="asset_id"
+                name="assetId"
                 render={({ field }) => (
                   <FormItem className="space-y-0 mt-0">
                     <FormLabel className="text-sm font-medium leading-none">Asset ID</FormLabel>
@@ -653,7 +613,7 @@ export default function AssetManagementPage() {
 
               <FormField
                 control={form.control}
-                name="asset_name"
+                name="assetName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Asset Name</FormLabel>
@@ -666,7 +626,7 @@ export default function AssetManagementPage() {
               />
               <FormField
                 control={form.control}
-                name="asset_type"
+                name="assetType"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Asset Type</FormLabel>
@@ -686,23 +646,52 @@ export default function AssetManagementPage() {
                   </FormItem>
                 )}
               />
+              {/* Warehouse Selection */}
+              <FormItem>
+                <FormLabel>Warehouse</FormLabel>
+                <Select
+                  value={dialogWarehouseId || WAREHOUSE_ALL_VALUE}
+                  onValueChange={(value) => handleWarehouseChange(value === WAREHOUSE_ALL_VALUE ? "" : value)}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select warehouse" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={WAREHOUSE_ALL_VALUE}>All Warehouses</SelectItem>
+                    {warehouses.map((wh) => (
+                      <SelectItem key={wh.id} value={wh.id}>
+                        {wh.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormItem>
+
               <FormField
                 control={form.control}
-                name="location_tag_id"
+                name="locationTagId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Location Tag</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      value={field.value ?? LOCATION_TAG_UNASSIGNED_VALUE}
+                      onValueChange={(value) =>
+                        field.onChange(value === LOCATION_TAG_UNASSIGNED_VALUE ? undefined : value)
+                      }
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select location tag" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value={LOCATION_TAG_UNASSIGNED_VALUE}>Unassigned</SelectItem>
                         <SelectItem value={LOCATION_TAG_NONE_VALUE}>None</SelectItem>
-                        {locationTags.map((tag) => (
+                        {getFilteredLocationTags(dialogWarehouseId).map((tag) => (
                           <SelectItem key={tag.id} value={tag.id}>
-                            {tag.location_tag_name}
+                            {tag.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -711,104 +700,6 @@ export default function AssetManagementPage() {
                   </FormItem>
                 )}
               />
-              
-              {/* Dimensions Section */}
-              <div className="space-y-4">
-                <FormLabel className="text-sm font-medium">Dimensions (Optional)</FormLabel>
-                <div className="grid grid-cols-4 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="length"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Length</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="any"
-                            placeholder="0.00" 
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="breadth"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Breadth</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="any"
-                            placeholder="0.00" 
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="height"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Height</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="any"
-                            placeholder="0.00" 
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Unit of Measurement */}
-                  <FormField
-                    control={form.control}
-                    name="unit_of_measurement"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Unit</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Unit" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="meters">Meters</SelectItem>
-                            <SelectItem value="feet">Feet</SelectItem>
-                            <SelectItem value="inches">Inches</SelectItem>
-                            <SelectItem value="centimeters">Centimeters</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                {form.getValues().length && form.getValues().breadth && form.getValues().height && form.getValues().unit_of_measurement && (
-                  <div className="text-sm text-muted-foreground">
-                    Calculated Volume: {(form.getValues().length! * form.getValues().breadth! * form.getValues().height!).toFixed(3)} cubic {form.getValues().unit_of_measurement}
-                  </div>
-                )}
-              </div>
 
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="outline" onClick={() => setIsAddAssetOpen(false)}>
@@ -837,7 +728,7 @@ export default function AssetManagementPage() {
               {/* Asset ID */}
               <FormField
                 control={form.control}
-                name="asset_id"
+                name="assetId"
                 render={({ field }) => (
                   <FormItem className="space-y-0 mt-0">
                     <FormLabel className="text-sm font-medium leading-none">Asset ID</FormLabel>
@@ -851,7 +742,7 @@ export default function AssetManagementPage() {
 
               <FormField
                 control={form.control}
-                name="asset_name"
+                name="assetName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Asset Name</FormLabel>
@@ -864,7 +755,7 @@ export default function AssetManagementPage() {
               />
               <FormField
                 control={form.control}
-                name="asset_type"
+                name="assetType"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Asset Type</FormLabel>
@@ -884,23 +775,53 @@ export default function AssetManagementPage() {
                   </FormItem>
                 )}
               />
+
+              {/* Warehouse Selection */}
+              <FormItem>
+                <FormLabel>Warehouse</FormLabel>
+                <Select
+                  value={dialogWarehouseId || WAREHOUSE_ALL_VALUE}
+                  onValueChange={(value) => handleWarehouseChange(value === WAREHOUSE_ALL_VALUE ? "" : value)}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select warehouse" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={WAREHOUSE_ALL_VALUE}>All Warehouses</SelectItem>
+                    {warehouses.map((wh) => (
+                      <SelectItem key={wh.id} value={wh.id}>
+                        {wh.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormItem>
+
               <FormField
                 control={form.control}
-                name="location_tag_id"
+                name="locationTagId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Location Tag</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      value={field.value ?? LOCATION_TAG_UNASSIGNED_VALUE}
+                      onValueChange={(value) =>
+                        field.onChange(value === LOCATION_TAG_UNASSIGNED_VALUE ? undefined : value)
+                      }
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select location tag" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value={LOCATION_TAG_UNASSIGNED_VALUE}>Unassigned</SelectItem>
                         <SelectItem value={LOCATION_TAG_NONE_VALUE}>None</SelectItem>
-                        {locationTags.map((tag) => (
+                        {getFilteredLocationTags(dialogWarehouseId).map((tag) => (
                           <SelectItem key={tag.id} value={tag.id}>
-                            {tag.location_tag_name}
+                            {tag.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -909,104 +830,6 @@ export default function AssetManagementPage() {
                   </FormItem>
                 )}
               />
-
-              {/* Dimensions Section */}
-              <div className="space-y-4">
-                <FormLabel className="text-sm font-medium">Dimensions (Optional)</FormLabel>
-                <div className="grid grid-cols-4 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="length"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Length</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="any"
-                            placeholder="0.00" 
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="breadth"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Breadth</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="any"
-                            placeholder="0.00" 
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="height"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Height</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="any"
-                            placeholder="0.00" 
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Unit of Measurement */}
-                  <FormField
-                    control={form.control}
-                    name="unit_of_measurement"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Unit</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Unit" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="meters">Meters</SelectItem>
-                            <SelectItem value="feet">Feet</SelectItem>
-                            <SelectItem value="inches">Inches</SelectItem>
-                            <SelectItem value="centimeters">Centimeters</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                {form.getValues().length && form.getValues().breadth && form.getValues().height && form.getValues().unit_of_measurement && (
-                  <div className="text-sm text-muted-foreground">
-                    Calculated Volume: {(form.getValues().length! * form.getValues().breadth! * form.getValues().height!).toFixed(3)} cubic {form.getValues().unit_of_measurement}
-                  </div>
-                )}
-              </div>
 
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="outline" onClick={() => setIsEditAssetOpen(false)}>

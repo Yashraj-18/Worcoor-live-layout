@@ -35,6 +35,7 @@ export class AssetsRepository {
 
     const selection = {
       id: assets.id,
+      assetId: assets.assetId,
       assetName: assets.assetName,
       assetType: assets.assetType,
       organizationId: assets.organizationId,
@@ -73,6 +74,7 @@ export class AssetsRepository {
     const result = await db
       .select({
         id: assets.id,
+        assetId: assets.assetId,
         assetName: assets.assetName,
         assetType: assets.assetType,
         organizationId: assets.organizationId,
@@ -92,6 +94,16 @@ export class AssetsRepository {
   async create(payload: CreateAssetDto): Promise<AssetEntity> {
     const [created] = await db.insert(assets).values(payload).returning();
     return created;
+  }
+
+  async findByAssetId(organizationId: string, assetId: string) {
+    const [result] = await db
+      .select()
+      .from(assets)
+      .where(and(eq(assets.organizationId, organizationId), eq(assets.assetId, assetId)))
+      .limit(1);
+
+    return result ?? null;
   }
 
   async update(

@@ -17,6 +17,7 @@ const assetResponseSchema = {
   type: 'object',
   properties: {
     id: { type: 'string', format: 'uuid' },
+    assetId: { type: ['string', 'null'], maxLength: 100 },
     assetName: { type: 'string' },
     assetType: { type: 'string' },
     organizationId: { type: 'string', format: 'uuid' },

@@ -12,6 +12,13 @@ export class AssetsService {
     private readonly locationTagsRepository = new LocationTagsRepository(),
   ) {}
 
+  private async assertAssetIdUnique(orgId: string, assetId: string, excludeAssetUuid?: string) {
+    const existing = await this.repository.findByAssetId(orgId, assetId);
+    if (existing && existing.id !== excludeAssetUuid) {
+      throw new Error('ASSET_ID_NOT_UNIQUE');
+    }
+  }
+
   async list(
     request: FastifyRequest<{ Querystring: AssetQueryInput }>,
     reply: FastifyReply,
@@ -54,11 +61,23 @@ export class AssetsService {
       if (!ok) return;
     }
 
+    if (request.body.assetId) {
+      try {
+        await this.assertAssetIdUnique(orgId, request.body.assetId);
+      } catch (error) {
+        if (error instanceof Error && error.message === 'ASSET_ID_NOT_UNIQUE') {
+          return reply.code(409).send({ error: 'Asset ID already in use' });
+        }
+        throw error;
+      }
+    }
+
     const asset = await this.repository.create({
       assetName: request.body.assetName,
       assetType: request.body.assetType,
       locationTagId: request.body.locationTagId ?? null,
       organizationId: orgId,
+      assetId: request.body.assetId ?? null,
     });
 
     reply.code(201).send(asset);
@@ -79,11 +98,26 @@ export class AssetsService {
       if (!ok) return;
     }
 
+    if (request.body.assetId) {
+      try {
+        await this.assertAssetIdUnique(orgId, request.body.assetId, existing.id);
+      } catch (error) {
+        if (error instanceof Error && error.message === 'ASSET_ID_NOT_UNIQUE') {
+          return reply.code(409).send({ error: 'Asset ID already in use' });
+        }
+        throw error;
+      }
+    }
+
     const updated = await this.repository.update(request.params.assetId, orgId, {
       assetName: request.body.assetName ?? existing.assetName,
       assetType: request.body.assetType ?? existing.assetType,
       locationTagId:
         request.body.locationTagId !== undefined ? request.body.locationTagId : existing.locationTagId,
+      assetId:
+        request.body.assetId !== undefined
+          ? request.body.assetId
+          : existing.assetId ?? null,
     });
 
     reply.send(updated);

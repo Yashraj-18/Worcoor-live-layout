@@ -3,6 +3,12 @@ export const createAssetBodySchema = {
   required: ['assetName', 'assetType'],
   additionalProperties: false,
   properties: {
+    assetId: {
+      type: ['string', 'null'],
+      minLength: 1,
+      maxLength: 100,
+      pattern: '^[A-Za-z0-9_-]+$',
+    },
     assetName: { type: 'string', minLength: 1, maxLength: 255 },
     assetType: { type: 'string', minLength: 1, maxLength: 100 },
     locationTagId: { type: ['string', 'null'], format: 'uuid' },
@@ -34,6 +40,7 @@ export const moveAssetBodySchema = {
 } as const;
 
 export type CreateAssetInput = {
+  assetId?: string | null;
   assetName: string;
   assetType: string;
   locationTagId?: string | null;

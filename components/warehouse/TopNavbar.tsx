@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { orgUnitService, type OrgUnit } from '@/src/services/orgUnits';
+import { locationTagService, type LocationTag } from '@/src/services/locationTags';
 
 interface TopNavbarProps {
   // Layout Info
@@ -10,6 +11,10 @@ interface TopNavbarProps {
   onOrgUnitSelect?: (selection: { orgUnit: OrgUnit; status: { id: string; name: string } }) => void;
   selectedOrgMap?: any;
   onOrgMapSelect?: (map: any) => void;
+  
+  // Location Tags
+  locationTags?: any[];
+  isLoadingLocationTags?: boolean;
   
   // Facility Management
   onFacilityManager?: () => void;
@@ -59,6 +64,10 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
   onOrgUnitSelect,
   selectedOrgMap,
   onOrgMapSelect,
+  
+  // Location Tags
+  locationTags,
+  isLoadingLocationTags,
   
   // Facility Management
   onFacilityManager,
@@ -121,6 +130,14 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
     fetchOrgUnits();
   }, []);
 
+  // Log location tags when they change (for debugging)
+  useEffect(() => {
+    if (locationTags && locationTags.length > 0) {
+      console.log(`🏷️ TopNavbar - Location tags updated: ${locationTags.length} tags`);
+      console.table(locationTags);
+    }
+  }, [locationTags]);
+
   const toggleDropdown = (dropdown: string | null) => {
     setActiveDropdown(activeDropdown === dropdown ? null : dropdown);
   };
@@ -146,6 +163,19 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
       onOrgMapSelect(null);
     }
     closeDropdowns();
+  };
+
+  // Debug function to manually trigger location tags fetch
+  const debugFetchLocationTags = () => {
+    if (selectedOrgUnit) {
+      console.log(`🔍 DEBUG: Manual trigger for location tags fetch - Org Unit: ${selectedOrgUnit.name}`);
+      console.log(`📍 Current location tags count: ${locationTags?.length || 0}`);
+      if (locationTags) {
+        console.table(locationTags);
+      }
+    } else {
+      console.log('⚠️ DEBUG: No org unit selected');
+    }
   };
 
   const getDropdownLabel = () => {
@@ -308,6 +338,40 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
             <span className="status-count">{itemCount}</span>
             <span className="status-label">items</span>
           </div>
+          
+          {/* Location Tags Status */}
+          {selectedOrgUnit && (
+            <div className="status-badge" style={{ marginLeft: '8px' }}>
+              {isLoadingLocationTags ? (
+                <span className="status-label">🏷️ Loading...</span>
+              ) : (
+                <>
+                  <span className="status-count">{locationTags?.length || 0}</span>
+                  <span className="status-label">tags</span>
+                </>
+              )}
+            </div>
+          )}
+          
+          {/* Debug Button - Remove in production */}
+          {process.env.NODE_ENV === 'development' && selectedOrgUnit && (
+            <button 
+              onClick={debugFetchLocationTags}
+              style={{ 
+                marginLeft: '8px', 
+                padding: '2px 6px', 
+                fontSize: '10px', 
+                backgroundColor: '#ff6b6b', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '3px',
+                cursor: 'pointer'
+              }}
+              title="Debug: Refresh location tags"
+            >
+              🔄
+            </button>
+          )}
         </div>
       </div>
     </nav>

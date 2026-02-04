@@ -23,6 +23,7 @@ import FullscreenMap from '@/components/warehouse/FullscreenMap';
 import SkuIdSelector from '@/components/warehouse/SkuIdSelector';
 import MultiLocationSelector from '@/components/warehouse/MultiLocationSelector';
 import OrgUnitSelector from '@/components/warehouse/OrgUnitSelector';
+import { locationTagService, type LocationTag } from '@/src/services/locationTags';
 import { STACK_MODES, STACKABLE_COMPONENTS, OCCUPANCY_STATUS, STORAGE_ORIENTATION, COMPONENT_TYPES } from '@/lib/warehouse/constants/warehouseComponents';
 import { getComponentColor, forceRefreshStorageUnitColors } from '@/lib/warehouse/utils/componentColors';
 import { generateStorageUnitLabel, generateStorageComponentLabel, applyEnhancedLabeling } from '@/lib/warehouse/utils/componentLabeling';
@@ -88,6 +89,8 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
   const [layoutNameSet, setLayoutNameSet] = useState<boolean>(false);
   const [selectedOrgUnit, setSelectedOrgUnit] = useState<OrgUnit | null>(initialOrgUnit);
   const [selectedOrgMap, setSelectedOrgMap] = useState<any>(null);
+  const [locationTags, setLocationTags] = useState<LocationTag[]>([]);
+  const [isLoadingLocationTags, setIsLoadingLocationTags] = useState(false);
   const [skuIdSelectorVisible, setSkuIdSelectorVisible] = useState<boolean>(false);
   const [multiLocationSelectorVisible, setMultiLocationSelectorVisible] = useState<boolean>(false);
   const [pendingSkuRequest, setPendingSkuRequest] = useState<any>(null);
@@ -104,6 +107,50 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     setSelectedOrgMap(null); // Reset map selection when org unit changes
     setLayoutName(layoutName);
     setLayoutNameSet(true);
+    
+    // Fetch location tags for the selected org unit
+    fetchLocationTagsForOrgUnit(orgUnit);
+  }, []);
+
+  // Fetch location tags for a specific org unit
+  const fetchLocationTagsForOrgUnit = useCallback(async (orgUnit: any) => {
+    if (!orgUnit) {
+      setLocationTags([]);
+      setIsLoadingLocationTags(false);
+      return;
+    }
+
+    try {
+      setIsLoadingLocationTags(true);
+      console.log(`🏷️ WarehouseLayoutBuilder - Fetching location tags for org unit: ${orgUnit.name} (ID: ${orgUnit.id})`);
+      
+      const tags = await locationTagService.listByUnit(orgUnit.id);
+      
+      console.log(`✅ WarehouseLayoutBuilder - Successfully fetched ${tags.length} location tags for ${orgUnit.name}:`);
+      console.table(tags);
+      
+      setLocationTags(tags);
+      
+      // Additional detailed logging
+      tags.forEach((tag, index) => {
+        console.log(`📍 Location Tag ${index + 1}:`, {
+          id: tag.id,
+          name: tag.locationTagName,
+          capacity: tag.capacity,
+          currentItems: tag.currentItems,
+          utilization: tag.utilizationPercentage,
+          dimensions: tag.length && tag.breadth && tag.height 
+            ? `${tag.length}×${tag.breadth}×${tag.height} ${tag.unitOfMeasurement}`
+            : 'N/A'
+        });
+      });
+      
+    } catch (error) {
+      console.error(`❌ WarehouseLayoutBuilder - Failed to fetch location tags for org unit ${orgUnit.name}:`, error);
+      setLocationTags([]);
+    } finally {
+      setIsLoadingLocationTags(false);
+    }
   }, []);
 
   // Initialize org unit and layout when editing
@@ -1387,6 +1434,8 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
               onOrgUnitSelect={handleOrgUnitSelect}
               selectedOrgMap={selectedOrgMap}
               onOrgMapSelect={handleOrgMapSelect}
+              locationTags={locationTags}
+              isLoadingLocationTags={isLoadingLocationTags}
               onFacilityManager={handleFacilityManager}
               onMeasurementTools={handleMeasurementTools}
               onSave={handleSave}
@@ -1544,15 +1593,16 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
             setPendingSkuRequest(null);
           }}
           onSave={handleLocationIdSelect}
-          existingLocationIds={pendingSkuRequest ? getExistingLocationIds(pendingSkuRequest.itemId) : []}
-          showCategories={pendingSkuRequest && pendingSkuRequest.compartmentId === 'single-sku'}
-          allowCustomIds={pendingSkuRequest && pendingSkuRequest.compartmentId === 'single-sku'}
-          allowMultipleIds={pendingSkuRequest ? (() => {
-            const item = warehouseItems.find(i => i.id === pendingSkuRequest.itemId);
-            const allowMultiple = item && item.type === 'storage_unit' && item.supportsMultipleLocationIds;
-            console.log('WarehouseLayoutBuilder allowMultipleIds check:', { itemId: pendingSkuRequest.itemId, itemType: item?.type, supportsMultipleLocationIds: item?.supportsMultipleLocationIds, allowMultiple }); // Debug log
-            return allowMultiple;
-          })() : false}
+          existingLocationIds={warehouseItems
+            .filter(item => item.locationId || item.locationData?.locationIds)
+            .flatMap(item => 
+              item.locationData?.locationIds || [item.locationId].filter(Boolean)
+            )}
+          showCategories={pendingSkuRequest?.compartmentId === 'single-sku'}
+          allowCustomIds={pendingSkuRequest?.compartmentId === 'single-sku'}
+          allowMultipleIds={pendingSkuRequest?.compartmentalized}
+          locationTags={locationTags}
+          isLoadingLocationTags={isLoadingLocationTags}
         />
 
         {/* Multi Location ID Selector Modal for Vertical Storage Racks */}
@@ -1571,6 +1621,8 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
             }
             return [];
           })() : []}
+          locationTags={locationTags}
+          isLoadingLocationTags={isLoadingLocationTags}
         />
 
         {/* Map Type Selector Modal - Select operational status before saving */}

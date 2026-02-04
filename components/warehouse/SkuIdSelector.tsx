@@ -12,6 +12,8 @@ interface SkuIdSelectorProps {
   showCategories?: boolean;
   allowCustomIds?: boolean;
   allowMultipleIds?: boolean; // New prop for storage components
+  locationTags?: any[]; // Add location tags prop
+  isLoadingLocationTags?: boolean; // Add loading state prop
 }
 
 const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({ 
@@ -21,14 +23,18 @@ const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({
   existingLocationIds = [], 
   showCategories = false,
   allowCustomIds = false,
-  allowMultipleIds = false
+  allowMultipleIds = false,
+  locationTags = [],
+  isLoadingLocationTags = false
 }) => {
   console.log('SkuIdSelector props:', { 
     allowMultipleIds, 
     showCategories, 
     allowCustomIds,
     isVisible,
-    existingLocationIds: existingLocationIds.length
+    existingLocationIds: existingLocationIds.length,
+    locationTags: locationTags.length,
+    isLoadingLocationTags
   }); // Debug log
   
   const [selectedLocationId, setSelectedLocationId] = useState('');
@@ -38,25 +44,23 @@ const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({
   const [showMultipleMode, setShowMultipleMode] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
 
-  // Generate available Location IDs (LOC-001 to LOC-999)
-  // Check against both existingLocationIds (local) and global cache
-  const generateAvailableLocationIds = () => {
-    const allIds = [];
-    for (let i = 1; i <= 999; i++) {
-      const locationId = `LOC-${i.toString().padStart(3, '0')}`;
+  // Get available Location IDs from backend location tags
+  // Filter out already used location tags
+  const getAvailableLocationTags = () => {
+    if (isLoadingLocationTags) return [];
+    
+    return locationTags.filter(tag => {
+      const tagId = tag.locationTagName;
       // Check both local existing IDs and global cache
-      if (!existingLocationIds.includes(locationId) && !globalIdCache.isIdInUse(locationId)) {
-        allIds.push(locationId);
-      }
-    }
-    return allIds;
+      return !existingLocationIds.includes(tagId) && !globalIdCache.isIdInUse(tagId);
+    });
   };
 
-  const availableLocationIds = generateAvailableLocationIds();
+  const availableLocationTags = getAvailableLocationTags();
 
   useEffect(() => {
-    if (availableLocationIds.length > 0) {
-      setSelectedLocationId(availableLocationIds[0]);
+    if (availableLocationTags.length > 0) {
+      setSelectedLocationId(availableLocationTags[0].locationTagName);
     }
     // Reset useCustom when showCategories is false (storage racks)
     if (!allowCustomIds) {
@@ -66,7 +70,7 @@ const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({
     setMultipleIds([]);
     setShowMultipleMode(false);
     setSelectedCategory('');
-  }, [availableLocationIds.length, allowCustomIds]);
+  }, [availableLocationTags.length, allowCustomIds]);
 
   const addMoreIds = () => {
     const finalLocationId = useCustom ? customLocationId.trim() : selectedLocationId;
@@ -74,11 +78,11 @@ const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({
       setMultipleIds([...multipleIds, finalLocationId]);
       setShowMultipleMode(true);
       // Select next available ID
-      const nextAvailable = availableLocationIds.find(id => 
-        id !== finalLocationId && !multipleIds.includes(id)
+      const nextAvailable = availableLocationTags.find((tag: any) => 
+        tag.locationTagName !== finalLocationId && !multipleIds.includes(tag.locationTagName)
       );
       if (nextAvailable) {
-        setSelectedLocationId(nextAvailable);
+        setSelectedLocationId(nextAvailable.locationTagName);
       }
     }
   };
@@ -178,17 +182,23 @@ const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({
                     onChange={(e) => setSelectedLocationId(e.target.value)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 hover:border-input/80"
                   >
-                    {availableLocationIds.slice(0, 50).map(locationId => (
-                      <option key={locationId} value={locationId}>
-                        {locationId}
-                      </option>
-                    ))}
+                    {isLoadingLocationTags ? (
+                      <option value="">Loading location tags...</option>
+                    ) : availableLocationTags.length > 0 ? (
+                      availableLocationTags.map((tag: any) => (
+                        <option key={tag.id} value={tag.locationTagName}>
+                          {tag.locationTagName}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="">No available location tags</option>
+                    )}
                   </select>
-                  {availableLocationIds.length > 50 && (
-                    <p className="text-xs text-muted-foreground">Showing first 50 of {availableLocationIds.length} available Location IDs (checked against entire map)</p>
+                  {!isLoadingLocationTags && availableLocationTags.length === 0 && (
+                    <p className="text-xs text-destructive">No available location tags. All location tags are already in use.</p>
                   )}
-                  {availableLocationIds.length === 0 && (
-                    <p className="text-xs text-destructive">No available sequential Location IDs in the entire map. Use custom ID.</p>
+                  {!isLoadingLocationTags && locationTags.length === 0 && (
+                    <p className="text-xs text-muted-foreground">No location tags found for this organizational unit.</p>
                   )}
                 </div>
               )}
@@ -275,6 +285,12 @@ const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({
           {/* Info Section */}
           <div className="rounded-md bg-muted/50 p-3 border border-border">
             <p className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">Location Tags:</span> {locationTags.length} total, {availableLocationTags.length} available
+              {locationTags.length > 0 && (
+                <span> (Loaded from backend for selected org unit)</span>
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
               <span className="font-medium text-foreground">Used Location IDs:</span> {existingLocationIds.length}
               {existingLocationIds.length > 0 && (
                 <span> (Latest: <span className="font-medium text-foreground">{existingLocationIds[existingLocationIds.length - 1]}</span>)</span>

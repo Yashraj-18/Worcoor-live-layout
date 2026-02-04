@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Upload, FileText, Database, Package, ArrowRight, CheckCircle, AlertCircle, Loader2, RefreshCw, Plus, Edit, Trash2, Save, X, Download, Clock } from "lucide-react"
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
@@ -92,33 +92,32 @@ const mapSkuToDisplayRow = (sku: Sku) => ({
   quantity: sku.quantity,
   effective_date: sku.effectiveDate,
   expiry_date: sku.expiryDate ?? "",
-  location_tag_id: sku.locationTagId ?? "",
-  description: sku.locationTagName ?? "",
+  location_tag_name: sku.locationTagName ?? "",
 })
 
 const mapAssetToDisplayRow = (asset: Asset) => ({
   asset_id: asset.assetId ?? "",
   asset_name: asset.assetName,
   asset_type: asset.assetType,
-  location_tag_id: asset.locationTagId ?? "",
-  description: asset.locationTagName ?? "",
+  location_tag_name: asset.locationTagName ?? "",
+  description: "",
 })
 
-const mapLocationTagToDisplayRow = (tag: LocationTag) => ({
+const mapLocationTagToDisplayRow = (tag: LocationTag, unitCode?: string | null) => ({
   location_tag_id: tag.id,
   location_tag: tag.locationTagName,
-  unit_id: tag.unitId,
+  unit_id: unitCode ?? tag.unitId,
   length: tag.length ?? "",
   breadth: tag.breadth ?? "",
   height: tag.height ?? "",
   unit_of_measurement: tag.unitOfMeasurement ?? "",
-  description: tag.locationTagName,
+  description: "",
 })
 
 // Backend schema definitions - matching exact form fields
 const BACKEND_SCHEMAS = {
   skus: {
-    fields: ['sku_id', 'sku_name', 'sku_category', 'sku_unit', 'quantity', 'effective_date', 'expiry_date', 'location_tag_id', 'description'],
+    fields: ['sku_id', 'sku_name', 'sku_category', 'sku_unit', 'quantity', 'effective_date', 'expiry_date', 'location_tag_name'],
     required: ['sku_name', 'sku_category', 'sku_unit', 'quantity', 'effective_date'],
     types: {
       sku_id: 'varchar',
@@ -128,8 +127,7 @@ const BACKEND_SCHEMAS = {
       quantity: 'numeric',
       effective_date: 'date',
       expiry_date: 'date',
-      location_tag_id: 'varchar',
-      description: 'varchar'
+      location_tag_name: 'varchar',
     }
   },
   location_tags: {
@@ -146,13 +144,13 @@ const BACKEND_SCHEMAS = {
     }
   },
   assets: {
-    fields: ['asset_id', 'asset_name', 'asset_type', 'location_tag_id', 'description'],
+    fields: ['asset_id', 'asset_name', 'asset_type', 'location_tag_name', 'description'],
     required: ['asset_name', 'asset_type'],
     types: {
       asset_id: 'varchar',
       asset_name: 'varchar',
       asset_type: 'varchar',
-      location_tag_id: 'varchar',
+      location_tag_name: 'varchar',
       description: 'varchar'
     }
   }
@@ -162,6 +160,7 @@ type UploadType = keyof typeof BACKEND_SCHEMAS
 
 interface OrgUnitOption {
   id: string
+  unitCode: string | null
   unitName: string
   unitType: "warehouse" | "production" | "office"
   status: "LIVE" | "OFFLINE" | "MAINTENANCE" | "PLANNING"
@@ -210,7 +209,97 @@ export default function BulkUploadPage() {
   const [apiRecords, setApiRecords] = useState<ApiRecordCache>({ skus: [], assets: [], location_tags: [] })
   const [isLoadingData, setIsLoadingData] = useState(false)
   const [displayedData, setDisplayedData] = useState<any[]>([])
+  const [unitLocationTags, setUnitLocationTags] = useState<Record<string, LocationTag[]>>({})
+  const [isLoadingLocationTags, setIsLoadingLocationTags] = useState(false)
+  const unitLocationTagsRef = useRef<Record<string, LocationTag[]>>({})
   const selectedOrgUnit = useMemo(() => orgUnits.find((unit) => unit.id === selectedOrgUnitId) ?? null, [orgUnits, selectedOrgUnitId])
+  const locationTagsForSelectedUnit = useMemo(
+    () => (selectedOrgUnitId ? unitLocationTags[selectedOrgUnitId] ?? [] : []),
+    [selectedOrgUnitId, unitLocationTags],
+  )
+
+  const orgUnitsById = useMemo(() => {
+    const map: Record<string, OrgUnitOption> = {}
+    orgUnits.forEach((unit) => {
+      map[unit.id] = unit
+    })
+    return map
+  }, [orgUnits])
+
+  const orgUnitsByCode = useMemo(() => {
+    const map: Record<string, OrgUnitOption> = {}
+    orgUnits.forEach((unit) => {
+      if (unit.unitCode) {
+        map[normalizeIdentifier(unit.unitCode)] = unit
+      }
+    })
+    return map
+  }, [orgUnits])
+
+  const getOrgUnitCodeByInternalId = useCallback(
+    (internalId?: string | null) => {
+      if (!internalId) return null
+      return orgUnitsById[internalId]?.unitCode ?? null
+    },
+    [orgUnitsById],
+  )
+
+  const resolveOrgUnitInternalIdByCode = useCallback(
+    (value: unknown) => {
+      const normalized = normalizeIdentifier(value)
+      if (!normalized) return null
+      return orgUnitsByCode[normalized]?.id ?? null
+    },
+    [orgUnitsByCode],
+  )
+
+  const cacheLocationTags = useCallback((unitId: string, tags: LocationTag[]) => {
+    unitLocationTagsRef.current = { ...unitLocationTagsRef.current, [unitId]: tags }
+    setUnitLocationTags((prev) => ({ ...prev, [unitId]: tags }))
+  }, [])
+
+  const loadLocationTagsForUnit = useCallback(
+    async (unitId: string) => {
+      if (!unitId) return null
+      if (unitLocationTagsRef.current[unitId]) {
+        return unitLocationTagsRef.current[unitId]
+      }
+
+      setIsLoadingLocationTags(true)
+      try {
+        const tags = await locationTagService.listByUnit(unitId)
+        cacheLocationTags(unitId, tags)
+        return tags
+      } catch (error) {
+        console.error('Failed to load location tags for unit', unitId, error)
+        toast({
+          title: 'Failed to load location tags',
+          description: 'Location tag names are required for SKU uploads. Please try again.',
+          variant: 'destructive',
+        })
+        return null
+      } finally {
+        setIsLoadingLocationTags(false)
+      }
+    },
+    [cacheLocationTags, toast],
+  )
+
+  useEffect(() => {
+    if (!selectedOrgUnitId) return
+    if (unitLocationTagsRef.current[selectedOrgUnitId]) return
+    void loadLocationTagsForUnit(selectedOrgUnitId)
+  }, [selectedOrgUnitId, loadLocationTagsForUnit])
+
+  const resolveLocationTagId = useCallback(
+    (value: unknown) => {
+      if (!selectedOrgUnitId) return null
+      const tags = unitLocationTagsRef.current[selectedOrgUnitId] ?? []
+      const record = findLocationTagRecord(tags, value)
+      return record?.id ?? null
+    },
+    [selectedOrgUnitId],
+  )
 
   const getRecordsForType = (type: UploadType) => {
     if (type === "skus") return apiRecords.skus
@@ -248,6 +337,7 @@ export default function BulkUploadPage() {
       setOrgUnits(
         warehouseUnits.map((unit) => ({
           id: unit.id,
+          unitCode: unit.unitId ?? null,
           unitName: unit.unitName,
           unitType: unit.unitType,
           status: unit.status,
@@ -284,19 +374,22 @@ export default function BulkUploadPage() {
     setIsLoadingData(true)
     try {
       if (uploadType === "skus") {
+        await loadLocationTagsForUnit(selectedOrgUnitId)
         const response = await skuService.list({ unitId: selectedOrgUnitId, limit: MAX_FETCH_LIMIT })
         updateRecordCache("skus", response.items)
         const rows = response.items.map(mapSkuToDisplayRow)
         setDisplayedData(rows)
       } else if (uploadType === "assets") {
+        await loadLocationTagsForUnit(selectedOrgUnitId)
         const response = await assetService.list({ unitId: selectedOrgUnitId, limit: MAX_FETCH_LIMIT })
         updateRecordCache("assets", response.items)
         const rows = response.items.map(mapAssetToDisplayRow)
         setDisplayedData(rows)
       } else if (uploadType === "location_tags") {
         const tags = await locationTagService.listByUnit(selectedOrgUnitId)
+        cacheLocationTags(selectedOrgUnitId, tags)
         updateRecordCache("location_tags", tags)
-        const rows = tags.map(mapLocationTagToDisplayRow)
+        const rows = tags.map((tag) => mapLocationTagToDisplayRow(tag, getOrgUnitCodeByInternalId(tag.unitId)))
         setDisplayedData(rows)
       }
     } catch (error) {
@@ -402,6 +495,7 @@ export default function BulkUploadPage() {
         ...prev,
         {
           id: created.id,
+          unitCode: created.unitId ?? null,
           unitName: created.unitName,
           unitType: created.unitType,
           status: created.status,
@@ -507,7 +601,7 @@ export default function BulkUploadPage() {
     type: UploadType,
     operation: CrudOperation,
     existingRecords: Sku[] | Asset[] | LocationTag[],
-    unitId?: string,
+    defaultUnitCode?: string,
   ): { valid: any[]; errors: string[] } => {
     const errors: string[] = []
     const valid: any[] = []
@@ -519,8 +613,8 @@ export default function BulkUploadPage() {
     }
 
     data.forEach((row, index) => {
-      if (type === 'location_tags' && !row.unit_id && unitId) {
-        row.unit_id = unitId
+      if (type === 'location_tags' && !row.unit_id && defaultUnitCode) {
+        row.unit_id = defaultUnitCode
       }
 
       let isValid = true
@@ -551,6 +645,26 @@ export default function BulkUploadPage() {
         }
       }
 
+      if (type === 'location_tags') {
+        const providedUnitCode = emptyToUndefined(row.unit_id)
+        if (providedUnitCode) {
+          const resolvedUnitId = resolveOrgUnitInternalIdByCode(providedUnitCode)
+          if (!resolvedUnitId) {
+            rowErrors.push(`unit_id "${row.unit_id}" was not found among your warehouses`)
+            isValid = false
+          }
+        }
+      } else if (type === 'assets' && operation !== 'delete') {
+        const providedLocationTagName = emptyToUndefined(row.location_tag_name)
+        if (providedLocationTagName) {
+          const resolvedId = resolveLocationTagId(providedLocationTagName)
+          if (!resolvedId) {
+            rowErrors.push(`location_tag_name "${row.location_tag_name}" was not found in the selected warehouse`)
+            isValid = false
+          }
+        }
+      }
+
       // CRUD operation validation - use appropriate ID field for each type
       if (operation === 'delete' || operation === 'update') {
         let identifier: string | null = null
@@ -562,6 +676,16 @@ export default function BulkUploadPage() {
           } else if (!findSkuRecord(existingRecords as Sku[], identifier)) {
             rowErrors.push(`SKU ${identifier} not found for ${operation}`)
             isValid = false
+          }
+          if (operation !== 'delete') {
+            const providedLocationTagName = emptyToUndefined(row.location_tag_name)
+            if (providedLocationTagName) {
+              const resolvedId = resolveLocationTagId(providedLocationTagName)
+              if (!resolvedId) {
+                rowErrors.push(`location_tag_name "${row.location_tag_name}" was not found in the selected warehouse`)
+                isValid = false
+              }
+            }
           }
         } else if (type === 'assets') {
           identifier = emptyToUndefined(row.asset_id) ?? null
@@ -672,6 +796,13 @@ export default function BulkUploadPage() {
         } else {
           for (const row of data) {
             try {
+              const hasLocationTagColumn = Object.prototype.hasOwnProperty.call(row, 'location_tag_name')
+              const normalizedLocationTagName = emptyToUndefined(row.location_tag_name)
+              const resolvedLocationTagId = normalizedLocationTagName ? resolveLocationTagId(normalizedLocationTagName) : null
+              if (normalizedLocationTagName && !resolvedLocationTagId) {
+                throw new Error(`Location tag "${row.location_tag_name}" not found for the selected warehouse`)
+              }
+
               if (operation === 'create') {
                 const payload: CreateSkuInput = {
                   skuId: emptyToUndefined(row.sku_id) ?? null,
@@ -681,7 +812,7 @@ export default function BulkUploadPage() {
                   quantity: Number(row.quantity) || 0,
                   effectiveDate: row.effective_date,
                   expiryDate: emptyToUndefined(row.expiry_date) ?? null,
-                  locationTagId: emptyToUndefined(row.location_tag_id) ?? null,
+                  locationTagId: normalizedLocationTagName ? resolvedLocationTagId : null,
                 }
                 await skuService.create(payload)
               } else {
@@ -693,7 +824,12 @@ export default function BulkUploadPage() {
                   quantity: Number.isNaN(quantity) ? undefined : quantity,
                   effectiveDate: row.effective_date,
                   expiryDate: emptyToUndefined(row.expiry_date) ?? null,
-                  locationTagId: emptyToUndefined(row.location_tag_id) ?? null,
+                  locationTagId:
+                    hasLocationTagColumn
+                      ? normalizedLocationTagName
+                        ? resolvedLocationTagId
+                        : null
+                      : undefined,
                 }
                 const record = getRecordForRow('skus', row, existingRecords)
                 if (!record) {
@@ -728,19 +864,31 @@ export default function BulkUploadPage() {
         } else {
           for (const row of data) {
             try {
+              const hasLocationTagColumn = Object.prototype.hasOwnProperty.call(row, 'location_tag_name')
+              const normalizedLocationTagName = emptyToUndefined(row.location_tag_name)
+              const resolvedLocationTagId = normalizedLocationTagName ? resolveLocationTagId(normalizedLocationTagName) : null
+              if (normalizedLocationTagName && !resolvedLocationTagId) {
+                throw new Error(`Location tag "${row.location_tag_name}" not found for the selected warehouse`)
+              }
+
               if (operation === 'create') {
                 const payload: CreateAssetInput = {
                   assetId: emptyToUndefined(row.asset_id) ?? null,
                   assetName: row.asset_name,
                   assetType: row.asset_type,
-                  locationTagId: emptyToUndefined(row.location_tag_id) ?? null,
+                  locationTagId: normalizedLocationTagName ? resolvedLocationTagId : null,
                 }
                 await assetService.create(payload)
               } else {
                 const payload: Partial<CreateAssetInput> = {
                   assetName: row.asset_name,
                   assetType: row.asset_type,
-                  locationTagId: emptyToUndefined(row.location_tag_id) ?? null,
+                  locationTagId:
+                    hasLocationTagColumn
+                      ? normalizedLocationTagName
+                        ? resolvedLocationTagId
+                        : null
+                      : undefined,
                 }
                 const record = getRecordForRow('assets', row, existingRecords)
                 if (!record) {
@@ -776,8 +924,15 @@ export default function BulkUploadPage() {
           for (const row of data) {
             try {
               const measurementUnit = toMeasurementUnit(row.unit_of_measurement)
+              const providedUnitCode = emptyToUndefined(row.unit_id)
+              const resolvedUnitId = providedUnitCode
+                ? resolveOrgUnitInternalIdByCode(providedUnitCode)
+                : unitId
+              if (!resolvedUnitId) {
+                throw new Error(`unit_id "${row.unit_id ?? 'N/A'}" could not be matched to any warehouse`)
+              }
               const payload: CreateLocationTagInput = {
-                unitId: row.unit_id ?? unitId,
+                unitId: resolvedUnitId,
                 locationTagName: row.location_tag,
                 length: parseOptionalNumber(row.length),
                 breadth: parseOptionalNumber(row.breadth),
@@ -819,6 +974,18 @@ export default function BulkUploadPage() {
       return
     }
 
+    if (uploadType === 'skus' || uploadType === 'assets') {
+      const locationTags = await loadLocationTagsForUnit(selectedOrgUnitId)
+      if (locationTags === null) {
+        toast({
+          title: 'Location tags unavailable',
+          description: 'Could not load location tags for the selected warehouse. Please try again.',
+          variant: 'destructive',
+        })
+        return
+      }
+    }
+
     console.log("Starting import with:", {
       dataCount: parsedData.length,
       uploadType,
@@ -857,6 +1024,27 @@ export default function BulkUploadPage() {
   const handleUpload = async () => {
     if (!selectedFile) return
 
+    if (uploadType === 'skus' || uploadType === 'assets') {
+      if (!selectedOrgUnitId) {
+        toast({
+          title: 'Select a warehouse first',
+          description: 'Location tag names are specific to a warehouse. Please pick one to continue.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      const locationTags = await loadLocationTagsForUnit(selectedOrgUnitId)
+      if (locationTags === null) {
+        toast({
+          title: 'Location tags unavailable',
+          description: 'Could not load location tags for the selected warehouse. Please try again.',
+          variant: 'destructive',
+        })
+        return
+      }
+    }
+
     setIsUploading(true)
     setParsedData([])
     setUploadResults(null)
@@ -864,7 +1052,13 @@ export default function BulkUploadPage() {
     try {
       const data = await parseFile(selectedFile)
       const existingRecords = getRecordsForType(uploadType)
-      const { valid, errors } = validateData(data, uploadType, crudOperation, existingRecords, selectedOrgUnitId)
+      const { valid, errors } = validateData(
+        data,
+        uploadType,
+        crudOperation,
+        existingRecords,
+        selectedOrgUnit?.unitCode ?? undefined,
+      )
 
       setParsedData(valid)
       setUploadResults({

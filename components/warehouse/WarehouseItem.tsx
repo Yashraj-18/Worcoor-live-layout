@@ -1124,7 +1124,7 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           >
             {/* Fire Exit Image */}
             <img
-              src={encodeURI(item.icon || "/assets/images/icons/Fire Exit Markings.png")}
+              src={encodeURI(item.icon || "/assets/images/icons/Fire Exit marking.png")}
               alt="Fire Exit"
               style={{
                 width: `${canvasIconSize}px`,
@@ -1183,7 +1183,7 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           >
             {/* Security Area Image */}
             <img
-              src={encodeURI(item.icon || "/assets/images/icons/security area.png")}
+              src={encodeURI(item.icon || "/assets/images/icons/security.png")}
               alt="Security Area"
               style={{
                 width: `${canvasIconSize}px`,
@@ -1241,7 +1241,7 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           >
             {/* Restrooms Area Image */}
             <img
-              src={encodeURI(item.icon || "/assets/images/icons/restroom area.png")}
+              src={encodeURI(item.icon || "/assets/images/icons/rest room area.png")}
               alt="Restrooms"
               style={{
                 width: `${canvasIconSize}px`,

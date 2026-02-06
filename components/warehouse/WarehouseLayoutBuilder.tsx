@@ -904,6 +904,13 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
   // Handle organization mapping selection
   const handleOrgMapSelect = useCallback((orgMap: any) => {
     if (!selectedOrgUnit) return;
+
+    if (!orgMap) {
+      setSelectedOrgMap(null);
+      setLayoutName(`${selectedOrgUnit.name} Layout`);
+      setLayoutNameSet(true);
+      return;
+    }
     
     const layoutName = `${selectedOrgUnit.name} - ${orgMap.name}`;
     

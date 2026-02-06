@@ -6,6 +6,7 @@ import LocationDetailsPanel from '@/components/warehouse/LocationDetailsPanel';
 import SavedLayoutRenderer, { getLayoutItemKey } from '@/components/warehouse/SavedLayoutRenderer';
 import summarizeStorageComponents from '../../../lib/warehouse/utils/layoutComponentSummary';
 import layoutComponentsMock from '@/warehouse/data/layoutComponentsMock.json';
+import { RefreshCw } from 'lucide-react';
 
 const WarehouseMapView = ({ facilityData }) => {
   const [selectedZone, setSelectedZone] = useState(null);
@@ -37,6 +38,10 @@ const WarehouseMapView = ({ facilityData }) => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [showLocationDetails, setShowLocationDetails] = useState(false);
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [autoRefreshMinutes, setAutoRefreshMinutes] = useState(0);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
+
   // Load saved layouts from localStorage
   const refreshSavedLayouts = useCallback(() => {
     const storedLayouts = localStorage.getItem('warehouseLayouts');
@@ -47,6 +52,35 @@ const WarehouseMapView = ({ facilityData }) => {
       setSavedLayouts([]);
     }
   }, []);
+
+  const refreshLiveData = useCallback(async () => {
+    console.log('MapView - Refresh triggered', { selectedUnitForDemo });
+    setIsRefreshing(true);
+    try {
+      refreshSavedLayouts();
+      window.dispatchEvent(new Event('layoutSaved'));
+    } catch (error) {
+      console.error('MapView - Refresh failed:', error);
+    } finally {
+      setLastRefreshedAt(new Date());
+      setIsRefreshing(false);
+    }
+  }, [refreshSavedLayouts, selectedUnitForDemo]);
+
+  useEffect(() => {
+    if (!autoRefreshMinutes) {
+      return;
+    }
+
+    const intervalMs = autoRefreshMinutes * 60 * 1000;
+    const id = window.setInterval(() => {
+      void refreshLiveData();
+    }, intervalMs);
+
+    return () => {
+      window.clearInterval(id);
+    };
+  }, [autoRefreshMinutes, refreshLiveData]);
 
   useEffect(() => {
     refreshSavedLayouts();
@@ -1935,11 +1969,44 @@ const WarehouseMapView = ({ facilityData }) => {
               </div>
               
               <div className="demo-map-controls">
+                <div className="dropdown-filter">
+                  <select
+                    value={autoRefreshMinutes}
+                    onChange={(e) => setAutoRefreshMinutes(Number(e.target.value) || 0)}
+                    className="search-dropdown"
+                    title="Auto Refresh"
+                    disabled={isRefreshing}
+                  >
+                    <option value={0}>Off</option>
+                    <option value={1}>1 min</option>
+                    <option value={5}>5 min</option>
+                    <option value={10}>10 min</option>
+                  </select>
+                </div>
+                {lastRefreshedAt && (
+                  <div style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }} title={lastRefreshedAt.toLocaleString()}>
+                    Updated {lastRefreshedAt.toLocaleTimeString()}
+                  </div>
+                )}
+                <button
+                  className="demo-map-fullscreen-btn"
+                  onClick={() => {
+                    console.log('MapView - Refresh button clicked');
+                    void refreshLiveData();
+                  }}
+                  title="Refresh"
+                  type="button"
+                  disabled={isRefreshing}
+                  style={{ opacity: isRefreshing ? 0.6 : 1 }}
+                >
+                  <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                </button>
                 {isFullscreen ? (
                   <button 
                     className="demo-map-fullscreen-btn" 
                     onClick={handleExitFullscreen}
                     title="Exit fullscreen"
+                    type="button"
                   >
                     ⛶
                   </button>
@@ -1948,12 +2015,13 @@ const WarehouseMapView = ({ facilityData }) => {
                     className="demo-map-fullscreen-btn" 
                     onClick={handleOpenFullscreen}
                     title="Enter fullscreen"
+                    type="button"
                   >
                     ⛶
                   </button>
                 )}
                 {!isFullscreen && (
-                  <button className="demo-map-close-btn" onClick={() => setShowDemoMapModal(false)}>×</button>
+                  <button className="demo-map-close-btn" onClick={() => setShowDemoMapModal(false)} type="button">×</button>
                 )}
               </div>
             </div>

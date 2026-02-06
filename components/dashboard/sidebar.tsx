@@ -24,18 +24,20 @@ type SidebarProps = {
 }
 
 export function DashboardSidebar({ isOpen, toggle }: SidebarProps) {
-  const { authLogout, userData } = useAuth();
+  const { authLogout, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   const logout = async (e: React.FormEvent) => {
+    e.preventDefault()
     try {
-      // ✅ Mock logout - no external API call needed
-      notification.success('Logout Successful');
-      authLogout();
-      router.replace('/login');
+      await apiService.post({ path: '/api/auth/logout' })
+      notification.success('Logout Successful')
     } catch (error: any) {
-      notification.error("Something went wrong. Please try again.");
+      notification.error('Something went wrong. Please try again.')
+    } finally {
+      authLogout()
+      router.replace('/login')
     }
   }
 
@@ -222,13 +224,16 @@ export function DashboardSidebar({ isOpen, toggle }: SidebarProps) {
     // },
     ]
 
-  const getInitials = (name?: string) => {
-    if (!name) return 'A'; // fallback
-    const words = name.trim().split(' ');
-    return words.length > 1
-      ? words[0][0].toUpperCase() + words[1][0].toUpperCase()
-      : words[0][0].toUpperCase();
-  };
+  const getInitials = (identifier?: string) => {
+    if (!identifier) return 'A'
+    const cleaned = identifier.trim()
+    if (!cleaned) return 'A'
+    const [first] = cleaned.split(/|@/)
+    return first ? first[0].toUpperCase() : 'A'
+  }
+
+  const displayName = user?.email?.split('@')[0] ?? 'Admin User'
+  const displayEmail = user?.email ?? 'admin@worcoor.com'
 
   // Filter main navigation items (those without a parent)
   const mainNavItems = navItems.filter((item) => !item.parent)
@@ -369,12 +374,12 @@ export function DashboardSidebar({ isOpen, toggle }: SidebarProps) {
                 <MenubarTrigger className="w-full h-full bg-slate-800/50 p-2 py-6">
                   <div className="w-full flex items-center">
                     <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center font-semibold text-sm shadow-lg">
-                      {getInitials(userData?.fullName)}
+                      {getInitials(displayName)}
                     </div>
                     <div className="flex-1 flex items-center min-w-0 ml-2">
                       <div className="text-left">
-                        <p className="text-[14px] font-md text-white truncate">{userData?.fullName || "Admin User"}</p>
-                        <p className="text-[10px] text-slate-400 truncate">{userData?.maskEmail || "admin@worcoor.com"}</p>
+                        <p className="text-[14px] font-md text-white truncate">{displayName}</p>
+                        <p className="text-[10px] text-slate-400 truncate">{displayEmail}</p>
                       </div>
                       <ChevronRight className="h-4 w-4 ml-auto" />
                     </div>
@@ -389,7 +394,7 @@ export function DashboardSidebar({ isOpen, toggle }: SidebarProps) {
         ) : (
           <div className="flex justify-center">
             <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center font-semibold text-sm shadow-lg hover:scale-105 transition-transform duration-200">
-              {getInitials(userData?.fullName)}
+              {getInitials(displayName)}
             </div>
           </div>
         )}

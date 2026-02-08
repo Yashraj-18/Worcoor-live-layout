@@ -454,7 +454,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.FIRE_EXIT_MARKING,
         name: "Fire Exit Marking",
-        icon: "/assets/images/icons/Fire Exit Markings.png",
+        icon: "/assets/images/icons/Fire Exit marking.png",
         color: getComponentPanelColor(COMPONENT_TYPES.FIRE_EXIT_MARKING),
         defaultSize: { width: 120, height: 60 }, // 2×1 grid blocks
         description: "Fire exit safety marking for emergency evacuation routes",
@@ -471,7 +471,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.SECURITY_AREA,
         name: "Security Area",
-        icon: "/assets/images/icons/security area.png",
+        icon: "/assets/images/icons/security.png",
         color: getComponentPanelColor(COMPONENT_TYPES.SECURITY_AREA),
         defaultSize: { width: 180, height: 60 }, // 3×1 grid blocks
         description: "Security monitoring and access control area",
@@ -490,7 +490,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.RESTROOMS_AREA,
         name: "Restrooms Area",
-        icon: "/assets/images/icons/restroom area.png",
+        icon: "/assets/images/icons/rest room area.png",
         color: getComponentPanelColor(COMPONENT_TYPES.RESTROOMS_AREA),
         defaultSize: { width: 120, height: 60 }, // 2×1 grid blocks
         description: "Restroom facilities area for warehouse personnel",
@@ -553,7 +553,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.MEETING_ROOMS,
         name: "Meeting Rooms",
-        icon: "/assets/images/icons/Meeting Rooms.png",
+        icon: "/assets/images/icons/Meeting Room.png",
         color: getComponentPanelColor(COMPONENT_TYPES.MEETING_ROOMS),
         defaultSize: { width: 180, height: 180 }, // 3×3 grid blocks
         description: "Small meeting rooms for team discussions",
@@ -572,7 +572,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.PANTRY_AREA,
         name: "Pantry Area",
-        icon: "/assets/images/icons/Pantry Area.png",
+        icon: "/assets/images/icons/Pantry Area .png",
         color: getComponentPanelColor(COMPONENT_TYPES.PANTRY_AREA),
         defaultSize: { width: 120, height: 120 }, // 2×2 grid blocks
         description: "Kitchen and refreshment area for staff",

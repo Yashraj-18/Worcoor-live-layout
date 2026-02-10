@@ -6,6 +6,7 @@ import { inferVerticalRackLevelCount } from '@/lib/warehouse/utils/verticalRackU
 import summarizeStorageComponents from '@/lib/warehouse/utils/layoutComponentSummary';
 import locationDataService from '@/lib/warehouse/services/locationDataService';
 import LocationDetailsPanel from './LocationDetailsPanel';
+import WarehouseOverviewPanel from './WarehouseOverviewPanel';
 import layoutComponentsMock from '@/lib/warehouse/data/layoutComponentsMock.json';
 
 const renderDemoLayout = (demoData) => (
@@ -111,7 +112,7 @@ const renderDemoLayout = (demoData) => (
 );
 
 const FullscreenMap = () => {
-  const [mapData, setMapData] = useState(null);
+  const [mapData, setMapData] = useState<any>(null);
   const [error, setError] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [operationalData, setOperationalData] = useState({});
@@ -1789,6 +1790,16 @@ const FullscreenMap = () => {
                 selectedItem={selectedItem}
                 onClose={() => setShowInfoPanel(false)}
                 isEmbedded={true}
+              />
+            )}
+
+            {/* Show Warehouse Overview Panel by default (no component selected) */}
+            {!showInfoPanel && (
+              <WarehouseOverviewPanel 
+                layoutData={{
+                  items: mapData?.layoutData?.items || [],
+                  name: mapData?.name
+                }} 
               />
             )}
           </div>

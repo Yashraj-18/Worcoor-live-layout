@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import WarehouseLayoutBuilder from '@/components/warehouse/WarehouseLayoutBuilder';
 import LocationDetailsPanel from '@/components/warehouse/LocationDetailsPanel';
+import WarehouseOverviewPanel from '@/components/warehouse/WarehouseOverviewPanel';
 import SavedLayoutRenderer, { getLayoutItemKey } from '@/components/warehouse/SavedLayoutRenderer';
 import summarizeStorageComponents from '@/lib/warehouse/utils/layoutComponentSummary';
 import layoutComponentsMock from '@/lib/warehouse/data/layoutComponentsMock.json';
@@ -1920,7 +1921,8 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                     const unit = warehouseUnits.find(u => u.id === selectedUnitForDemo);
                     const demoData = demoMapsData[selectedUnitForDemo];
                     
-                    // Show zone info for demo units
+                    // Show zone info for demo units - COMMENTED OUT (not using demo maps)
+                    /*
                     if (unit && !unit.isCustomLayout && demoData) {
                       return (
                         <>
@@ -1970,6 +1972,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                         </>
                       );
                     }
+                    */
                     
                     // Show Location Details Panel if an item is selected
                     if (showLocationDetails && selectedItem) {
@@ -1987,8 +1990,18 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                       );
                     }
                     
-                    // Don't show Layout Components panel - only show when item is clicked
-                    return null;
+                    // Show Warehouse Overview Panel by default (no component selected)
+                    const currentLayout = savedLayouts.find(layout => layout.id === selectedUnitForDemo);
+                    return (
+                      <div className="demo-map-info overview-container">
+                        <WarehouseOverviewPanel 
+                          layoutData={{
+                            items: currentLayout?.layoutData?.items || [],
+                            name: currentLayout?.name
+                          }} 
+                        />
+                      </div>
+                    );
                   })()}
                 </div>
               </div>

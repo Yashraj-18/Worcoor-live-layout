@@ -82,11 +82,12 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
   const [selectedFacility, setSelectedFacility] = useState<any>(null);
   const [showMainDashboard, setShowMainDashboard] = useState<boolean>(false);
   const [gridVisible, setGridVisible] = useState<boolean>(true);
-  const [snapEnabled, setSnapEnabled] = useState<boolean>(true);
+  const [snapEnabled, setSnapEnabled] = useState<boolean>(false);
   const [undoStack, setUndoStack] = useState<any[]>([]);
   const [redoStack, setRedoStack] = useState<any[]>([]);
   const [layoutName, setLayoutName] = useState<string>('Warehouse Management System');
   const [layoutNameSet, setLayoutNameSet] = useState<boolean>(false);
+  const [originalLayoutId, setOriginalLayoutId] = useState<string | null>(null); // Track original layout ID for editing
   const [selectedOrgUnit, setSelectedOrgUnit] = useState<OrgUnit | null>(initialOrgUnit);
   const [selectedOrgMap, setSelectedOrgMap] = useState<any>(null);
   const [locationTags, setLocationTags] = useState<LocationTag[]>([]);
@@ -167,6 +168,18 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     
     if (initialLayout && initialLayout.items) {
       console.log('Setting warehouse items from initialLayout:', initialLayout.items);
+      
+      // Check if this is an existing layout by looking for it in saved layouts
+      const savedLayouts = JSON.parse(localStorage.getItem('warehouseLayouts') || '[]');
+      const existingLayout = savedLayouts.find((layout: any) => 
+        layout.name === initialLayout.name && 
+        layout.orgUnit === (initialOrgUnit?.name || 'Unknown')
+      );
+      
+      if (existingLayout) {
+        setOriginalLayoutId(existingLayout.id);
+        console.log('📝 Found existing layout ID for editing:', existingLayout.id);
+      }
       
       // Auto-center components in the canvas
       const items = initialLayout.items;
@@ -314,6 +327,12 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
           setWarehouseItems(layoutData.items);
           setLayoutName(layoutData.name || 'Loaded Layout');
           setLayoutNameSet(true);
+          
+          // Store the original layout ID for editing
+          if (layoutData.id) {
+            setOriginalLayoutId(layoutData.id);
+            console.log('📝 Editing existing layout with ID:', layoutData.id);
+          }
           
           // Clear the temporary load data
           localStorage.removeItem('loadLayoutData');
@@ -1216,21 +1235,64 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     
     // Save to localStorage for warehouse maps integration
     const savedLayouts = JSON.parse(localStorage.getItem('warehouseLayouts') || '[]');
-    const layoutForMaps = {
-      id: `layout-${Date.now()}`,
-      name: layoutName,
-      status: operationalStatus,
-      location: 'Unknown',
-      orgUnit: selectedOrgUnit?.name || 'Unknown',
-      size: `${operationalMetadata.croppedDimensions.width}x${operationalMetadata.croppedDimensions.height}`,
-      items: warehouseItems.length,
-      zones: warehouseItems.filter(item => item.type && (item.type.includes('zone') || item.type.includes('storage'))).length,
-      utilization: Math.floor(Math.random() * 40) + 60, // Random utilization 60-100%
-      lastActivity: new Date().toISOString(),
-      layoutData: layoutData
-    };
     
-    savedLayouts.push(layoutForMaps);
+    // Check if we're editing an existing layout
+    if (originalLayoutId) {
+      // Find and update existing layout
+      const existingIndex = savedLayouts.findIndex((layout: any) => layout.id === originalLayoutId);
+      if (existingIndex !== -1) {
+        // Update existing layout
+        savedLayouts[existingIndex] = {
+          ...savedLayouts[existingIndex],
+          name: layoutName,
+          status: operationalStatus,
+          location: savedLayouts[existingIndex].location || 'Unknown',
+          orgUnit: selectedOrgUnit?.name || savedLayouts[existingIndex].orgUnit || 'Unknown',
+          size: `${operationalMetadata.croppedDimensions.width}x${operationalMetadata.croppedDimensions.height}`,
+          items: warehouseItems.length,
+          zones: warehouseItems.filter(item => item.type && (item.type.includes('zone') || item.type.includes('storage'))).length,
+          utilization: Math.floor(Math.random() * 40) + 60, // Random utilization 60-100%
+          lastActivity: new Date().toISOString(),
+          layoutData: layoutData
+        };
+        console.log('✅ Updated existing layout:', originalLayoutId);
+      } else {
+        // Fallback: Create new layout if original not found
+        const layoutForMaps = {
+          id: originalLayoutId,
+          name: layoutName,
+          status: operationalStatus,
+          location: 'Unknown',
+          orgUnit: selectedOrgUnit?.name || 'Unknown',
+          size: `${operationalMetadata.croppedDimensions.width}x${operationalMetadata.croppedDimensions.height}`,
+          items: warehouseItems.length,
+          zones: warehouseItems.filter(item => item.type && (item.type.includes('zone') || item.type.includes('storage'))).length,
+          utilization: Math.floor(Math.random() * 40) + 60, // Random utilization 60-100%
+          lastActivity: new Date().toISOString(),
+          layoutData: layoutData
+        };
+        savedLayouts.push(layoutForMaps);
+        console.log('⚠️ Original layout not found, created new with original ID:', originalLayoutId);
+      }
+    } else {
+      // Create new layout
+      const layoutForMaps = {
+        id: `layout-${Date.now()}`,
+        name: layoutName,
+        status: operationalStatus,
+        location: 'Unknown',
+        orgUnit: selectedOrgUnit?.name || 'Unknown',
+        size: `${operationalMetadata.croppedDimensions.width}x${operationalMetadata.croppedDimensions.height}`,
+        items: warehouseItems.length,
+        zones: warehouseItems.filter(item => item.type && (item.type.includes('zone') || item.type.includes('storage'))).length,
+        utilization: Math.floor(Math.random() * 40) + 60, // Random utilization 60-100%
+        lastActivity: new Date().toISOString(),
+        layoutData: layoutData
+      };
+      
+      savedLayouts.push(layoutForMaps);
+      console.log('🆕 Created new layout:', layoutForMaps.id);
+    }
     localStorage.setItem('warehouseLayouts', JSON.stringify(savedLayouts));
     
     // Trigger custom event to update warehouse maps

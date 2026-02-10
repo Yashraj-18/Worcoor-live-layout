@@ -4,8 +4,10 @@ import { db } from '../../../config/database.js';
 import { layouts } from '../../../database/schema/index.js';
 
 export type LayoutEntity = typeof layouts.$inferSelect;
-export type CreateLayoutDto = Omit<LayoutEntity, 'id' | 'createdAt'>;
-export type UpdateLayoutDto = Partial<Pick<LayoutEntity, 'layoutName'>>;
+export type CreateLayoutDto = Omit<LayoutEntity, 'id' | 'createdAt' | 'updatedAt'>;
+export type UpdateLayoutDto = Partial<
+  Pick<LayoutEntity, 'layoutName' | 'status' | 'layoutData' | 'metadata'>
+> & { updatedAt?: LayoutEntity['updatedAt'] };
 
 export class LayoutsRepository {
   async findAllByUnit(unitId: string, organizationId: string): Promise<LayoutEntity[]> {

@@ -24,6 +24,7 @@ import SkuIdSelector from '@/components/warehouse/SkuIdSelector';
 import MultiLocationSelector from '@/components/warehouse/MultiLocationSelector';
 import OrgUnitSelector from '@/components/warehouse/OrgUnitSelector';
 import { locationTagService, type LocationTag } from '@/src/services/locationTags';
+import { warehouseService } from '@/src/services/warehouseService';
 import { STACK_MODES, STACKABLE_COMPONENTS, OCCUPANCY_STATUS, STORAGE_ORIENTATION, COMPONENT_TYPES } from '@/lib/warehouse/constants/warehouseComponents';
 import { getComponentColor, forceRefreshStorageUnitColors } from '@/lib/warehouse/utils/componentColors';
 import { generateStorageUnitLabel, generateStorageComponentLabel, applyEnhancedLabeling } from '@/lib/warehouse/utils/componentLabeling';
@@ -50,9 +51,11 @@ interface OrgUnit {
 }
 
 interface LayoutData {
+  id?: string;
   items: any[];
   name?: string;
-  timestamp?: string;
+  status?: string;
+  metadata?: Record<string, any>;
 }
 
 interface AppProps {
@@ -95,22 +98,10 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
   const [multiLocationSelectorVisible, setMultiLocationSelectorVisible] = useState<boolean>(false);
   const [pendingSkuRequest, setPendingSkuRequest] = useState<any>(null);
   const [mapTypeSelectorVisible, setMapTypeSelectorVisible] = useState<boolean>(false);
+  const [currentLayoutId, setCurrentLayoutId] = useState<string | null>(initialLayout?.id ?? null);
+  const [isSavingLayout, setIsSavingLayout] = useState(false);
 
   const selectedItem = warehouseItems.find(item => item.id === selectedItemId);
-
-  // Handle org unit selection
-  const handleOrgUnitSelect = useCallback((selection: any) => {
-    const { orgUnit, status } = selection;
-    const layoutName = `${orgUnit.name} Layout`;
-    
-    setSelectedOrgUnit(orgUnit);
-    setSelectedOrgMap(null); // Reset map selection when org unit changes
-    setLayoutName(layoutName);
-    setLayoutNameSet(true);
-    
-    // Fetch location tags for the selected org unit
-    fetchLocationTagsForOrgUnit(orgUnit);
-  }, []);
 
   // Fetch location tags for a specific org unit
   const fetchLocationTagsForOrgUnit = useCallback(async (orgUnit: any) => {
@@ -153,6 +144,20 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     }
   }, []);
 
+  // Handle org unit selection
+  const handleOrgUnitSelect = useCallback((selection: any) => {
+    const { orgUnit } = selection;
+    const layoutName = `${orgUnit.name} Layout`;
+    
+    setSelectedOrgUnit(orgUnit);
+    setSelectedOrgMap(null); // Reset map selection when org unit changes
+    setLayoutName(layoutName);
+    setLayoutNameSet(true);
+    
+    // Fetch location tags for the selected org unit
+    fetchLocationTagsForOrgUnit(orgUnit);
+  }, [fetchLocationTagsForOrgUnit]);
+
   // Initialize org unit and layout when editing
   useEffect(() => {
     console.log('WarehouseLayoutBuilder - initialOrgUnit:', initialOrgUnit);
@@ -163,6 +168,7 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
       const layoutName = initialLayout?.name || `${initialOrgUnit.name} Layout`;
       setLayoutName(layoutName);
       setLayoutNameSet(true);
+      fetchLocationTagsForOrgUnit(initialOrgUnit);
     }
     
     if (initialLayout && initialLayout.items) {
@@ -235,7 +241,8 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
         setWarehouseItems(items);
       }
     }
-  }, [initialOrgUnit, initialLayout]);
+    setCurrentLayoutId(initialLayout?.id ?? null);
+  }, [initialOrgUnit, initialLayout, fetchLocationTagsForOrgUnit]);
 
   // Real-time data refresh effect
   useEffect(() => {
@@ -304,29 +311,18 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     });
   }, []); // Run once on mount to fix any existing items
 
-  // Load layout from localStorage if available (for editing saved layouts)
+  // Load layout from initialLayout prop if provided (for editing saved layouts)
   useEffect(() => {
-    const loadLayoutData = localStorage.getItem('loadLayoutData');
-    if (loadLayoutData) {
-      try {
-        const layoutData = JSON.parse(loadLayoutData);
-        if (layoutData.items && Array.isArray(layoutData.items)) {
-          setWarehouseItems(layoutData.items);
-          setLayoutName(layoutData.name || 'Loaded Layout');
-          setLayoutNameSet(true);
-          
-          // Clear the temporary load data
-          localStorage.removeItem('loadLayoutData');
-          
-          // Show confirmation
-          showMessage.success(`Layout "${layoutData.name || 'Loaded Layout'}" loaded successfully!\n\nThis layout has been optimized to remove white space and focus on operational content.`);
-        }
-      } catch (error) {
-        console.error('Error loading layout:', error);
-        localStorage.removeItem('loadLayoutData');
+    if (initialLayout && initialLayout.items && Array.isArray(initialLayout.items)) {
+      setWarehouseItems(initialLayout.items);
+      setLayoutName(initialLayout.name || 'Loaded Layout');
+      setLayoutNameSet(true);
+      if (initialLayout.id) {
+        setCurrentLayoutId(initialLayout.id);
       }
+      showMessage.success(`Layout "${initialLayout.name || 'Loaded Layout'}" loaded successfully!`);
     }
-  }, []);
+  }, [initialLayout]);
 
   // Clear context menu when no warehouse items exist
   useEffect(() => {
@@ -1160,6 +1156,7 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
   }, []);
 
   const handleSave = useCallback(() => {
+    if (isSavingLayout) return;
     // If no org unit selected, prompt user to select one
     if (!selectedOrgUnit) {
       showMessage.warning('Please select an organizational unit from the dropdown in the top navigation bar before saving.');
@@ -1168,120 +1165,108 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     
     // Show map type selector modal before saving
     setMapTypeSelectorVisible(true);
-  }, [selectedOrgUnit]);
+  }, [selectedOrgUnit, isSavingLayout]);
 
-  const handleMapTypeSelected = useCallback((selection: any) => {
+  const handleMapTypeSelected = useCallback(async (selection: any) => {
+    if (!selectedOrgUnit?.id) {
+      showMessage.error('Please select an organizational unit before saving.');
+      return;
+    }
+
     const { status } = selection;
-    const operationalStatus = status.id; // Use selected status from modal
-    
-    // Use ultra-tight cropping to eliminate ALL white space
+    const operationalStatus = status.id;
+
     const croppedLayout = LayoutCropper.createUltraTightCrop(warehouseItems);
-    
-    // Add operational metadata
     const operationalMetadata = {
       totalComponents: croppedLayout.croppedItems.length,
       croppedDimensions: {
         width: Math.round(croppedLayout.bounds.width),
-        height: Math.round(croppedLayout.bounds.height)
+        height: Math.round(croppedLayout.bounds.height),
       },
       whitespaceRemoved: {
         x: Math.round(croppedLayout.offset.x),
-        y: Math.round(croppedLayout.offset.y)
-      }
+        y: Math.round(croppedLayout.offset.y),
+      },
     };
-    
-    const layoutData = {
+
+    const metadataPayload = {
+      totalItems: warehouseItems.length,
+      croppedItems: croppedLayout.croppedItems.length,
+      createdBy: 'Layout Designer',
+      lastModified: new Date().toISOString(),
+      cropping: operationalMetadata,
+      orgUnit: selectedOrgUnit,
+      orgMap: selectedOrgMap,
+      originalDimensions: {
+        width: Math.max(...warehouseItems.map((item) => item.x + item.width), 800),
+        height: Math.max(...warehouseItems.map((item) => item.y + item.height), 600),
+      },
+      croppedDimensions: operationalMetadata.croppedDimensions,
+    };
+
+    const persistedLayoutData = {
       name: layoutName,
-      items: croppedLayout.croppedItems, // Use cropped items instead of original
-      operationalStatus: operationalStatus,
+      items: croppedLayout.croppedItems,
+      operationalStatus,
       timestamp: new Date().toISOString(),
       version: '1.0',
       orgUnit: selectedOrgUnit,
       orgMap: selectedOrgMap,
-      metadata: {
-        totalItems: warehouseItems.length,
-        croppedItems: croppedLayout.croppedItems.length,
-        createdBy: 'Layout Designer',
-        lastModified: new Date().toISOString(),
-        cropping: operationalMetadata,
-        orgUnit: selectedOrgUnit,
-        orgMap: selectedOrgMap,
-        originalDimensions: {
-          width: Math.max(...warehouseItems.map(item => item.x + item.width), 800),
-          height: Math.max(...warehouseItems.map(item => item.y + item.height), 600)
-        },
-        croppedDimensions: operationalMetadata.croppedDimensions
-      }
     };
-    
-    // Save to localStorage for warehouse maps integration
-    const savedLayouts = JSON.parse(localStorage.getItem('warehouseLayouts') || '[]');
-    const layoutForMaps = {
-      id: `layout-${Date.now()}`,
-      name: layoutName,
+
+    const payload = {
+      layoutName,
       status: operationalStatus,
-      location: 'Unknown',
-      orgUnit: selectedOrgUnit?.name || 'Unknown',
-      size: `${operationalMetadata.croppedDimensions.width}x${operationalMetadata.croppedDimensions.height}`,
-      items: warehouseItems.length,
-      zones: warehouseItems.filter(item => item.type && (item.type.includes('zone') || item.type.includes('storage'))).length,
-      utilization: Math.floor(Math.random() * 40) + 60, // Random utilization 60-100%
-      lastActivity: new Date().toISOString(),
-      layoutData: layoutData
+      layoutData: persistedLayoutData,
+      metadata: metadataPayload,
     };
-    
-    savedLayouts.push(layoutForMaps);
-    localStorage.setItem('warehouseLayouts', JSON.stringify(savedLayouts));
-    
-    // Trigger custom event to update warehouse maps
-    window.dispatchEvent(new CustomEvent('layoutSaved'));
-    
-    const dataStr = JSON.stringify(layoutData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${layoutName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    
-    URL.revokeObjectURL(url);
-    
-    // Show confirmation with status
-    const statusLabels = {
-      'operational': 'Operational (Ready for live operations)',
-      'draft': 'Draft (Work in progress - not ready for operations)'
-    };
-    
-    // Show confirmation with ultra-tight cropping info
-    const croppingInfo = operationalMetadata.whitespaceRemoved.x > 0 || operationalMetadata.whitespaceRemoved.y > 0 
-      ? `\n\nUltra-tight optimization: Removed ${operationalMetadata.whitespaceRemoved.x}px × ${operationalMetadata.whitespaceRemoved.y}px of white space\nFinal size: ${operationalMetadata.croppedDimensions.width}px × ${operationalMetadata.croppedDimensions.height}px\nZero padding applied for maximum focus`
-      : '';
-    
-    showMessage.success(`Layout "${layoutName}" saved successfully!\n\nOrganizational Unit: ${selectedOrgUnit?.name || 'Unknown'}\nStatus: ${statusLabels[operationalStatus as keyof typeof statusLabels] || 'Unknown'}${croppingInfo}\n\nThis layout is now available in the Live Warehouse Maps section.`);
-    
-    // Close the map type selector modal
-    setMapTypeSelectorVisible(false);
-  }, [warehouseItems, layoutName, layoutNameSet, selectedOrgUnit, selectedOrgMap]);
+
+    setIsSavingLayout(true);
+    try {
+      let savedLayout;
+      if (currentLayoutId) {
+        savedLayout = await warehouseService.updateLayout(currentLayoutId, payload);
+      } else {
+        savedLayout = await warehouseService.createLayout(selectedOrgUnit.id, payload);
+      }
+      setCurrentLayoutId(savedLayout.id);
+      setLayoutName(savedLayout.layoutName);
+      setLayoutNameSet(true);
+
+      const dataStr = JSON.stringify(persistedLayoutData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${layoutName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      const statusLabels = {
+        operational: 'Operational (Ready for live operations)',
+        draft: 'Draft (Work in progress - not ready for operations)',
+      } as const;
+      const croppingInfo = operationalMetadata.whitespaceRemoved.x > 0 || operationalMetadata.whitespaceRemoved.y > 0
+        ? `\n\nUltra-tight optimization: Removed ${operationalMetadata.whitespaceRemoved.x}px × ${operationalMetadata.whitespaceRemoved.y}px of white space\nFinal size: ${operationalMetadata.croppedDimensions.width}px × ${operationalMetadata.croppedDimensions.height}px\nZero padding applied for maximum focus`
+        : '';
+
+      showMessage.success(
+        `Layout "${layoutName}" saved successfully!\n\nOrganizational Unit: ${selectedOrgUnit?.name || 'Unknown'}\nStatus: ${statusLabels[operationalStatus as keyof typeof statusLabels] || 'Unknown'}${croppingInfo}\n\nThis layout is now available in the Live Warehouse Maps section.`,
+      );
+
+      setMapTypeSelectorVisible(false);
+    } catch (error) {
+      console.error('Failed to save layout', error);
+      showMessage.error('Failed to save layout. Please try again.');
+    } finally {
+      setIsSavingLayout(false);
+    }
+  }, [warehouseItems, layoutName, selectedOrgUnit, selectedOrgMap, currentLayoutId]);
 
   const handleLoad = useCallback(() => {
-    // Try to load from localStorage
-    const savedData = localStorage.getItem('loadLayoutData');
-    if (savedData) {
-      try {
-        const data = JSON.parse(savedData);
-        if (data.items && Array.isArray(data.items)) {
-          setWarehouseItems(data.items);
-          setSelectedItemId(null);
-        } else {
-          showMessage.error('Invalid file format');
-        }
-      } catch (error) {
-        showMessage.error('Failed to load layout');
-      }
-      // Clear the temporary load data
-      localStorage.removeItem('loadLayoutData');
-    }
+    // Load is now handled via initialLayout prop passed from the edit page
+    // This handler is kept for compatibility with TopNavbar but does nothing
+    showMessage.info('Use the edit page to load a saved layout.');
   }, []);
 
   const handleClear = useCallback(() => {
@@ -1290,6 +1275,7 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     setLayoutName('Warehouse Management System');
     setLayoutNameSet(false);
     setSelectedOrgUnit(null);
+    setCurrentLayoutId(null);
   }, []);
 
   // Enhanced facility management handlers

@@ -21,8 +21,14 @@ export class LayoutsService {
   ) {
     const { unitId } = request.params;
     const payload = request.body;
-    const layout = await this.repository.create({
+    const normalizedPayload = {
       ...payload,
+      status: payload.status ?? 'draft',
+      layoutData: payload.layoutData ?? null,
+      metadata: payload.metadata ?? null,
+    };
+    const layout = await this.repository.create({
+      ...normalizedPayload,
       unitId,
       organizationId: request.user.organizationId,
     });
@@ -30,15 +36,36 @@ export class LayoutsService {
     reply.code(201).send(layout);
   }
 
+  async getById(
+    request: FastifyRequest<{ Params: { layoutId: string } }> ,
+    reply: FastifyReply,
+  ) {
+    const { layoutId } = request.params;
+    const layout = await this.repository.findById(layoutId, request.user.organizationId);
+
+    if (!layout) {
+      return reply.code(404).send({ error: 'Layout not found' });
+    }
+
+    reply.send(layout);
+  }
+
   async update(
     request: FastifyRequest<{ Params: { layoutId: string }; Body: UpdateLayoutInput }>,
     reply: FastifyReply,
   ) {
     const { layoutId } = request.params;
+    const payload = request.body;
     const updated = await this.repository.update(
       layoutId,
       request.user.organizationId,
-      request.body,
+      {
+        ...payload,
+        status: payload.status ?? undefined,
+        layoutData: payload.layoutData ?? null,
+        metadata: payload.metadata ?? null,
+        updatedAt: new Date(),
+      },
     );
 
     if (!updated) {

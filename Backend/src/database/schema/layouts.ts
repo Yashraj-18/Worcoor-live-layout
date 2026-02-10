@@ -1,4 +1,4 @@
-import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { organizations } from './organization.js';
 import { units } from './units.js';
@@ -14,7 +14,11 @@ export const layouts = pgTable(
       .notNull()
       .references(() => organizations.id, { onDelete: 'cascade' }),
     layoutName: text('layout_name').notNull(),
+    status: text('status').$type<'operational' | 'draft' | 'archived'>().default('draft'),
+    layoutData: jsonb('layout_data'),
+    metadata: jsonb('metadata'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }),
   },
   (table) => ({
     unitIdx: index('idx_layouts_unit').on(table.unitId),

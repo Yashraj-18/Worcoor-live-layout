@@ -6,7 +6,7 @@ import WarehouseLayoutBuilder from '@/components/warehouse/WarehouseLayoutBuilde
 import LocationDetailsPanel from '@/components/warehouse/LocationDetailsPanel';
 import SavedLayoutRenderer, { getLayoutItemKey } from '@/components/warehouse/SavedLayoutRenderer';
 import summarizeStorageComponents from '@/lib/warehouse/utils/layoutComponentSummary';
-import layoutComponentsMock from '@/lib/warehouse/data/layoutComponentsMock.json';
+// layoutComponentsMock removed - now using API-fetched SKU data
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,10 @@ import { Progress } from '@/components/ui/progress';
 import { ArrowRight, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { locationTagService } from '@/src/services/locationTags';
+import { orgUnitService, type OrgUnit } from '@/src/services/orgUnits';
+import { warehouseService } from '@/src/services/warehouseService';
+import { skuService, type Sku } from '@/src/services/skus';
+import type { Layout } from '@/types/warehouse';
 
 // TypeScript interfaces
 interface WarehouseLayout {
@@ -29,6 +33,13 @@ interface WarehouseLayout {
   layoutData: {
     items: WarehouseItem[];
   };
+  orgUnit?: {
+    id?: string;
+    name?: string;
+    unitName?: string;
+  } | null;
+  unitId?: string | null;
+  metadata?: Layout['metadata'] | null;
 }
 
 interface WarehouseItem {
@@ -90,6 +101,42 @@ interface WarehouseMapViewProps {
   fullscreenMode?: boolean;
 }
 
+function toWarehouseLayout(layout: Layout): WarehouseLayout {
+  const items = Array.isArray(layout.layoutData?.items) ? (layout.layoutData?.items as WarehouseItem[]) : [];
+  const orgUnitMeta = (layout.metadata as Record<string, any> | null)?.orgUnit ?? null;
+  const locationLabel = orgUnitMeta?.name || orgUnitMeta?.unitName || orgUnitMeta?.unitId || 'Warehouse Unit';
+  const cropped = (layout.metadata as Record<string, any> | null)?.croppedDimensions;
+  const original = (layout.metadata as Record<string, any> | null)?.originalDimensions;
+  const sizeLabel = cropped
+    ? `${cropped.width ?? '—'} × ${cropped.height ?? '—'} px`
+    : original
+      ? `${original.width ?? '—'} × ${original.height ?? '—'} px`
+      : 'Custom Layout';
+  const lastActivity = layout.updatedAt || layout.createdAt;
+  const utilization = (layout.metadata as Record<string, any> | null)?.utilization
+    ?? (layout.metadata as Record<string, any> | null)?.metrics?.utilization
+    ?? Math.min(100, Math.round((items.length / 50) * 100));
+  const zones = (layout.metadata as Record<string, any> | null)?.zones ?? Math.max(1, Math.round(items.length / 10));
+
+  return {
+    id: layout.id,
+    name: layout.layoutName,
+    location: locationLabel,
+    size: sizeLabel,
+    status: layout.status,
+    utilization,
+    zones,
+    items: items.length,
+    lastActivity: lastActivity || new Date().toISOString(),
+    layoutData: {
+      items,
+    },
+    orgUnit: orgUnitMeta,
+    unitId: layout.unitId,
+    metadata: layout.metadata ?? null,
+  };
+}
+
 const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initialSelectedLayoutId, onModalClose, fullscreenMode }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -115,6 +162,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   const [availableLocationTags, setAvailableLocationTags] = useState<string[]>([]);
   const [availableSkus, setAvailableSkus] = useState<string[]>([]);
   const [availableAssets, setAvailableAssets] = useState<string[]>([]);
+  const [layoutLocationTags, setLayoutLocationTags] = useState<string[]>([]);
   const [selectedLocationTag, setSelectedLocationTag] = useState<string>('');
   const [selectedSku, setSelectedSku] = useState<string>('');
   const [selectedAsset, setSelectedAsset] = useState<string>('');
@@ -125,15 +173,42 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   const [mounted, setMounted] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [cameFromDashboard, setCameFromDashboard] = useState(false);
+  const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
+  const [isLoadingLayouts, setIsLoadingLayouts] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [skuLocationMap, setSkuLocationMap] = useState<Record<string, string[]>>({});
+  const [locationSkuMap, setLocationSkuMap] = useState<Record<string, string>>({});
 
-  // Load saved layouts from localStorage
-  const refreshSavedLayouts = useCallback(() => {
-    const storedLayouts = localStorage.getItem('warehouseLayouts');
-    if (storedLayouts) {
-      const parsedLayouts = JSON.parse(storedLayouts);
-      setSavedLayouts(parsedLayouts);
-    } else {
+  const refreshSavedLayouts = useCallback(async (): Promise<WarehouseLayout[]> => {
+    setIsLoadingLayouts(true);
+    setLoadError(null);
+
+    try {
+      const units = await orgUnitService.list();
+      setOrgUnits(units);
+
+      const layoutsByUnit = await Promise.all(
+        units.map(async (unit) => {
+          try {
+            const layouts = await warehouseService.getLayouts(unit.id);
+            return layouts.map(toWarehouseLayout);
+          } catch (unitError) {
+            console.warn(`WarehouseMapView - Failed to load layouts for unit ${unit.unitName}`, unitError);
+            return [] as WarehouseLayout[];
+          }
+        })
+      );
+
+      const flattened = layoutsByUnit.flat();
+      setSavedLayouts(flattened);
+      return flattened;
+    } catch (error) {
+      console.error('WarehouseMapView - Failed to load layouts', error);
+      setLoadError('Unable to load warehouse layouts. Please try again.');
       setSavedLayouts([]);
+      return [];
+    } finally {
+      setIsLoadingLayouts(false);
     }
   }, []);
 
@@ -144,23 +219,15 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     console.log('WarehouseMapView - Refresh triggered', { selectedUnitForDemo });
     setIsRefreshing(true);
     try {
-      refreshSavedLayouts();
-      window.dispatchEvent(new Event('layoutSaved'));
+      const latestLayouts = await refreshSavedLayouts();
 
       if (!selectedUnitForDemo) {
         console.warn('WarehouseMapView - Refresh skipped: no selectedUnitForDemo');
         return;
       }
 
-      const storedLayouts = localStorage.getItem('warehouseLayouts');
-      if (!storedLayouts) {
-        console.warn('WarehouseMapView - Refresh skipped: no warehouseLayouts in localStorage');
-        return;
-      }
-
-      const parsedLayouts = JSON.parse(storedLayouts) as any[];
-      const selectedLayout = parsedLayouts.find((layout) => layout?.id === selectedUnitForDemo);
-      const unitId: string | undefined = selectedLayout?.orgUnit?.id || selectedLayout?.unitId;
+      const selectedLayout = latestLayouts.find((layout) => layout.id === selectedUnitForDemo);
+      const unitId: string | undefined = selectedLayout?.orgUnit?.id || selectedLayout?.unitId || undefined;
 
       if (!unitId) {
         console.warn('WarehouseMapView - Refresh skipped: selected layout missing unitId/orgUnit.id', {
@@ -196,27 +263,48 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   }, [autoRefreshMinutes, refreshLiveData]);
 
   useEffect(() => {
+    let isCancelled = false;
+
+    const bootstrap = async () => {
+      await refreshSavedLayouts();
+      if (isCancelled) return;
+
+      if (!layoutId && !initialSelectedLayoutId && !selectedUnitForDemo) {
+        setSavedLayouts((existing) => {
+          if (existing.length > 0) {
+            setSelectedUnitForDemo(existing[0].id);
+          }
+          return existing;
+        });
+      }
+    };
+
+    void bootstrap();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [refreshSavedLayouts, layoutId, initialSelectedLayoutId, selectedUnitForDemo]);
+
+  useEffect(() => {
     setMounted(true);
-    refreshSavedLayouts();
-    // Reset transition state when layoutId changes
     setIsTransitioning(false);
-    
-    // Check if user came from main dashboard (has layoutId in URL)
+
     if (layoutId) {
       setCameFromDashboard(true);
       setSelectedUnitForDemo(layoutId);
       setShowDemoMapModal(true);
     }
 
-    if (fullscreenMode && initialSelectedLayoutId) {
+    if (!layoutId && fullscreenMode && initialSelectedLayoutId) {
       setSelectedUnitForDemo(initialSelectedLayoutId);
       setShowDemoMapModal(true);
     }
-  }, [layoutId]);
+  }, [layoutId, fullscreenMode, initialSelectedLayoutId]);
 
   // Handle browser back button to close modal
   useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
+    const handlePopState = () => {
       if (showDemoMapModal) {
         setShowDemoMapModal(false);
         if (onModalClose) {
@@ -251,118 +339,72 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     window.open(url, '_blank', 'noopener,noreferrer');
   }, [selectedUnitForDemo]);
 
-  useEffect(() => {
-    refreshSavedLayouts();
-
-    const handleStorageChange = () => {
-      refreshSavedLayouts();
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('layoutSaved', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('layoutSaved', handleStorageChange);
-    };
-  }, [refreshSavedLayouts]);
-
-  // Extract dropdown options from the currently selected unit's layout only
-  const extractDropdownOptionsFromSelectedUnit = useCallback((unitId: string | null) => {
-    if (!unitId) {
-      setAvailableLocationTags([]);
-      setAvailableSkus([]);
-      setAvailableAssets([]);
-      return;
+  const collectDropdownOptionsFromLayout = useCallback((layout?: WarehouseLayout | null) => {
+    if (!layout?.layoutData?.items) {
+      return { locationTags: [] as string[], skus: [] as string[], assets: [] as string[] };
     }
 
-    // Find the selected unit from saved layouts
-    const selectedLayout: WarehouseLayout | undefined = savedLayouts.find(layout => layout.id === unitId);
-    
-    if (!selectedLayout?.layoutData?.items) {
-      setAvailableLocationTags([]);
-      setAvailableSkus([]);
-      setAvailableAssets([]);
-      return;
-    }
+    const locationTags = new Set<string>();
+    const skus = new Set<string>();
+    const assets = new Set<string>();
 
-    const locationTags = new Set();
-    const skus = new Set();
-    const assets = new Set();
+    // Use API-fetched location-to-SKU mapping instead of mock data
+    const locationToSkuMap: Record<string, string> = locationSkuMap;
 
-    // Create a lookup map from location_id to sku_name (case-insensitive)
-    const locationToSkuMap: Record<string, string> = {};
-    if (layoutComponentsMock?.locations) {
-      layoutComponentsMock.locations.forEach(loc => {
-        if (loc.location_id && loc.sku_name) {
-          // Store both original case and uppercase version for matching
-          locationToSkuMap[loc.location_id] = loc.sku_name;
-          locationToSkuMap[loc.location_id.toUpperCase()] = loc.sku_name;
-          locationToSkuMap[loc.location_id.toLowerCase()] = loc.sku_name;
-        }
-      });
-    }
-
-    const addLocation = (value: string | undefined) => {
+    const addLocation = (value?: string | null) => {
       if (!value) return;
-      const normalized = typeof value === 'string' ? value.trim() : String(value).trim();
+      const normalized = value.trim();
       if (normalized) {
         locationTags.add(normalized);
       }
     };
 
-    const addSku = (value: string | undefined) => {
+    const addSku = (value?: string | null) => {
       if (!value) return;
-      const normalized = typeof value === 'string' ? value.trim() : String(value).trim();
-      if (normalized) {
-        // Handle comma-separated location IDs (e.g., "LOC-007,LOC-008")
-        if (normalized.includes(',')) {
-          const locationIds = normalized.split(',').map(id => id.trim());
-          locationIds.forEach(locId => {
-            const skuName = locationToSkuMap[locId];
-            if (skuName) {
-              skus.add(skuName);
-            }
-          });
-        } else {
-          // Single location ID - map it to SKU name
-          const skuName = locationToSkuMap[normalized];
+      const normalized = value.trim();
+      if (!normalized) return;
+
+      if (normalized.includes(',')) {
+        normalized.split(',').map((id) => id.trim()).forEach((locId) => {
+          const skuName = locationToSkuMap[locId];
           if (skuName) {
             skus.add(skuName);
-          } else if (!normalized.startsWith('LOC-') && !normalized.startsWith('Loc-') && !normalized.startsWith('loc-')) {
-            // If it's not a location ID pattern, add it as-is (might be actual SKU)
-            skus.add(normalized);
           }
-        }
+        });
+        return;
+      }
+
+      const skuName = locationToSkuMap[normalized];
+      if (skuName) {
+        skus.add(skuName);
+      } else if (!/^loc-/i.test(normalized)) {
+        skus.add(normalized);
       }
     };
 
-    const addAsset = (type: string | undefined) => {
+    const addAsset = (type?: string | null) => {
       if (!type || type === 'square_boundary') return;
-      // Map component types to readable names
       const typeMap = {
-        'storage_unit': 'Storage Unit',
-        'spare_unit': 'Spare Unit',
-        'sku_holder': 'Horizontal Storage',
-        'vertical_sku_holder': 'Vertical Storage',
-        'open_storage_space': 'Open Storage Space',
-        'dispatch_staging_area': 'Dispatch Staging Area',
-        'grading_area': 'Grading Area',
-        'processing_area': 'Processing Area',
-        'production_area': 'Production Area',
-        'packaging_area': 'Packaging Area',
-        'cold_storage': 'Cold Storage',
-        'solid_boundary': 'Solid Boundary',
-        'dotted_boundary': 'Dotted Boundary'
-      };
-      const readableName = typeMap[type as keyof typeof typeMap] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        storage_unit: 'Storage Unit',
+        spare_unit: 'Spare Unit',
+        sku_holder: 'Horizontal Storage',
+        vertical_sku_holder: 'Vertical Storage',
+        open_storage_space: 'Open Storage Space',
+        dispatch_staging_area: 'Dispatch Staging Area',
+        grading_area: 'Grading Area',
+        processing_area: 'Processing Area',
+        production_area: 'Production Area',
+        packaging_area: 'Packaging Area',
+        cold_storage: 'Cold Storage',
+        solid_boundary: 'Solid Boundary',
+        dotted_boundary: 'Dotted Boundary',
+      } as const;
+      const readableName = typeMap[type as keyof typeof typeMap] || type.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
       assets.add(readableName);
     };
 
     const collectLocationsFromContent = (content: CompartmentContent = {}) => {
       if (!content) return;
-
-      // Collect all location IDs from content
       addLocation(content.locationId);
       addLocation(content.primaryLocationId);
 
@@ -372,59 +414,54 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
 
       if (Array.isArray(content.levelLocationMappings)) {
         content.levelLocationMappings.forEach((mapping) => {
-          addLocation(mapping?.locationId || mapping?.locId);
-          // Also extract SKU from location ID in mapping
-          addSku(mapping?.locationId || mapping?.locId);
+          const locId = mapping?.locationId || mapping?.locId;
+          addLocation(locId);
+          addSku(locId);
         });
       }
 
       if (Array.isArray(content.levelIds) && Array.isArray(content.locationIds)) {
-        content.locationIds.forEach(locId => {
+        content.locationIds.forEach((locId) => {
           addLocation(locId);
-          addSku(locId); // Also add as SKU to map to name
+          addSku(locId);
         });
       }
 
-      // Add SKU data from all content fields
       addSku(content.sku);
       addSku(content.uniqueId);
       addSku(content.primarySku);
-      addSku(content.locationId); // Location ID can map to SKU name
-      addSku(content.primaryLocationId); // Primary location ID can map to SKU name
-      
-      // Handle locationIds array
+      addSku(content.locationId);
+      addSku(content.primaryLocationId);
+
       if (Array.isArray(content.locationIds)) {
         content.locationIds.forEach(addSku);
       }
     };
 
     const collectLocationsFromItem = (item: WarehouseItem = {}) => {
-      if (item?.type === 'square_boundary') {
-        return;
-      }
+      if (item?.type === 'square_boundary') return;
 
       addLocation(item.locationId);
       addLocation(item.locationCode);
       addLocation(item.locationTag);
 
       if (Array.isArray(item.locationIds)) {
-        item.locationIds.forEach(locId => {
+        item.locationIds.forEach((locId) => {
           addLocation(locId);
-          addSku(locId); // Extract SKU from location ID
+          addSku(locId);
         });
       }
 
-      // Extract from item-level levelLocationMappings (vertical racks)
       if (Array.isArray(item.levelLocationMappings)) {
         item.levelLocationMappings.forEach((mapping) => {
           const locId = mapping?.locationId || mapping?.locId;
           addLocation(locId);
-          addSku(locId); // Extract SKU from each level's location ID
+          addSku(locId);
         });
       }
 
       addLocation(item.primaryLocationId);
-      addSku(item.primaryLocationId); // Extract SKU from primary location
+      addSku(item.primaryLocationId);
 
       if (item.compartmentContents) {
         Object.values(item.compartmentContents).forEach((content) => {
@@ -434,25 +471,152 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       }
     };
 
-    // Process only the selected layout's items
-    selectedLayout.layoutData.items.forEach((item) => {
+    layout.layoutData.items.forEach((item) => {
       collectLocationsFromItem(item);
-
-      // Only add component type to assets
       if (item.type) {
         addAsset(item.type);
       }
     });
 
-    setAvailableLocationTags(Array.from(locationTags) as string[]);
-    setAvailableSkus(Array.from(skus) as string[]);
-    setAvailableAssets(Array.from(assets) as string[]);
-  }, [savedLayouts]);
+    return {
+      locationTags: Array.from(locationTags).sort(),
+      skus: Array.from(skus).sort(),
+      assets: Array.from(assets).sort(),
+    };
+  }, [locationSkuMap]);
 
-  // Extract dropdown options when selected unit changes
   useEffect(() => {
-    extractDropdownOptionsFromSelectedUnit(selectedUnitForDemo);
-  }, [selectedUnitForDemo, savedLayouts, extractDropdownOptionsFromSelectedUnit]);
+    if (!selectedUnitForDemo) {
+      setAvailableSkus([]);
+      setAvailableAssets([]);
+      setLayoutLocationTags([]);
+      return;
+    }
+
+    const selectedLayout = savedLayouts.find((layout) => layout.id === selectedUnitForDemo);
+    if (!selectedLayout) {
+      setAvailableSkus([]);
+      setAvailableAssets([]);
+      setLayoutLocationTags([]);
+      return;
+    }
+
+    const { locationTags, skus, assets } = collectDropdownOptionsFromLayout(selectedLayout);
+    setAvailableSkus(skus);
+    setAvailableAssets(assets);
+    setLayoutLocationTags(locationTags);
+  }, [selectedUnitForDemo, savedLayouts, collectDropdownOptionsFromLayout]);
+
+  useEffect(() => {
+    if (!selectedUnitForDemo) {
+      setAvailableLocationTags([]);
+      return;
+    }
+
+    const selectedLayout = savedLayouts.find((layout) => layout.id === selectedUnitForDemo);
+    if (!selectedLayout) {
+      setAvailableLocationTags([]);
+      return;
+    }
+
+    const unitId = selectedLayout.orgUnit?.id ?? selectedLayout.unitId;
+    if (!unitId) {
+      setAvailableLocationTags(layoutLocationTags);
+      return;
+    }
+
+    let cancelled = false;
+    const fetchTags = async () => {
+      try {
+        const tags = await locationTagService.listByUnit(unitId);
+        if (cancelled) return;
+        const apiTags = tags
+          .map((tag) => tag.locationTagName)
+          .filter((tag): tag is string => Boolean(tag?.trim()))
+          .map((tag) => tag.trim());
+        const combined = Array.from(new Set([...layoutLocationTags, ...apiTags])).sort();
+        setAvailableLocationTags(combined);
+      } catch (error) {
+        console.error('WarehouseMapView - Failed to load location tags', error);
+        if (!cancelled) {
+          setAvailableLocationTags(layoutLocationTags);
+          setLoadError((prev) => prev ?? 'Failed to load location tags.');
+        }
+      }
+    };
+
+    fetchTags();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedUnitForDemo, savedLayouts, layoutLocationTags]);
+
+  // Fetch SKUs for the selected unit and build location-SKU mappings
+  useEffect(() => {
+    if (!selectedUnitForDemo) {
+      setSkuLocationMap({});
+      setLocationSkuMap({});
+      return;
+    }
+
+    const selectedLayout = savedLayouts.find((layout) => layout.id === selectedUnitForDemo);
+    if (!selectedLayout) {
+      setSkuLocationMap({});
+      setLocationSkuMap({});
+      return;
+    }
+
+    const unitId = selectedLayout.orgUnit?.id ?? selectedLayout.unitId;
+    if (!unitId) {
+      setSkuLocationMap({});
+      setLocationSkuMap({});
+      return;
+    }
+
+    let cancelled = false;
+    const fetchSkus = async () => {
+      try {
+        const response = await skuService.list({ unitId, limit: 1000 });
+        if (cancelled) return;
+
+        const skuToLocs: Record<string, string[]> = {};
+        const locToSku: Record<string, string> = {};
+
+        response.items.forEach((sku: Sku) => {
+          if (!sku.locationTagName) return;
+          const locName = sku.locationTagName.trim();
+          const skuName = sku.skuName.trim();
+
+          // location -> sku (first wins)
+          if (!locToSku[locName]) {
+            locToSku[locName] = skuName;
+          }
+          locToSku[locName.toUpperCase()] = skuName;
+          locToSku[locName.toLowerCase()] = skuName;
+
+          // sku -> locations
+          if (!skuToLocs[skuName]) {
+            skuToLocs[skuName] = [];
+          }
+          skuToLocs[skuName].push(locName, locName.toUpperCase(), locName.toLowerCase());
+        });
+
+        setSkuLocationMap(skuToLocs);
+        setLocationSkuMap(locToSku);
+      } catch (error) {
+        console.error('WarehouseMapView - Failed to load SKUs for unit', error);
+        if (!cancelled) {
+          setSkuLocationMap({});
+          setLocationSkuMap({});
+        }
+      }
+    };
+
+    fetchSkus();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedUnitForDemo, savedLayouts]);
 
   // Close filter dropdown when clicking outside
   useEffect(() => {
@@ -646,18 +810,24 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     }
   };
 
-  const handleDeleteLayout = (layoutId: string | undefined) => {
-    if (!layoutId || typeof window === 'undefined') return;
+  const handleDeleteLayout = async (layoutId: string | undefined) => {
+    if (!layoutId) return;
 
     const confirmed = window.confirm('Delete this layout permanently? This action cannot be undone.');
     if (!confirmed) return;
 
-    setSavedLayouts(prevLayouts => {
-      const updatedLayouts = prevLayouts.filter(layout => layout.id !== layoutId);
-      window.localStorage.setItem('warehouseLayouts', JSON.stringify(updatedLayouts));
-      window.dispatchEvent(new Event('layoutSaved'));
-      return updatedLayouts;
-    });
+    try {
+      await warehouseService.deleteLayout(layoutId);
+      await refreshSavedLayouts();
+
+      if (selectedUnitForDemo === layoutId) {
+        setSelectedUnitForDemo(null);
+        setShowDemoMapModal(false);
+      }
+    } catch (error) {
+      console.error('WarehouseMapView - Failed to delete layout', error);
+      setLoadError('Failed to delete layout. Please try again.');
+    }
   };
 
   const handleUnitAction = (unitId: string, action: string) => {
@@ -1093,21 +1263,8 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       'Dotted Boundary': 'dotted_boundary'
     };
 
-    // Create reverse lookup: SKU name -> location IDs (with all case variations)
-    const skuNameToLocationIds: Record<string, string[]> = {};
-    if (layoutComponentsMock?.locations) {
-      layoutComponentsMock.locations.forEach(loc => {
-        if (loc.sku_name && loc.location_id) {
-          if (!skuNameToLocationIds[loc.sku_name]) {
-            skuNameToLocationIds[loc.sku_name] = [];
-          }
-          // Add all case variations of the location ID
-          skuNameToLocationIds[loc.sku_name].push(loc.location_id);
-          skuNameToLocationIds[loc.sku_name].push(loc.location_id.toUpperCase());
-          skuNameToLocationIds[loc.sku_name].push(loc.location_id.toLowerCase());
-        }
-      });
-    }
+    // Use API-fetched SKU-to-location mapping instead of mock data
+    const skuNameToLocationIds: Record<string, string[]> = skuLocationMap;
 
     unit.layoutData.items.forEach((item: WarehouseItem, index: number) => {
       const itemKey = getLayoutItemKey(item) || `${unit.id}-${item.id || index}`;

@@ -1,107 +1,149 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
-import WarehouseLayoutBuilder from '@/components/warehouse/WarehouseLayoutBuilder';
 import '@/styles/warehouse.css';
+import { warehouseService } from '@/src/services/warehouseService';
+import { orgUnitService, type OrgUnit } from '@/src/services/orgUnits';
+import type { Layout } from '@/types/warehouse';
+
+const WarehouseLayoutBuilder = dynamic(() => import('@/components/warehouse/WarehouseLayoutBuilder'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex justify-center items-center h-screen">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+        <p className="text-lg font-medium text-gray-700">Loading Layout Builder…</p>
+      </div>
+    </div>
+  ),
+});
+
+interface BuilderOrgUnit {
+  id: string;
+  name: string;
+}
+
+interface BuilderLayoutData {
+  id?: string;
+  name?: string;
+  items: any[];
+  status?: string;
+  metadata?: Record<string, any>;
+}
 
 export default function EditLayoutPage() {
   const params = useParams();
   const router = useRouter();
-  const [layoutData, setLayoutData] = useState<any>(null);
+  const [layout, setLayout] = useState<Layout | null>(null);
+  const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const layoutId = params.id as string;
-    
+    const layoutParam = params?.id;
+    const layoutId = Array.isArray(layoutParam) ? layoutParam[0] : layoutParam;
+
     if (!layoutId) {
       setError('No layout ID provided');
       setLoading(false);
       return;
     }
 
-    // Load layouts from localStorage
-    const storedLayouts = localStorage.getItem('warehouseLayouts');
-    if (!storedLayouts) {
-      setError('No saved layouts found');
-      setLoading(false);
-      return;
-    }
+    let isMounted = true;
 
-    try {
-      const layouts = JSON.parse(storedLayouts);
-      console.log('All layouts:', layouts);
-      console.log('Looking for layout ID:', layoutId);
-      
-      const layout = layouts.find((l: any) => l.id === layoutId);
-      console.log('Found layout:', layout);
-      
-      // Detailed structure debugging
-      if (layout) {
-        console.log('Layout structure analysis:');
-        console.log('- layout.id:', layout.id);
-        console.log('- layout.name:', layout.name);
-        console.log('- layout.orgUnit:', layout.orgUnit);
-        console.log('- layout.layoutData exists:', !!layout.layoutData);
-        console.log('- layout.layoutData.items:', layout.layoutData?.items);
-        console.log('- layout.layoutData.items length:', layout.layoutData?.items?.length);
-        console.log('- layout.layoutData items sample:', layout.layoutData?.items?.[0]);
-      }
-      
-      if (!layout) {
-        setError('Layout not found');
-        setLoading(false);
-        return;
-      }
+    const fetchLayout = async () => {
+      try {
+        const fetchedLayout = await warehouseService.getLayout(layoutId);
+        if (!isMounted) return;
+        setLayout(fetchedLayout);
 
-      console.log('Setting layout data:', layout);
-      setLayoutData(layout);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading layout:', error);
-      setError('Failed to load layout');
-      setLoading(false);
-    }
-  }, [params.id]);
-
-  // Debug effect to log what's being passed to WarehouseLayoutBuilder
-  useEffect(() => {
-    if (layoutData) {
-      console.log('Passing to WarehouseLayoutBuilder:', {
-        initialOrgUnit: layoutData?.orgUnit,
-        initialLayout: {
-          items: layoutData?.layoutData?.items || layoutData?.items || [],
-          name: layoutData?.name || '',
-          itemsLength: layoutData?.layoutData?.items?.length || layoutData?.items?.length || 0
+        try {
+          const fetchedUnits = await orgUnitService.list();
+          if (!isMounted) return;
+          setOrgUnits(fetchedUnits);
+        } catch (unitsError) {
+          console.warn('Warehouse edit: failed to fetch org units', unitsError);
         }
-      });
+      } catch (fetchError) {
+        console.error('Failed to load layout', fetchError);
+        if (isMounted) {
+          setError('Failed to load layout details. Please try again.');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchLayout();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [params?.id]);
+
+  const selectedOrgUnit: BuilderOrgUnit | null = useMemo(() => {
+    if (!layout) {
+      return null;
     }
-  }, [layoutData]);
+
+    const matchedUnit = orgUnits.find((unit) => unit.id === layout.unitId);
+    if (matchedUnit) {
+      return { id: matchedUnit.id, name: matchedUnit.unitName };
+    }
+
+    const layoutOrgUnit = (layout.layoutData as Record<string, any> | null)?.orgUnit;
+    if (layoutOrgUnit?.id || layout.unitId) {
+      return {
+        id: layoutOrgUnit?.id ?? layout.unitId,
+        name: layoutOrgUnit?.name ?? layoutOrgUnit?.unitName ?? 'Warehouse Unit',
+      };
+    }
+
+    return null;
+  }, [layout, orgUnits]);
+
+  const initialLayout: BuilderLayoutData | null = useMemo(() => {
+    if (!layout) {
+      return null;
+    }
+
+    const layoutData = (layout.layoutData as Record<string, any> | null) ?? {};
+    return {
+      id: layout.id,
+      name: layout.layoutName,
+      items: Array.isArray(layoutData.items) ? layoutData.items : [],
+      status: layout.status,
+      metadata: layout.metadata ?? undefined,
+    };
+  }, [layout]);
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-lg font-medium text-gray-700">Loading Layout for Editing...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-lg font-medium text-gray-700">Loading layout details…</p>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error || !layout) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-center">
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
             <h2 className="text-xl font-semibold text-red-800 mb-2">Error Loading Layout</h2>
-            <p className="text-red-600 mb-4">{error}</p>
+            <p className="text-red-600 mb-4">{error || 'Layout not found'}</p>
             <button
-              onClick={() => router.push('/dashboard/warehouse-management/warehouse-map')}
+              onClick={() => router.push('/dashboard/warehouse-management')}
               className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
             >
-              Back to Warehouse Maps
+              Back to Warehouse Management
             </button>
           </div>
         </div>
@@ -111,35 +153,37 @@ export default function EditLayoutPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header with layout info */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Edit Layout</h1>
             <p className="text-gray-600 mt-1">
-              {layoutData?.name || 'Unknown Layout'} • {layoutData?.orgUnit?.name || 'Unknown Unit'}
+              {layout.layoutName} • {selectedOrgUnit?.name || 'Unknown Unit'}
             </p>
           </div>
           <button
-            onClick={() => router.push('/dashboard/warehouse-management/warehouse-map')}
+            onClick={() => router.push('/dashboard/warehouse-management')}
             className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors"
           >
-            Back to Maps
+            Back to Dashboard
           </button>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-gray-500">
+          <span>
+            Status:
+            <span className="ml-1 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">
+              {layout.status}
+            </span>
+          </span>
+          <span>Last updated: {layout.updatedAt ? new Date(layout.updatedAt).toLocaleString() : '—'}</span>
+          <span>Created: {new Date(layout.createdAt).toLocaleString()}</span>
         </div>
       </div>
 
-      {/* Layout Builder with pre-loaded data */}
-      <WarehouseLayoutBuilder 
-        initialOrgUnit={{
-          id: layoutData?.orgUnit?.id || 'production-unit-1',
-          name: layoutData?.orgUnit || 'Production Unit 1',
-          location: layoutData?.location || 'Unknown'
-        }}
-        initialLayout={{
-          items: layoutData?.layoutData?.items || layoutData?.items || [],
-          name: layoutData?.name || ''
-        }}
+      <WarehouseLayoutBuilder
+        initialOrgUnit={selectedOrgUnit}
+        initialLayout={initialLayout}
       />
     </div>
   );

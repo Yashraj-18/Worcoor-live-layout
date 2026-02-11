@@ -34,16 +34,6 @@ const normalizeHexColor = (value: string, fallback: string = '#8D6E63'): string 
   return fallback;
 };
 
-const SPARE_UNIT_PALETTE = [
-  '#5D4037', // Rich brown
-  '#3E2723', // Dark chocolate
-  '#795548', // Mocha
-  '#4E342E', // Deep espresso
-  '#BF360C', // Burnt orange
-  '#00695C', // Deep teal
-  '#283593', // Indigo
-  '#37474F'  // Slate gray
-];
 
 interface PropertiesPanelProps {
   selectedItem: any;
@@ -71,13 +61,17 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          justifyContent: 'space-between',
-          padding: '16px',
-          borderBottom: '1px solid rgba(148, 163, 184, 0.2)'
+          padding: '16px 24px',
+          width: '100%'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Settings size={18} color="#94a3b8" />
-            <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: '16px' }}>Properties</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Settings size={20} color="#94a3b8" />
+            <span style={{ 
+              margin: 0, 
+              color: '#e2e8f0', 
+              fontSize: '18px', 
+              fontWeight: '500'
+            }}>Properties</span>
           </div>
         </div>
         <div style={{ 
@@ -104,14 +98,6 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
   const handleInputChange = (property: string, value: any) => {
     onUpdateItem(selectedItem.id, { [property]: value });
   };
-
-  const handleSpareUnitColorChange = (value: string) => {
-    const normalized = normalizeHexColor(value);
-    onUpdateItem(selectedItem.id, { customColor: normalized, color: normalized });
-  };
-
-  const isSpareUnit = selectedItem.type === 'spare_unit';
-  const spareUnitBaseColor = normalizeHexColor(selectedItem.customColor || selectedItem.color || '#8D6E63');
 
   // Get all existing SKU IDs from the selected item
   const getExistingSkuIds = (): string[] => {
@@ -284,27 +270,17 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
       <div style={{ 
         display: 'flex', 
         alignItems: 'center', 
-        justifyContent: 'space-between',
-        padding: '16px',
-        borderBottom: '1px solid rgba(148, 163, 184, 0.2)'
+        padding: '16px 24px',
+        width: '100%'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Settings size={18} color="#94a3b8" />
-          <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: '16px' }}>Properties</h3>
-        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            width: '32px',
-            height: '32px',
-            backgroundColor: selectedItem.color || '#6b7280',
-            borderRadius: '6px',
-            flexShrink: 0
-          }}>
-            <ItemIcon size={16} color="white" />
-          </div>
+          <ItemIcon size={20} color="#94a3b8" />
+          <span style={{ 
+            margin: 0, 
+            color: '#e2e8f0', 
+            fontSize: '18px', 
+            fontWeight: '500'
+          }}>Properties</span>
         </div>
       </div>
       
@@ -415,19 +391,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
           type="text"
           className="property-input"
           value={selectedItem.name || ''}
-          readOnly={!isSpareUnit}
-          disabled={!isSpareUnit}
-          onChange={(e) => {
-            if (isSpareUnit) {
-              handleInputChange('name', e.target.value);
-            }
-          }}
-          placeholder={isSpareUnit ? 'Enter spare unit name' : ''}
+          readOnly
+          disabled
+          placeholder="Component name"
         />
         <div style={{ fontSize: '0.75rem', color: '#6c757d', marginTop: '0.25rem' }}>
-          {isSpareUnit
-            ? 'Rename this spare unit to match its purpose (e.g., Spare Rack A1).'
-            : 'Component names are fixed for consistency.'}
         </div>
       </div>
 
@@ -445,44 +413,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
         />
       </div>
 
-      {isSpareUnit && (
-        <div className="property-group">
-          <label className="property-label">
-            <Palette size={14} color="#6b7280" />
-            Spare Unit Color
-          </label>
-          <div className="color-palette">
-            {SPARE_UNIT_PALETTE.map((paletteColor) => {
-              const isSelected = spareUnitBaseColor === normalizeHexColor(paletteColor);
-              return (
-                <button
-                  key={paletteColor}
-                  type="button"
-                  onClick={() => handleSpareUnitColorChange(paletteColor)}
-                  className={`color-option ${isSelected ? 'selected' : ''}`}
-                  aria-label={`Select spare unit color ${paletteColor}`}
-                >
-                  {isSelected && <span>✓</span>}
-                </button>
-              );
-            })}
-          </div>
-          <div className="help-text">
-            Pick from curated colors to keep spare unit placeholders consistent.
-          </div>
-        </div>
-      )}
-
+      
 
       <div className="property-group">
         <label className="property-label">
-          <Maximize2 size={14} color="#6b7280" />
           Position X
-          {selectedItem.isPositionLocked && <span className="status-indicator locked"><Lock size={12} /> Locked</span>}
-          <span className="status-indicator grid">
-            <Move size={12} />
-            Grid: {selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}px
-          </span>
         </label>
         <input
           type="number"
@@ -491,26 +426,12 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
           onChange={(e) => handleNumberChange('x', e.target.value)}
           min="0"
           step={selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}
-          disabled={selectedItem.isPositionLocked}
-          style={{ 
-            opacity: selectedItem.isPositionLocked ? 0.6 : 1,
-            cursor: selectedItem.isPositionLocked ? 'not-allowed' : 'text'
-          }}
         />
-        <div className="grid-info">
-          Grid position: {Math.round(selectedItem.x / (selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))))} × {selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}px
-        </div>
       </div>
 
       <div className="property-group">
         <label className="property-label">
-          <Maximize2 size={14} color="#6b7280" />
           Position Y
-          {selectedItem.isPositionLocked && <span className="status-indicator locked"><Lock size={12} /> Locked</span>}
-          <span className="status-indicator grid">
-            <Move size={12} />
-            Grid: {selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}px
-          </span>
         </label>
         <input
           type="number"
@@ -519,26 +440,12 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
           onChange={(e) => handleNumberChange('y', e.target.value)}
           min="0"
           step={selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}
-          disabled={selectedItem.isPositionLocked}
-          style={{ 
-            opacity: selectedItem.isPositionLocked ? 0.6 : 1,
-            cursor: selectedItem.isPositionLocked ? 'not-allowed' : 'text'
-          }}
         />
-        <div className="grid-info">
-          Grid position: {Math.round(selectedItem.y / (selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))))} × {selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}px
-        </div>
       </div>
 
       <div className="property-group">
         <label className="property-label">
           Width
-          {selectedItem.isSizeLocked && <span style={{ color: '#3F51B5', marginLeft: '8px' }}>📐</span>}
-          {selectedItem.gridStep && (
-            <span style={{ color: '#4CAF50', marginLeft: '8px', fontSize: '0.8rem' }}>
-              📏 Grid: {selectedItem.gridStep}px
-            </span>
-          )}
         </label>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <input
@@ -549,14 +456,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
             min={selectedItem.minSize?.width || selectedItem.gridStep || 20}
             max={selectedItem.maxSize?.width}
             step={selectedItem.gridStep || 1}
-            disabled={selectedItem.isSizeLocked}
             style={{ 
-              opacity: selectedItem.isSizeLocked ? 0.6 : 1,
-              cursor: selectedItem.isSizeLocked ? 'not-allowed' : 'text',
               flex: 1
             }}
           />
-          {selectedItem.gridStep && !selectedItem.isSizeLocked && (
+          {selectedItem.gridStep && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <button
                 type="button"
@@ -597,24 +501,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
             </div>
           )}
         </div>
-        {selectedItem.gridStep && (
-          <div className="grid-info">
-            Grid units: {Math.round(selectedItem.width / selectedItem.gridStep)} × {selectedItem.gridStep}px
-          </div>
-        )}
-      </div>
+              </div>
 
       <div className="property-group">
         <label className="property-label">
-          <Maximize2 size={14} color="#6b7280" />
           Height
-          {selectedItem.isSizeLocked && <span className="status-indicator locked"><Lock size={12} /> Locked</span>}
-          {selectedItem.gridStep && (
-            <span className="status-indicator grid">
-              <Move size={12} />
-              Grid: {selectedItem.gridStep}px
-            </span>
-          )}
         </label>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <input
@@ -625,14 +516,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
             min={selectedItem.minSize?.height || 60}
             max={selectedItem.maxSize?.height || 1200}
             step={selectedItem.gridStep || 15}
-            disabled={selectedItem.isSizeLocked}
             style={{
-              opacity: selectedItem.isSizeLocked ? 0.6 : 1,
-              cursor: selectedItem.isSizeLocked ? 'not-allowed' : 'text',
               flex: 1
             }}
           />
-          {selectedItem.gridStep && !selectedItem.isSizeLocked && (
+          {selectedItem.gridStep && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <button
                 type="button"
@@ -673,19 +561,19 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
             </div>
           )}
         </div>
-        {selectedItem.gridStep && (
-          <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
-            Grid blocks: {Math.round(selectedItem.height / selectedItem.gridStep)} × {selectedItem.gridStep}px
-          </div>
-        )}
-      </div>
+              </div>
 
 
       <div className="property-group" style={{ marginTop: '2rem' }}>
         <button 
           className="btn btn-danger"
           onClick={handleDelete}
-          style={{ width: '100%', color: 'black' }}
+          style={{ 
+            width: '100%', 
+            backgroundColor: '#dc3545',
+            borderColor: '#dc3545',
+            color: 'white'
+          }}
         >
           🗑️ Delete Item
         </button>
@@ -973,11 +861,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
                 </div>
               )}
               
-              <div style={{ fontSize: '0.75rem', color: '#666', fontStyle: 'italic' }}>
-                <strong>Usage:</strong> Click compartments to add/edit SKU IDs. Each 60×60px grid block = 1 SKU compartment.<br/>
-                <strong>Future Ready:</strong> SKUs include metadata fields for category, storage space, availability, and operational data.
-              </div>
-            </div>
+                          </div>
           </div>
         );
       })()}
@@ -1020,26 +904,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
         </div>
       )}
 
-      <div style={{ 
-        marginTop: '2rem', 
-        padding: '1rem', 
-        background: 'rgba(255, 255, 255, 0.03)', 
-        borderRadius: '6px',
-        fontSize: '0.8rem',
-        color: '#94a3b8',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        backdropFilter: 'blur(10px)'
-      }}>
-        <strong style={{ color: '#e2e8f0' }}>Type:</strong> {selectedItem.type}<br/>
-        <strong style={{ color: '#e2e8f0' }}>ID:</strong> {selectedItem.id.substring(0, 8)}...<br/>
-        {selectedItem.stack && selectedItem.stack.layers && selectedItem.stack.layers.length > 1 && (
-          <><strong style={{ color: '#e2e8f0' }}>Stacked:</strong> Yes ({selectedItem.stack.layers.length} layers)<br/></>
-        )}
-        {selectedItem.gridStep && (
-          <><strong style={{ color: '#e2e8f0' }}>Grid-Aligned:</strong> Yes ({selectedItem.gridStep}px grid)<br/></>
-        )}
-      </div>
-
+      
       {/* SKU ID Selector Modal */}
       <SkuIdSelector
         isVisible={skuIdSelectorVisible}

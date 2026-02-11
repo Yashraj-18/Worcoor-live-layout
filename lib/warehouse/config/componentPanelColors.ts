@@ -22,7 +22,7 @@ import { COMPONENT_TYPES } from '../constants/componentTypes';
  */
 export const COMPONENT_PANEL_COLORS: Record<string, string> = {
   // Floor Plan Components
-  [COMPONENT_TYPES.SQUARE_BOUNDARY]: '#263238',        // Dark Gray - Main warehouse boundary
+  [COMPONENT_TYPES.SQUARE_BOUNDARY]: 'transparent',        // Transparent - Main warehouse boundary
   
   // Boundary Components
   [COMPONENT_TYPES.SOLID_BOUNDARY]: 'transparent',         // Transparent - Solid divisions
@@ -32,14 +32,14 @@ export const COMPONENT_PANEL_COLORS: Record<string, string> = {
   [COMPONENT_TYPES.STORAGE_UNIT]: 'transparent',       // Transparent - No color (fresh start)
   [COMPONENT_TYPES.SKU_HOLDER]: 'transparent',             // Transparent - Horizontal storage racks
   [COMPONENT_TYPES.VERTICAL_SKU_HOLDER]: 'transparent',    // Transparent - Vertical storage racks
-  [COMPONENT_TYPES.SPARE_UNIT]: '#8D6E63',             // Brown - Spare units
+  [COMPONENT_TYPES.SPARE_UNIT]: 'transparent',             // Transparent - Spare units
   
   // Zone Components
-  [COMPONENT_TYPES.WAREHOUSE_BLOCK]: '#FF9800',        // Orange - Warehouse blocks
-  [COMPONENT_TYPES.STORAGE_ZONE]: '#9C27B0',           // Purple - Storage zones
-  [COMPONENT_TYPES.CONTAINER_UNIT]: '#00BCD4',         // Cyan - Container units
-  [COMPONENT_TYPES.ZONE_DIVIDER]: '#795548',           // Brown - Zone dividers
-  [COMPONENT_TYPES.AREA_BOUNDARY]: '#607D8B',          // Blue Gray - Area boundaries
+  [COMPONENT_TYPES.WAREHOUSE_BLOCK]: 'transparent',        // Transparent - Warehouse blocks
+  [COMPONENT_TYPES.STORAGE_ZONE]: 'transparent',           // Transparent - Storage zones
+  [COMPONENT_TYPES.CONTAINER_UNIT]: 'transparent',         // Transparent - Container units
+  [COMPONENT_TYPES.ZONE_DIVIDER]: 'transparent',           // Transparent - Zone dividers
+  [COMPONENT_TYPES.AREA_BOUNDARY]: 'transparent',          // Transparent - Area boundaries
   
   // Common Areas
   [COMPONENT_TYPES.FIRE_EXIT_MARKING]: 'transparent',      // Transparent - Fire exit markings

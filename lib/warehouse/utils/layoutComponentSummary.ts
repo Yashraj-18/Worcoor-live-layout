@@ -27,7 +27,7 @@ const COMPONENT_CONFIG = {
   }
 };
 
-const normalizeValue = (value) => {
+const normalizeValue = (value: any): string => {
   if (value === null || value === undefined) {
     return '';
   }
@@ -39,24 +39,24 @@ const normalizeValue = (value) => {
   return String(value).trim();
 };
 
-const addIdentifier = (set, value) => {
+const addIdentifier = (set: Set<string>, value: any) => {
   const normalized = normalizeValue(value);
   if (normalized) {
     set.add(normalized);
   }
 };
 
-const collectBaseIdentifiers = (item, locations, skus) => {
+const collectBaseIdentifiers = (item: any, locations: Set<string>, skus: Set<string>) => {
   addIdentifier(locations, item.locationId);
   addIdentifier(locations, item.primaryLocationId);
   addIdentifier(locations, item.locationCode);
 
   if (Array.isArray(item.locationIds)) {
-    item.locationIds.forEach((id) => addIdentifier(locations, id));
+    item.locationIds.forEach((id: any) => addIdentifier(locations, id));
   }
 
   if (Array.isArray(item.levelLocationMappings)) {
-    item.levelLocationMappings.forEach((mapping) => addIdentifier(locations, mapping?.locationId));
+    item.levelLocationMappings.forEach((mapping: any) => addIdentifier(locations, mapping?.locationId));
   }
 
   addIdentifier(skus, item.sku);
@@ -79,37 +79,37 @@ const collectBaseIdentifiers = (item, locations, skus) => {
   }
 };
 
-const collectCompartmentData = (content, locations, skus) => {
+const collectCompartmentData = (content: any, locations: Set<string>, skus: Set<string>) => {
   if (!content || typeof content !== 'object') {
     return;
   }
 
   if (content.isMultiLocation && Array.isArray(content.locationIds)) {
-    content.locationIds.forEach((id) => addIdentifier(locations, id));
+    content.locationIds.forEach((id: any) => addIdentifier(locations, id));
   } else {
     addIdentifier(locations, content.locationId || content.uniqueId);
   }
 
   if (Array.isArray(content.levelLocationMappings)) {
-    content.levelLocationMappings.forEach((mapping) => addIdentifier(locations, mapping?.locationId));
+    content.levelLocationMappings.forEach((mapping: any) => addIdentifier(locations, mapping?.locationId));
   }
 
   addIdentifier(skus, content.sku);
   addIdentifier(skus, content.primarySku);
 
   if (Array.isArray(content.skuList)) {
-    content.skuList.forEach((sku) => addIdentifier(skus, sku));
+    content.skuList.forEach((sku: any) => addIdentifier(skus, sku));
   }
 };
 
-const deriveItemMetrics = (item, index, typeIndexMap) => {
-  const config = COMPONENT_CONFIG[item.type];
+const deriveItemMetrics = (item: any, index: number, typeIndexMap: Record<string, number>) => {
+  const config = (COMPONENT_CONFIG as Record<string, any>)[item.type];
   if (!config) {
     return null;
   }
 
-  const locations = new Set();
-  const skus = new Set();
+  const locations = new Set<string>();
+  const skus = new Set<string>();
 
   collectBaseIdentifiers(item, locations, skus);
 
@@ -128,17 +128,17 @@ const deriveItemMetrics = (item, index, typeIndexMap) => {
     maxCapacity = compartments * maxPerCompartment;
 
     if (item.compartmentContents && typeof item.compartmentContents === 'object') {
-      Object.values(item.compartmentContents).forEach((content) => {
+      Object.values(item.compartmentContents).forEach((content: any) => {
         collectCompartmentData(content, locations, skus);
 
         let quantity = 1;
 
-        if (typeof content?.quantity === 'number' && content.quantity > 0) {
-          quantity = content.quantity;
-        } else if (Array.isArray(content?.locationIds)) {
-          quantity = Math.max(1, content.locationIds.length);
-        } else if (Array.isArray(content?.levelLocationMappings)) {
-          quantity = Math.max(1, content.levelLocationMappings.length);
+        if (typeof (content as any)?.quantity === 'number' && (content as any).quantity > 0) {
+          quantity = (content as any).quantity;
+        } else if (Array.isArray((content as any)?.locationIds)) {
+          quantity = Math.max(1, (content as any).locationIds.length);
+        } else if (Array.isArray((content as any)?.levelLocationMappings)) {
+          quantity = Math.max(1, (content as any).levelLocationMappings.length);
         }
 
         usedCapacity += quantity;
@@ -193,9 +193,9 @@ const deriveItemMetrics = (item, index, typeIndexMap) => {
   };
 };
 
-export const summarizeStorageComponents = (items: any[] = []) => {
-  const summaries = [];
-  const typeIndexMap = {};
+export const summarizeStorageComponents = (items: any[] = []): any[] => {
+  const summaries: any[] = [];
+  const typeIndexMap: Record<string, number> = {};
 
   items.forEach((item, index) => {
     const metrics = deriveItemMetrics(item, index, typeIndexMap);

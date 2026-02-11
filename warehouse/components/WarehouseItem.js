@@ -455,14 +455,20 @@ const WarehouseItem = ({
   }, [hideTooltip, isReadOnly]);
 
   const handleCompartmentHover = useCallback((event, compartmentData, rowIndex, colIndex) => {
-    // Only show tooltips in read-only mode (viewer), not in edit mode (layout builder)
+    // DISABLED: No hover effects for compartments in edit mode
     if (!isReadOnly) {
       return;
     }
+    
+    // DISABLED: No hover effects for SKU holders
+    if (item.type === 'sku_holder' || item.type === 'vertical_sku_holder') {
+      return;
+    }
+    
     const content = buildCompartmentTooltipContent(rowIndex, colIndex, compartmentData);
     const variant = compartmentData ? 'occupied' : 'empty';
     showTooltip(event, content, variant, 'compartment');
-  }, [buildCompartmentTooltipContent, showTooltip, isReadOnly]);
+  }, [buildCompartmentTooltipContent, showTooltip, isReadOnly, item.type]);
 
   const renderCompartmentGrid = useCallback(() => {
     if (!hasCompartments) {
@@ -519,7 +525,9 @@ const WarehouseItem = ({
           const isCompartmentHighlighted = Array.isArray(highlightedCompartments)
             ? highlightedCompartments.includes(compartmentId)
             : false;
-          const isHovered = hoveredCompartment === compartmentId;
+          const isHovered = (item.type === 'sku_holder' || item.type === 'vertical_sku_holder') 
+            ? false 
+            : hoveredCompartment === compartmentId;
 
           const baseFill = compartmentData ? filledFill : emptyFill;
           const fill = isCompartmentHighlighted
@@ -541,11 +549,25 @@ const WarehouseItem = ({
             <g
               key={compartmentId}
               onMouseEnter={(event) => {
+                // DISABLED: No hover effects for SKU holders
+                if (item.type === 'sku_holder' || item.type === 'vertical_sku_holder') {
+                  return;
+                }
                 setHoveredCompartment(compartmentId);
                 handleCompartmentHover(event, compartmentData, row, col);
               }}
-              onMouseMove={(event) => handleCompartmentHover(event, compartmentData, row, col)}
+              onMouseMove={(event) => {
+                // DISABLED: No hover effects for SKU holders
+                if (item.type === 'sku_holder' || item.type === 'vertical_sku_holder') {
+                  return;
+                }
+                handleCompartmentHover(event, compartmentData, row, col);
+              }}
               onMouseLeave={() => {
+                // DISABLED: No hover effects for SKU holders
+                if (item.type === 'sku_holder' || item.type === 'vertical_sku_holder') {
+                  return;
+                }
                 setHoveredCompartment(null);
                 hideTooltip();
               }}

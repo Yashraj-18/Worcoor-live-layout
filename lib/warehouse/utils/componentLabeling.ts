@@ -130,7 +130,7 @@ export const generateStorageUnitLabelInfo = (item: WarehouseItem, index: number)
     categoryText,
     fullLabel: item.label || autoLabel,
     showCategory: true,
-    categoryColor: item.category ? STORAGE_CATEGORY_COLORS[item.category] : '#4CAF50'
+    categoryColor: item.category ? (STORAGE_CATEGORY_COLORS as Record<string, string>)[item.category] : '#4CAF50'
   };
 };
 

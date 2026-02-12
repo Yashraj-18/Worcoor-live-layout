@@ -13,10 +13,7 @@ import TopNavbar from '@/components/warehouse/TopNavbar';
 import ContextMenu from '@/components/warehouse/ContextMenu';
 import StackManager from '@/components/warehouse/StackManager';
 import InfoPopup from '@/components/warehouse/InfoPopup';
-import SearchPanel from '@/components/warehouse/SearchPanel';
 import MainDashboard from '@/components/dashboard/MainDashboard';
-import FacilityManager from '@/components/warehouse/FacilityManager';
-import MeasurementTools from '@/components/warehouse/MeasurementTools';
 import ZoneContextMenu from '@/components/warehouse/ZoneContextMenu';
 import WarehouseDesigner from '@/components/warehouse/WarehouseDesigner';
 import FullscreenMap from '@/components/warehouse/FullscreenMap';
@@ -30,9 +27,7 @@ import { generateStorageUnitLabel, generateStorageComponentLabel, applyEnhancedL
 import { generateLocationCode, generateMockInventoryData } from '@/lib/warehouse/utils/locationUtils';
 import { simulateDataRefresh, DataCache } from '@/lib/warehouse/utils/dataRefresh';
 import { facilityHierarchy } from '@/lib/warehouse/utils/facilityHierarchy';
-import { measurementSystem, gridSystem } from '@/lib/warehouse/utils/measurementTools';
 import { shapeCreator } from '@/lib/warehouse/utils/shapeCreator';
-import { layoutExporter } from '@/lib/warehouse/utils/exportUtils';
 import { LayoutCropper } from '@/lib/warehouse/utils/layoutCropper';
 import { 
   constrainToBoundary, 
@@ -69,7 +64,6 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
   const [stackManager, setStackManager] = useState<any>({ visible: false, item: null });
   const [infoPopup, setInfoPopup] = useState<any>({ visible: false, x: 0, y: 0, item: null });
   const [zoneContextMenu, setZoneContextMenu] = useState<any>({ visible: false, x: 0, y: 0, zone: null });
-  const [searchPanelVisible, setSearchPanel] = useState<boolean>(false);
   const [dataCache] = useState(() => new DataCache(30000)); // 30 second refresh
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
   const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -77,12 +71,10 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
   const [centerCanvasTrigger, setCenterCanvasTrigger] = useState<number>(0);
   
   // New state for enhanced features
-  const [facilityManagerVisible, setFacilityManagerVisible] = useState<boolean>(false);
-  const [measurementToolsVisible, setMeasurementToolsVisible] = useState<boolean>(false);
   const [selectedFacility, setSelectedFacility] = useState<any>(null);
   const [showMainDashboard, setShowMainDashboard] = useState<boolean>(false);
   const [gridVisible, setGridVisible] = useState<boolean>(true);
-  const [snapEnabled, setSnapEnabled] = useState<boolean>(false);
+  const [snapEnabled, setSnapEnabled] = useState<boolean>(true);
   const [undoStack, setUndoStack] = useState<any[]>([]);
   const [redoStack, setRedoStack] = useState<any[]>([]);
   const [layoutName, setLayoutName] = useState<string>('Warehouse Management System');
@@ -624,77 +616,10 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     setInfoPopup(null);
   }, []);
 
-  const handleSearch = useCallback(() => {
-    setSearchPanel(true);
-  }, []);
-
-  const handleCloseSearch = useCallback(() => {
-    setSearchPanel(false);
-  }, []);
-
-  const handleSearchSelect = useCallback((item: any) => {
-    setSelectedItemId(item.id);
-    // Optionally scroll to item or highlight it
-  }, []);
-
-
-  const handleZoomIn = useCallback(() => {
-    setZoomLevel(prev => Math.min(prev * 1.25, 5)); // Max zoom 5x
-  }, []);
-
-  const handleZoomOut = useCallback(() => {
-    setZoomLevel(prev => Math.max(prev / 1.25, 0.1)); // Min zoom 0.1x
-  }, []);
-
   const handleZoomReset = useCallback(() => {
     setZoomLevel(1);
     setPanOffset({ x: 0, y: 0 });
-    setCenterCanvasTrigger(prev => prev + 1);
   }, []);
-
-  const isZoomFitEnabled = false;
-
-  const handleZoomFit = useCallback(() => {
-    if (!isZoomFitEnabled) {
-      console.log('Fit to View is temporarily disabled');
-      return;
-    }
-    if (warehouseItems.length === 0) return;
-    
-    // Calculate bounding box of all items
-    const bounds = warehouseItems.reduce((acc, item) => ({
-      minX: Math.min(acc.minX, item.x),
-      minY: Math.min(acc.minY, item.y),
-      maxX: Math.max(acc.maxX, item.x + item.width),
-      maxY: Math.max(acc.maxY, item.y + item.height)
-    }), {
-      minX: Infinity,
-      minY: Infinity,
-      maxX: -Infinity,
-      maxY: -Infinity
-    });
-
-    const canvas = document.querySelector('.warehouse-canvas');
-    if (!canvas) return;
-
-    const canvasRect = canvas.getBoundingClientRect();
-    const padding = 50;
-    
-    const contentWidth = bounds.maxX - bounds.minX;
-    const contentHeight = bounds.maxY - bounds.minY;
-    const availableWidth = canvasRect.width - padding * 2;
-    const availableHeight = canvasRect.height - padding * 2;
-    
-    const scaleX = availableWidth / contentWidth;
-    const scaleY = availableHeight / contentHeight;
-    const scale = Math.min(scaleX, scaleY, 1); // Don't zoom in beyond 100%
-    
-    setZoomLevel(scale);
-    setPanOffset({
-      x: (availableWidth - contentWidth * scale) / 2 - bounds.minX * scale + padding,
-      y: (availableHeight - contentHeight * scale) / 2 - bounds.minY * scale + padding
-    });
-  }, [warehouseItems, isZoomFitEnabled]);
 
   const handlePanChange = useCallback((newPanOffset: any, newZoomLevel?: number) => {
     setPanOffset(newPanOffset);
@@ -1352,47 +1277,12 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     setLayoutName('Warehouse Management System');
     setLayoutNameSet(false);
     setSelectedOrgUnit(null);
+    setLayoutNameSet(false);
   }, []);
 
-  // Enhanced facility management handlers
-  const handleFacilityManager = useCallback(() => {
-    setFacilityManagerVisible(true);
-  }, []);
   
-  const handleFacilitySelect = useCallback((facility: any) => {
-    setSelectedFacility(facility);
-    setFacilityManagerVisible(false);
-  }, []);
+
   
-  const handleCloseFacilityManager = useCallback(() => {
-    setFacilityManagerVisible(false);
-  }, []);
-
-  // Measurement tools handlers
-  const handleMeasurementTools = useCallback(() => {
-    setMeasurementToolsVisible(true);
-  }, []);
-
-  const handleCloseMeasurementTools = useCallback(() => {
-    setMeasurementToolsVisible(false);
-  }, []);
-
-
-  // Grid and snap handlers
-  const handleToggleGrid = useCallback(() => {
-    setGridVisible(prev => {
-      gridSystem.setVisible(!prev);
-      return !prev;
-    });
-  }, []);
-
-  const handleToggleSnap = useCallback(() => {
-    setSnapEnabled(prev => {
-      gridSystem.setSnapEnabled(!prev);
-      return !prev;
-    });
-  }, []);
-
   // Auto-generate boundary
   const handleAutoGenerateBoundary = useCallback(() => {
     const existingBoundary = warehouseItems.find(item => item.type === 'square_boundary');
@@ -1437,40 +1327,7 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
   }, [warehouseItems]);
 
 
-  // CAD Import handler
-  const handleImportCAD = useCallback(async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.svg,.dxf,.dwg';
-    
-    input.onchange = async (e: Event) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        try {
-          // CAD import functionality would be implemented here
-          showMessage.info('CAD import feature is not yet implemented');
-        } catch (error) {
-          showMessage.error(`Failed to import CAD file: ${(error as Error).message}`);
-        }
-      }
-    };
-    
-    input.click();
-  }, [warehouseItems, saveToUndoStack]);
-
-  // Enhanced export handler
-  const handleExportLayout = useCallback(async (format: any) => {
-    try {
-      await layoutExporter.exportLayout(warehouseItems, format, {
-        includeGrid: gridVisible,
-        includeMeasurements: true,
-        includeLabels: true
-      });
-    } catch (error) {
-      showMessage.error(`Export failed: ${(error as Error).message}`);
-    }
-  }, [warehouseItems, gridVisible]);
-
+  
   // Navigation handlers
   const handleNavigateToBuilder = useCallback(() => {
     setShowMainDashboard(false);
@@ -1505,27 +1362,14 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
               onOrgMapSelect={handleOrgMapSelect}
               locationTags={locationTags}
               isLoadingLocationTags={isLoadingLocationTags}
-              onFacilityManager={handleFacilityManager}
-              onMeasurementTools={handleMeasurementTools}
               onSave={handleSave}
               onLoad={handleLoad}
               onClear={handleClear}
-              onImportCAD={handleImportCAD}
-              onExportLayout={handleExportLayout}
-              zoomLevel={zoomLevel}
-              onZoomIn={handleZoomIn}
-              onZoomOut={handleZoomOut}
               onZoomReset={handleZoomReset}
-              onZoomFit={handleZoomFit}
-              gridVisible={gridVisible}
-              onToggleGrid={handleToggleGrid}
-              snapEnabled={snapEnabled}
-              onToggleSnap={handleToggleSnap}
               onUndo={handleUndo}
               onRedo={handleRedo}
               canUndo={undoStack.length > 0}
               canRedo={redoStack.length > 0}
-              onSearch={handleSearch}
               onAutoGenerateBoundary={handleAutoGenerateBoundary}
               itemCount={warehouseItems.length}
               onNavigateToDashboard={handleNavigateToDashboard}
@@ -1602,36 +1446,9 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
               />
             )}
 
-            {/* Search Panel */}
-            {searchPanelVisible && (
-              <SearchPanel
-                items={warehouseItems}
-                onSelectItem={handleSearchSelect}
-                onClose={handleCloseSearch}
-              />
-            )}
+            
 
-
-            {/* Facility Manager */}
-            {facilityManagerVisible && (
-              <FacilityManager
-                isVisible={facilityManagerVisible}
-                onClose={handleCloseFacilityManager}
-                onFacilitySelect={handleFacilitySelect}
-              />
-            )}
-
-            {/* Measurement Tools */}
-            {measurementToolsVisible && (
-              <MeasurementTools
-                isVisible={measurementToolsVisible}
-                onClose={handleCloseMeasurementTools}
-                canvasRef={null}
-                zoomLevel={zoomLevel}
-                panOffset={panOffset}
-              />
-            )}
-
+            
             {/* Zone Context Menu */}
             <ZoneContextMenu
               isVisible={zoneContextMenu.visible}

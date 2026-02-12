@@ -108,31 +108,56 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
   };
 
   // Handle SKU ID selection from dropdown
-  const handleSkuIdSelect = (skuIdOrData: string | { locationId: string; category: string }) => {
+  const handleSkuIdSelect = (skuIdOrData: string | { locationId: string; category: string } | { locationIds: string[]; category: string }) => {
     if (!pendingCompartmentId) return;
     
     const parts = pendingCompartmentId.split('-');
-    if (parts.length < 2) return;
-    
-    const row = Math.floor(parseInt(parts[1]) / (selectedItem.width / 60));
-    const col = parseInt(parts[1]) % (selectedItem.width / 60);
-    
-    // Extract location ID and category from the data
-    const locationId = typeof skuIdOrData === 'string' ? skuIdOrData : skuIdOrData.locationId;
-    const category = typeof skuIdOrData === 'string' ? '' : skuIdOrData.category;
+    const itemIndex = parseInt(parts[1]);
+    const compartmentIndex = parseInt(parts[2]);
     
     const newContents = { 
       ...selectedItem.compartmentContents, 
       [pendingCompartmentId]: { 
-        locationId: locationId,
-        uniqueId: locationId, // Keep for backward compatibility
-        sku: locationId, // Use the selected SKU ID as the SKU
+        locationId: '',
+        uniqueId: '',
+        sku: '',
         quantity: 1,
         status: 'planned',
-        category: category,
+        category: '',
         lastModified: new Date().toISOString()
       }
     };
+    
+    // Handle different data types
+    if (typeof skuIdOrData === 'string') {
+      // Simple string SKU ID
+      newContents[pendingCompartmentId] = {
+        ...newContents[pendingCompartmentId],
+        sku: skuIdOrData,
+        uniqueId: skuIdOrData,
+        locationId: skuIdOrData
+      };
+    } else if ('locationId' in skuIdOrData) {
+      // Single location ID object
+      newContents[pendingCompartmentId] = {
+        ...newContents[pendingCompartmentId],
+        sku: skuIdOrData.locationId,
+        uniqueId: skuIdOrData.locationId,
+        locationId: skuIdOrData.locationId,
+        category: skuIdOrData.category
+      };
+    } else if ('locationIds' in skuIdOrData) {
+      // Multiple location IDs object
+      newContents[pendingCompartmentId] = {
+        ...newContents[pendingCompartmentId],
+        sku: skuIdOrData.locationIds.join(','),
+        uniqueId: skuIdOrData.locationIds[0],
+        locationIds: skuIdOrData.locationIds,
+        primaryLocationId: skuIdOrData.locationIds[0],
+        category: skuIdOrData.category,
+        isMultiLocation: true
+      };
+    }
     
     onUpdateItem(selectedItem.id, { compartmentContents: newContents });
     setSkuIdSelectorVisible(false);

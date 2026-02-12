@@ -151,7 +151,6 @@ export class SkusService {
       skuId: request.body.skuId ?? null,
       locationTagId: request.body.locationTagId ?? null,
       organizationId: orgId,
-      
     });
 
     reply.code(201).send(this.serializeSku(sku));

@@ -4343,6 +4343,20 @@ div.warehouse-item[data-type="sku_holder"]:hover * {
 
   overflow: visible;
 
+  /* Fix: Override default white background */
+  background: transparent !important;
+  background-image: none !important;
+  background-color: transparent !important;
+
+}
+
+/* Additional fix: Ensure all storage component variants are transparent */
+.warehouse-item[data-type="storage_unit"]:hover,
+.warehouse-item[data-type="storage_unit"].selected,
+.warehouse-item[data-type="storage_unit"]:focus {
+  background: transparent !important;
+  background-image: none !important;
+  background-color: transparent !important;
 }
 
 

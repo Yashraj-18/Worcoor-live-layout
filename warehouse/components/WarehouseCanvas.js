@@ -17,7 +17,6 @@ const WarehouseCanvas = ({
   onUpdateItem,
   onCanvasClick,
   stackMode,
-  onRightClick,
   onCreateStack,
   onInfoClick,
   zoomLevel,
@@ -689,7 +688,6 @@ const WarehouseCanvas = ({
               onSelect={onSelectItem}
               isSelected={selectedItemId === item.id || selectedItems.includes(item.id)}
               onUpdate={onUpdateItem}
-              onRightClick={onRightClick}
               onInfoClick={onInfoClick}
               stackMode={stackMode}
               onRequestSkuId={onRequestSkuId}

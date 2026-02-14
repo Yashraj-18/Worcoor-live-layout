@@ -4,20 +4,6 @@ import { COMPONENT_TYPES } from './componentTypes';
 // Re-export for other files
 export { COMPONENT_TYPES };
 
-// Storage category colors for different storage types
-export const STORAGE_CATEGORY_COLORS = {
-  'general-storage': '#4CAF50',      // Green
-  'dry-storage': '#FF9800',          // Orange  
-  'cold-storage': '#2196F3',         // Blue
-  'hazardous': '#F44336',            // Red
-  'perishable': '#9C27B0',          // Purple
-  'fragile': '#FF5722',              // Deep Orange
-  'high-value': '#FFC107',          // Amber
-  'bulk-storage': '#795548',         // Brown
-  'climate-controlled': '#00BCD4',   // Cyan
-  'secure-storage': '#607D8B'        // Blue Grey
-};
-
 // Drag and drop types
 export const DRAG_TYPES = {
   COMPONENT: 'component',
@@ -101,7 +87,6 @@ export const COMPONENT_COLORS = {
   [COMPONENT_TYPES.STORAGE_UNIT]: 'transparent',
   [COMPONENT_TYPES.SKU_HOLDER]: 'transparent',
   [COMPONENT_TYPES.VERTICAL_SKU_HOLDER]: 'transparent',
-  [COMPONENT_TYPES.SPARE_UNIT]: 'transparent',
   
   // Zone Components
   [COMPONENT_TYPES.WAREHOUSE_BLOCK]: 'transparent',
@@ -132,20 +117,6 @@ export const COMPONENT_COLORS = {
 };
 
 
-// Status color mapping
-export const STATUS_COLORS = {
-  [OCCUPANCY_STATUS.EMPTY]: '#4CAF50',
-  [OCCUPANCY_STATUS.PARTIAL]: '#FF9800', 
-  [OCCUPANCY_STATUS.FULL]: '#F44336',
-  [OCCUPANCY_STATUS.MAINTENANCE]: '#9C27B0',
-  [OCCUPANCY_STATUS.RESERVED]: '#2196F3'
-};
-
-// Orientation color mapping
-export const ORIENTATION_COLORS = {
-  [STORAGE_ORIENTATION.HORIZONTAL]: '#4CAF50',
-  [STORAGE_ORIENTATION.VERTICAL]: '#9C27B0'
-};
 
 // Warehouse Components - organized by categories
 export const WAREHOUSE_COMPONENTS = [
@@ -194,7 +165,7 @@ export const WAREHOUSE_COMPONENTS = [
         allowEmpty: true, // Compartments can be vacant
         maxSKUsPerCompartment: 1, // One SKU unit per compartment
         supportsMultipleLocationIds: true, // Support multiple location IDs (L1, L2, L3)
-        supportsMultipleTags: true // Support multiple tags per location
+        supportsMultipleLevels: true // Support multiple levels per location
       },
       {
         type: COMPONENT_TYPES.DISPATCH_GATES,

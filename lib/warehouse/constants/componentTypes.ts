@@ -24,7 +24,6 @@ export const COMPONENT_TYPES = {
   STORAGE_UNIT: 'storage_unit',
   SKU_HOLDER: 'sku_holder',
   VERTICAL_SKU_HOLDER: 'vertical_sku_holder',
-  SPARE_UNIT: 'spare_unit',
   
   // Common Areas
   FIRE_EXIT_MARKING: 'fire_exit_marking',

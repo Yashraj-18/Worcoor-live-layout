@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useDrag } from 'react-dnd';
-import { DRAG_TYPES, STACKABLE_COMPONENTS, STATUS_COLORS, OCCUPANCY_STATUS } from '@/lib/warehouse/constants/warehouseComponents';
+import { DRAG_TYPES, STACKABLE_COMPONENTS, OCCUPANCY_STATUS } from '@/lib/warehouse/constants/warehouseComponents';
 import { getComponentColor } from '@/lib/warehouse/utils/componentColors';
 import { renderShapeComponent } from '@/lib/warehouse/utils/shapeRenderer';
 import { getContextualLabel } from '@/lib/warehouse/utils/componentLabeling';
@@ -389,13 +389,15 @@ const WarehouseItem = ({
               <div className="hover-card__section-label">Current Inventory ({inventoryEntries.length} SKU{inventoryEntries.length > 1 ? 's' : ''})</div>
               <ul className="hover-card__inventory-list">
                 {inventoryEntries.slice(0, 5).map((entry, idx) => (
-                  <li className="hover-card__inventory-item" key={`${entry.sku || entry.locationId}-${idx}`}>
-                    <div className="hover-card__inventory-name">{entry.sku || entry.locationId || `SKU-${idx + 1}`}</div>
-                    <div className="hover-card__inventory-qty">
-                      Qty: {entry.quantity ?? entry.qty ?? '—'}
-                      {entry.reserved ? ` (${entry.reserved} reserved)` : ''}
-                    </div>
-                  </li>
+                  entry && (
+                    <li className="hover-card__inventory-item" key={`${entry.sku || entry.locationId}-${idx}`}>
+                      <div className="hover-card__inventory-name">{entry.sku || entry.locationId || `SKU-${idx + 1}`}</div>
+                      <div className="hover-card__inventory-qty">
+                        Qty: {entry.quantity ?? entry.qty ?? '—'}
+                        {entry.reserved ? ` (${entry.reserved} reserved)` : ''}
+                      </div>
+                    </li>
+                  )
                 ))}
                 {inventoryEntries.length > 5 && (
                   <li className="hover-card__inventory-more">+{inventoryEntries.length - 5} more…</li>
@@ -835,7 +837,7 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
   
   // Get status-based styling
   const occupancyStatus = item.occupancyStatus || OCCUPANCY_STATUS.EMPTY;
-  const statusColor = STATUS_COLORS[occupancyStatus] || '#ddd';
+  const statusColor = '#ddd'; // Simple fallback color since STATUS_COLORS was removed
 
   return (
     <div
@@ -850,14 +852,18 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
         top: item.y,
         width: item.width,
         height: item.height,
-        background: isStorageRack ? 'transparent' : undefined,
-        backgroundImage: isStorageRack ? 'none' : undefined,
         backgroundColor: isIconOnly ? 'transparent' : (item.isHollow ? 'transparent' :
           (isStorageComponentType ? 'transparent' :
            isStorageRack ? 'transparent' :
            isSpareUnit ? spareUnitColor :
            isContainer ? 'transparent' :
            getComponentColor(normalizedType, item.category))),
+        backgroundImage: isIconOnly ? 'none' : (item.isHollow ? 'none' :
+          (isStorageComponentType ? 'none' :
+           isStorageRack ? 'none' :
+           isSpareUnit ? 'none' :
+           isContainer ? 'none' :
+           'none')),
         border: isIconOnly ? 'none' : (isStorageComponentType || isSpareUnit ? 'none' :
                isStorageRack ? 'none' :
                (normalizedType === 'square_boundary' ? '4px solid #000000' :

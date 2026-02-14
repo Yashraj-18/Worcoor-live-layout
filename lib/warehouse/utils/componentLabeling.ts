@@ -3,7 +3,7 @@
  * Generates consistent, professional display names for warehouse components
  */
 
-import { COMPONENT_TYPES, STORAGE_CATEGORY_COLORS } from '../constants/warehouseComponents';
+import { COMPONENT_TYPES } from '../constants/warehouseComponents';
 
 interface LabelInfo {
   autoLabel: string;
@@ -11,7 +11,6 @@ interface LabelInfo {
   categoryText: string;
   fullLabel: string;
   showCategory: boolean;
-  categoryColor: string;
 }
 
 interface ValidationResult {
@@ -129,8 +128,7 @@ export const generateStorageUnitLabelInfo = (item: WarehouseItem, index: number)
     displayName,
     categoryText,
     fullLabel: item.label || autoLabel,
-    showCategory: true,
-    categoryColor: item.category ? (STORAGE_CATEGORY_COLORS as Record<string, string>)[item.category] : '#4CAF50'
+    showCategory: true
   };
 };
 

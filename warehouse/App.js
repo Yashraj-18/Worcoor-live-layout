@@ -7,7 +7,6 @@ import WarehouseCanvas from './components/WarehouseCanvas';
 import PropertiesPanel from './components/PropertiesPanel';
 import Toolbar from './components/Toolbar';
 import TopNavbar from './components/TopNavbar';
-import ContextMenu from './components/ContextMenu';
 import StackManager from './components/StackManager';
 import InfoPopup from './components/InfoPopup';
 import SearchPanel from '../components/warehouse/tools/SearchPanel';
@@ -42,7 +41,6 @@ function App() {
   const [warehouseItems, setWarehouseItems] = useState([]);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [stackMode, setStackMode] = useState(STACK_MODES.DISABLED);
-  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, item: null });
   const [stackManager, setStackManager] = useState({ visible: false, item: null });
   const [infoPopup, setInfoPopup] = useState({ visible: false, x: 0, y: 0, item: null });
   const [zoneContextMenu, setZoneContextMenu] = useState({ visible: false, x: 0, y: 0, zone: null });
@@ -147,29 +145,8 @@ function App() {
   // Clear context menu when no warehouse items exist
   useEffect(() => {
     if (warehouseItems.length === 0) {
-      setContextMenu(null);
       setZoneContextMenu({ visible: false, x: 0, y: 0, zone: null });
     }
-  }, [warehouseItems.length]);
-
-  // Global context menu prevention when no items exist
-  useEffect(() => {
-    const handleGlobalContextMenu = (e) => {
-      if (warehouseItems.length === 0) {
-        // Check if the right-click is on the canvas area
-        const canvasElement = e.target.closest('.warehouse-canvas, .canvas-container, .main-content');
-        if (canvasElement) {
-          e.preventDefault();
-          e.stopPropagation();
-          console.log('Global context menu blocked: No warehouse items');
-        }
-      }
-    };
-
-    document.addEventListener('contextmenu', handleGlobalContextMenu, true);
-    return () => {
-      document.removeEventListener('contextmenu', handleGlobalContextMenu, true);
-    };
   }, [warehouseItems.length]);
 
   // Manual refresh function
@@ -355,7 +332,6 @@ function App() {
 
   const handleCanvasClick = useCallback(() => {
     setSelectedItemId(null);
-    setContextMenu(null);
     setInfoPopup(null);
     setZoneContextMenu(null);
   }, []);
@@ -453,58 +429,6 @@ function App() {
 
   const handleToggleStackMode = useCallback(() => {
     setStackMode(prev => prev === STACK_MODES.ENABLED ? STACK_MODES.DISABLED : STACK_MODES.ENABLED);
-  }, []);
-
-  const handleRightClick = useCallback((e, item) => {
-    // Always prevent default context menu
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Completely disable context menu when there are no warehouse items
-    if (warehouseItems.length === 0) {
-      console.log('Context menu blocked: No warehouse items');
-      return;
-    }
-
-    // Prevent context menu if no item or if item has no valid type
-    if (!item || !item.type || !item.id) {
-      console.log('Context menu blocked: Invalid item', item);
-      return;
-    }
-
-    // Check if this is a zone that can be filled with units
-    if (item.containerLevel === 2 && item.isContainer) {
-      setZoneContextMenu({
-        visible: true,
-        x: e.clientX,
-        y: e.clientY,
-        zone: item
-      });
-      return;
-    }
-
-    // Only show context menu for items that actually exist in warehouseItems
-    const itemExists = warehouseItems.some(warehouseItem => warehouseItem.id === item.id);
-    if (!itemExists) {
-      console.log('Context menu blocked: Item does not exist in warehouse items', item);
-      return;
-    }
-
-    const canStack = STACKABLE_COMPONENTS.includes(item.type);
-    const hasStack = item.stack && item.stack.layers && item.stack.layers.length > 1;
-
-    console.log('Showing context menu for valid item:', item);
-    setContextMenu({
-      x: e.clientX,
-      y: e.clientY,
-      item,
-      canStack,
-      hasStack
-    });
-  }, [warehouseItems]);
-
-  const handleCloseContextMenu = useCallback(() => {
-    setContextMenu(null);
   }, []);
 
   const handleCloseZoneContextMenu = useCallback(() => {
@@ -787,15 +711,10 @@ function App() {
           levelLocationMappings: resolvedMappings,
           levelIds: resolvedLevelIds,
           locationIds: resolvedLocationIds,
-          tags: resolvedTags,
-          primaryLocationId: resolvedPrimary,
-          uniqueId: resolvedPrimary || resolvedLocationIds[0],
-          sku: resolvedLocationIds.join(','),
-          quantity: 1,
-          status: 'planned',
-          category: multiCategory,
+          primaryLocationId: resolvedLocationIds,
+          sku: "",
+          quantity: resolvedLocationIds.length,
           storageSpace: `${Math.floor(item.width / 60)}x${Math.floor(item.height / 60)}`,
-          availability: 'available',
           createdAt: new Date().toISOString(),
           lastModified: new Date().toISOString(),
           position: {
@@ -804,10 +723,7 @@ function App() {
             compartment: compartmentId
           },
           metadata: {
-            weight: null,
             dimensions: null,
-            temperature: null,
-            hazardous: false,
             priority: 'normal',
             isMultiLocation: true
           }
@@ -887,13 +803,9 @@ function App() {
         ...item.compartmentContents, 
         [compartmentId]: { 
           locationId: locationId,
-          uniqueId: locationId, // Keep for backward compatibility
-          sku: locationId, // Use the selected Location ID as the SKU
+          sku: "",
           quantity: 1,
-          status: 'planned',
-          category: '',
           storageSpace: `${Math.floor(item.width / 60)}x${Math.floor(item.height / 60)}`,
-          availability: 'available',
           createdAt: new Date().toISOString(),
           lastModified: new Date().toISOString(),
           position: {
@@ -902,10 +814,7 @@ function App() {
             compartment: compartmentId
           },
           metadata: {
-            weight: null,
             dimensions: null,
-            temperature: null,
-            hazardous: false,
             priority: 'normal'
           }
         }
@@ -1240,7 +1149,6 @@ function App() {
                   onUpdateItem={handleUpdateItem}
                   onCanvasClick={handleCanvasClick}
                   stackMode={stackMode}
-                  onRightClick={handleRightClick}
                   onCreateStack={handleCreateStack}
                   onInfoClick={handleInfoClick}
                   zoomLevel={zoomLevel}
@@ -1257,23 +1165,6 @@ function App() {
                 />
               </div>
 
-
-            {/* Context Menu - Only show if there are warehouse items */}
-            {contextMenu && warehouseItems.length > 0 && (
-              <ContextMenu
-                x={contextMenu.x}
-                y={contextMenu.y}
-                onClose={handleCloseContextMenu}
-                onAddLayerAbove={() => handleAddLayerAbove(contextMenu.item)}
-                onAddLayerBelow={() => handleAddLayerBelow(contextMenu.item)}
-                onManageStack={() => handleManageStack(contextMenu.item)}
-                hasStack={contextMenu.hasStack}
-                canStack={contextMenu.canStack}
-                item={contextMenu.item}
-                onLockToggle={handleLockToggle}
-                onDelete={() => handleDeleteItem(contextMenu.item.id)}
-              />
-            )}
 
             {/* Stack Manager Modal */}
             {stackManager && (

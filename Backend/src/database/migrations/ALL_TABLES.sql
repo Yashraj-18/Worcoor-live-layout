@@ -150,13 +150,13 @@ CREATE TABLE IF NOT EXISTS location_tags (
     breadth NUMERIC(10, 3),
     height NUMERIC(10, 3),
     unit_of_measurement TEXT CHECK (unit_of_measurement IN ('meters', 'feet', 'inches', 'centimeters') OR unit_of_measurement IS NULL),
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_location_per_unit UNIQUE (organization_id, unit_id, location_tag_name)
 );
 
 -- Location tags indexes
 CREATE INDEX IF NOT EXISTS idx_location_tags_org ON location_tags(organization_id);
 CREATE INDEX IF NOT EXISTS idx_location_tags_unit ON location_tags(unit_id);
-CREATE UNIQUE INDEX IF NOT EXISTS unique_location_per_org ON location_tags(organization_id, location_tag_name);
 
 -- ============================================================================
 -- 7. COMPONENTS TABLE
@@ -271,10 +271,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_assets_org_asset_id_unique ON assets(organ
 --   - sku_movements: Movement audit trail
 --   - assets: Physical equipment tracking
 --
--- INDEXES CREATED: 24
+-- INDEXES CREATED: 25
 --   - Primary key indexes: 10 (auto-created)
 --   - Foreign key indexes: 8
---   - Unique indexes: 4
+--   - Unique constraints: 5
 --   - GIN index: 1 (for JSONB layout_data)
 --   - Additional query indexes: 11
 --
@@ -282,7 +282,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_assets_org_asset_id_unique ON assets(organ
 --   - Primary keys: UUID with auto-generation
 --   - Foreign keys: CASCADE delete for org-scoped data
 --   - CHECK constraints: role, status enums
---   - UNIQUE constraints: email, location_tag per org, asset_id per org
+--   - UNIQUE constraints: email, location_tag per unit, asset_id per org
 --   - NOT NULL constraints: All required fields
 --
 -- ============================================================================

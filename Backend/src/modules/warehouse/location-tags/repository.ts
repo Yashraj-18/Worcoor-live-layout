@@ -73,13 +73,15 @@ export class LocationTagsRepository {
     return Number(result[0]?.totalItems ?? 0);
   }
 
-  async findByName(
+  async findByNameWithinUnit(
     organizationId: string,
+    unitId: string,
     locationTagName: string,
     excludeId?: string,
   ): Promise<LocationTagEntity | null> {
     let whereClause = and(
       eq(locationTags.organizationId, organizationId),
+      eq(locationTags.unitId, unitId),
       eq(locationTags.locationTagName, locationTagName),
     );
 

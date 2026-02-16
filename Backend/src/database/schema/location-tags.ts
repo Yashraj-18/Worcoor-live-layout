@@ -28,8 +28,9 @@ export const locationTags = pgTable(
   (table) => ({
     organizationIdx: index('idx_location_tags_org').on(table.organizationId),
     unitIdx: index('idx_location_tags_unit').on(table.unitId),
-    uniqueLocationPerOrg: uniqueIndex('unique_location_per_org').on(
+    uniqueLocationPerUnit: uniqueIndex('unique_location_per_unit').on(
       table.organizationId,
+      table.unitId,
       table.locationTagName,
     ),
   }),

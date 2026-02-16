@@ -75,7 +75,11 @@ export class LocationTagsService {
     reply: FastifyReply,
   ) {
     const orgId = request.user.organizationId;
-    const existing = await this.repository.findByName(orgId, request.body.locationTagName);
+    const existing = await this.repository.findByNameWithinUnit(
+      orgId,
+      request.body.unitId,
+      request.body.locationTagName,
+    );
 
     if (existing) {
       return reply.code(409).send({ error: 'Location tag name already in use' });
@@ -111,8 +115,15 @@ export class LocationTagsService {
     const orgId = request.user.organizationId;
 
     if (request.body.locationTagName) {
-      const existing = await this.repository.findByName(
+      const unitId = request.body.unitId ?? (await this.repository.findById(locationTagId, orgId))?.unitId;
+
+      if (!unitId) {
+        return reply.code(404).send({ error: 'Location tag not found' });
+      }
+
+      const existing = await this.repository.findByNameWithinUnit(
         orgId,
+        unitId,
         request.body.locationTagName,
         locationTagId,
       );

@@ -103,16 +103,25 @@ const mapAssetToDisplayRow = (asset: Asset) => ({
   description: "",
 })
 
-const mapLocationTagToDisplayRow = (tag: LocationTag, unitCode?: string | null) => ({
-  location_tag_id: tag.id,
-  location_tag: tag.locationTagName,
-  unit_id: unitCode ?? tag.unitId,
-  length: tag.length ?? "",
-  breadth: tag.breadth ?? "",
-  height: tag.height ?? "",
-  unit_of_measurement: tag.unitOfMeasurement ?? "",
-  description: "",
-})
+const mapLocationTagToDisplayRow = (tag: LocationTag, unitCode?: string | null) => {
+  const length = tag.length ?? ""
+  const breadth = tag.breadth ?? ""
+  const height = tag.height ?? ""
+  const hasDimensions = typeof tag.length === "number" && typeof tag.breadth === "number" && typeof tag.height === "number"
+  const volume = hasDimensions ? Number((tag.length! * tag.breadth! * tag.height!).toFixed(3)) : ""
+
+  return {
+    location_tag_id: tag.id,
+    location_tag: tag.locationTagName,
+    unit_id: unitCode ?? tag.unitId,
+    length,
+    breadth,
+    height,
+    unit_of_measurement: tag.unitOfMeasurement ?? "",
+    description: "",
+    volume,
+  }
+}
 
 // Backend schema definitions - matching exact form fields
 const BACKEND_SCHEMAS = {
@@ -1181,19 +1190,22 @@ export default function BulkUploadPage() {
 
   const getCustomCellValue = (row: any, field: string, uploadType: string) => {
     if (field === 'dimensions') {
-      const length = parseFloat(row.length) || 0;
-      const breadth = parseFloat(row.breadth) || 0;
-      const height = parseFloat(row.height) || 0;
-      const volume = parseFloat(row.volume) || 0;
-      
-      if (length > 0 && breadth > 0 && height > 0) {
-        return `${length} × ${breadth} × ${height} = ${volume}`;
-      } else {
-        return '-';
+      const length = parseFloat(row.length)
+      const breadth = parseFloat(row.breadth)
+      const height = parseFloat(row.height)
+
+      if (Number.isFinite(length) && length > 0 && Number.isFinite(breadth) && breadth > 0 && Number.isFinite(height) && height > 0) {
+        const volumeValue = row.volume !== undefined && row.volume !== null && row.volume !== ''
+          ? parseFloat(row.volume)
+          : Number((length * breadth * height).toFixed(3))
+        const volume = Number.isFinite(volumeValue) ? volumeValue : Number((length * breadth * height).toFixed(3))
+        return `${length} × ${breadth} × ${height} = ${volume}`
       }
+
+      return '-'
     }
     
-    return formatCellValue(row[field], field);
+    return formatCellValue(row[field], field)
   }
 
   return (

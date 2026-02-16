@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { OCCUPANCY_STATUS, STATUS_COLORS, COMPONENT_TYPES } from '@/lib/warehouse/constants/warehouseComponents';
+import { COMPONENT_TYPES } from '@/lib/warehouse/constants/warehouseComponents';
 import { getZoneDescription } from '@/lib/warehouse/utils/locationUtils';
 
 // Structural elements that don't have inventory data
@@ -61,17 +61,6 @@ const InfoPopup = ({ item, x, y, onClose }) => {
     padding: '1rem',
     borderRadius: '8px 8px 0 0',
     position: 'relative'
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case OCCUPANCY_STATUS.EMPTY: return '✅';
-      case OCCUPANCY_STATUS.PARTIAL: return '⚠️';
-      case OCCUPANCY_STATUS.FULL: return '🔴';
-      case OCCUPANCY_STATUS.MAINTENANCE: return '🔧';
-      case OCCUPANCY_STATUS.RESERVED: return '🔒';
-      default: return '❓';
-    }
   };
 
   const getUtilizationColor = (utilization) => {
@@ -151,12 +140,12 @@ const InfoPopup = ({ item, x, y, onClose }) => {
                 📊 Current Status
               </h4>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: '1.2rem' }}>{getStatusIcon(item.occupancyStatus)}</span>
+                <span style={{ fontSize: '1.2rem' }}>📋</span>
                 <span style={{ 
                   fontWeight: 'bold', 
-                  color: STATUS_COLORS[item.occupancyStatus] || '#666'
+                  color: '#666'
                 }}>
-                  {item.occupancyStatus?.toUpperCase() || 'UNKNOWN'}
+                  {item.occupancyStatus?.toUpperCase() || 'ACTIVE'}
                 </span>
               </div>
           

@@ -21,7 +21,7 @@ import SkuIdSelector from '@/components/warehouse/SkuIdSelector';
 import MultiLocationSelector from '@/components/warehouse/MultiLocationSelector';
 import OrgUnitSelector from '@/components/warehouse/OrgUnitSelector';
 import { locationTagService, type LocationTag } from '@/src/services/locationTags';
-import { STACK_MODES, STACKABLE_COMPONENTS, OCCUPANCY_STATUS, STORAGE_ORIENTATION, COMPONENT_TYPES } from '@/lib/warehouse/constants/warehouseComponents';
+import { STACK_MODES, STACKABLE_COMPONENTS, STORAGE_ORIENTATION, COMPONENT_TYPES } from '@/lib/warehouse/constants/warehouseComponents';
 import { getComponentColor, forceRefreshStorageUnitColors } from '@/lib/warehouse/utils/componentColors';
 import { generateStorageUnitLabel, generateStorageComponentLabel, applyEnhancedLabeling } from '@/lib/warehouse/utils/componentLabeling';
 import { generateLocationCode, generateMockInventoryData } from '@/lib/warehouse/utils/locationUtils';
@@ -394,8 +394,7 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     // Generate inventory data
     const inventoryData = generateMockInventoryData(locationCode, newItem.type);
     
-    // Assign random occupancy status and storage orientation
-    const occupancyStatuses = Object.values(OCCUPANCY_STATUS);
+    // Assign random storage orientation
     const storageOrientations = Object.values(STORAGE_ORIENTATION);
     
     // Debug logging for Storage Unit
@@ -423,7 +422,6 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
       ...newItem,
       locationCode,
       inventoryData,
-      occupancyStatus: occupancyStatuses[Math.floor(Math.random() * occupancyStatuses.length)],
       storageOrientation: storageOrientations[Math.floor(Math.random() * storageOrientations.length)],
       facilityId: selectedFacility?.id,
       color: baseColor,

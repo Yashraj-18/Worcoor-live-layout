@@ -19,14 +19,6 @@ export const STACK_MODES = {
   DISABLED: 'disabled'
 };
 
-// Occupancy status for warehouse items
-export const OCCUPANCY_STATUS = {
-  EMPTY: 'empty',
-  PARTIAL: 'partial', 
-  FULL: 'full',
-  MAINTENANCE: 'maintenance',
-  RESERVED: 'reserved'
-};
 
 // Storage orientation
 export const STORAGE_ORIENTATION = {

@@ -6665,9 +6665,9 @@ div.warehouse-item[data-type="vertical_sku_holder"]:hover {
 
   background: transparent;
 
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  border: none;
 
-  border-radius: 6px;
+  border-radius: 0;
 
   padding: 8px 10px;
 
@@ -6696,8 +6696,6 @@ div.warehouse-item[data-type="vertical_sku_holder"]:hover {
 .control-btn:hover:not(.disabled) {
 
   background: rgba(30, 41, 59, 0.8);
-
-  border-color: rgba(59, 130, 246, 0.5);
 
   transform: translateY(-1px);
 
@@ -6731,11 +6729,11 @@ div.warehouse-item[data-type="vertical_sku_holder"]:hover {
 
 .status-badge {
 
-  background: rgba(30, 41, 59, 0.8);
+  background: transparent;
 
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  border: none;
 
-  border-radius: 6px;
+  border-radius: 0;
 
   padding: 6px 10px;
 

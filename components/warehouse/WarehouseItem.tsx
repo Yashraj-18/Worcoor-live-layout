@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useDrag } from 'react-dnd';
-import { DRAG_TYPES, STACKABLE_COMPONENTS, OCCUPANCY_STATUS } from '@/lib/warehouse/constants/warehouseComponents';
+import { DRAG_TYPES, STACKABLE_COMPONENTS } from '@/lib/warehouse/constants/warehouseComponents';
 import { getComponentColor } from '@/lib/warehouse/utils/componentColors';
 import { renderShapeComponent } from '@/lib/warehouse/utils/shapeRenderer';
 import { getContextualLabel } from '@/lib/warehouse/utils/componentLabeling';
@@ -427,9 +427,7 @@ const handleItemMouseEnter = useCallback((event: any) => {
       return;
     }
 
-    const variant = item.occupancyStatus && item.occupancyStatus !== OCCUPANCY_STATUS.EMPTY
-      ? 'occupied'
-      : 'empty';
+    const variant = 'empty'; // Simplified - always use empty variant
     showTooltip(event, content, variant, 'item');
   }, [buildItemTooltipContent, hasCompartments, item.occupancyStatus, item.type, showTooltip, isReadOnly]);
 
@@ -835,9 +833,8 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
 
   const hasResolvedLocation = Boolean(resolvedLocationId);
   
-  // Get status-based styling
-  const occupancyStatus = item.occupancyStatus || OCCUPANCY_STATUS.EMPTY;
-  const statusColor = '#ddd'; // Simple fallback color since STATUS_COLORS was removed
+  // Simple fallback color
+  const statusColor = '#ddd';
 
   return (
     <div

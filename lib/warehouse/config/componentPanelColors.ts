@@ -24,10 +24,6 @@ export const COMPONENT_PANEL_COLORS: Record<string, string> = {
   // Floor Plan Components
   [COMPONENT_TYPES.SQUARE_BOUNDARY]: 'transparent',        // Transparent - Main warehouse boundary
   
-  // Boundary Components
-  [COMPONENT_TYPES.SOLID_BOUNDARY]: 'transparent',         // Transparent - Solid divisions
-  [COMPONENT_TYPES.DOTTED_BOUNDARY]: 'transparent',        // Transparent - Dotted divisions
-  
   // Storage Components (1×1 to 2×2)
   [COMPONENT_TYPES.STORAGE_UNIT]: 'transparent',       // Transparent - No color (fresh start)
   [COMPONENT_TYPES.SKU_HOLDER]: 'transparent',             // Transparent - Horizontal storage racks
@@ -59,7 +55,6 @@ export const COMPONENT_PANEL_COLORS: Record<string, string> = {
   // Primary Warehouse Operations
   [COMPONENT_TYPES.DISPATCH_GATES]: 'transparent',         // Transparent - Dispatch gates
   [COMPONENT_TYPES.INBOUND_GATES]: 'transparent',          // Transparent - Inbound gates
-  [COMPONENT_TYPES.OFFICE_SPACE_AREA]: 'transparent',      // Transparent - Office space area
 };
 
 /**

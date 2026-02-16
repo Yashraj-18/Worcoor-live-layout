@@ -44,10 +44,6 @@ export const STRUCTURAL_ELEMENTS = [
   COMPONENT_TYPES.WAREHOUSE_BLOCK,
   COMPONENT_TYPES.SQUARE_BOUNDARY,
   
-  // Boundaries
-  COMPONENT_TYPES.SOLID_BOUNDARY,
-  COMPONENT_TYPES.DOTTED_BOUNDARY,
-  
   // Storage Components
   COMPONENT_TYPES.STORAGE_UNIT,
   COMPONENT_TYPES.SKU_HOLDER,
@@ -70,10 +66,6 @@ export const COMPONENT_COLORS = {
   
   // Floor Plan Components
   [COMPONENT_TYPES.SQUARE_BOUNDARY]: 'transparent',
-  
-  // Boundaries
-  [COMPONENT_TYPES.SOLID_BOUNDARY]: 'transparent',
-  [COMPONENT_TYPES.DOTTED_BOUNDARY]: 'transparent',
   
   // Storage Components
   [COMPONENT_TYPES.STORAGE_UNIT]: 'transparent',
@@ -104,8 +96,7 @@ export const COMPONENT_COLORS = {
   
   // Primary Warehouse Operations
   [COMPONENT_TYPES.DISPATCH_GATES]: 'transparent',
-  [COMPONENT_TYPES.INBOUND_GATES]: 'transparent',
-  [COMPONENT_TYPES.OFFICE_SPACE_AREA]: 'transparent',
+  [COMPONENT_TYPES.INBOUND_GATES]: 'transparent'
 };
 
 
@@ -159,10 +150,17 @@ export const WAREHOUSE_COMPONENTS = [
         supportsMultipleLocationIds: true, // Support multiple location IDs (L1, L2, L3)
         supportsMultipleLevels: true // Support multiple levels per location
       },
+    ]
+  },
+  {
+    category: "Gates",
+    priority: "high",
+    expanded: true,
+    components: [
       {
         type: COMPONENT_TYPES.DISPATCH_GATES,
         name: "Dispatch Gates",
-        icon: "/assets/images/icons/dispatch-gate.png",
+        icon: "/assets/images/icons/dispatch-gate1.png",
         color: getComponentPanelColor(COMPONENT_TYPES.DISPATCH_GATES),
         defaultSize: { width: 120, height: 60 }, // 2×1 grid blocks
         description: "Dispatch gates for loading and shipping operations",
@@ -181,7 +179,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.INBOUND_GATES,
         name: "Inbound Gates",
-        icon: "/assets/images/icons/inbound-gate.png",
+        icon: "/assets/images/icons/inbound-gate1.png",
         color: getComponentPanelColor(COMPONENT_TYPES.INBOUND_GATES),
         defaultSize: { width: 120, height: 60 }, // 2×1 grid blocks
         description: "Inbound gates for receiving and unloading operations",
@@ -196,74 +194,6 @@ export const WAREHOUSE_COMPONENTS = [
         isContainer: true,
         containerLevel: 2,
         containerPadding: 6
-      },
-      {
-        type: COMPONENT_TYPES.OFFICE_SPACE_AREA,
-        name: "Office Space Area",
-        icon: "/assets/images/icons/office-space.png",
-        color: getComponentPanelColor(COMPONENT_TYPES.OFFICE_SPACE_AREA),
-        defaultSize: { width: 60, height: 60 }, // 1×1 grid blocks
-        description: "Office space area for administrative operations",
-        priority: "medium",
-        snapToGrid: true,
-        gridAligned: true,
-        gridStep: 60,
-        resizable: true,
-        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid blocks
-        maxSize: { width: 120, height: 120 }, // Maximum 2×2 grid blocks
-        isFacility: true,
-        isContainer: true,
-        containerLevel: 3,
-        containerPadding: 4,
-        skuGrid: true, // Special property to indicate this has compartments
-        showCompartments: true, // Show visual compartment grid
-        allowEmpty: true, // Compartments can be vacant
-        maxSKUsPerCompartment: 1 // One unit per compartment
-      },
-    ]
-  },
-    {
-    category: "Boundaries",
-    priority: "high",
-    expanded: true,
-    components: [
-      {
-        type: COMPONENT_TYPES.SOLID_BOUNDARY,
-        name: "Solid Boundary",
-        color: getComponentPanelColor(COMPONENT_TYPES.SOLID_BOUNDARY),
-        defaultSize: { width: 180, height: 180 }, // 3×3 grid blocks
-        description: "Solid boundary box for zone divisions with normal border",
-        priority: "high",
-        isBoundary: true,
-        isHollow: true,
-        borderWidth: 2,
-        borderStyle: "solid",
-        containerLevel: 2,
-        snapToGrid: false, // Allow free positioning
-        gridAligned: false, // No grid alignment required
-        resizable: true,
-        minSize: { width: 60, height: 60 }, // Minimum size
-        maxSize: { width: 1200, height: 1200 }, // Maximum size
-        gridStep: 10 // Resize in 10px increments
-      },
-      {
-        type: COMPONENT_TYPES.DOTTED_BOUNDARY,
-        name: "Dotted Boundary",
-        color: getComponentPanelColor(COMPONENT_TYPES.DOTTED_BOUNDARY),
-        defaultSize: { width: 180, height: 180 }, // 3×3 grid blocks
-        description: "Dotted boundary box for zone divisions with dashed border",
-        priority: "high",
-        isBoundary: true,
-        isHollow: true,
-        borderWidth: 2,
-        borderStyle: "dotted",
-        containerLevel: 2,
-        snapToGrid: false, // Allow free positioning
-        gridAligned: false, // No grid alignment required
-        resizable: true,
-        minSize: { width: 60, height: 60 }, // Minimum size
-        maxSize: { width: 1200, height: 1200 }, // Maximum size
-        gridStep: 10 // Resize in 10px increments
       }
     ]
   },

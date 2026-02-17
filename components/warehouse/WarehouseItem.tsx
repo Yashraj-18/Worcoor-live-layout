@@ -483,7 +483,7 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
     const isVertical = normalizedType === 'vertical_sku_holder';
     const isOfficeSpace = normalizedType === 'office_space_area';
     const isStorageRack = Boolean(item?.skuGrid) || normalizedType === 'sku_holder' || normalizedType === 'vertical_sku_holder';
-    const filledFill = isStorageRack ? 'transparent' : (isVertical ? '#FFE0B2' : (isOfficeSpace ? 'transparent' : '#E0F7FA'));
+    const filledFill = isStorageRack ? 'transparent' : (isVertical ? '#FFC107' : (isOfficeSpace ? 'transparent' : '#E0F7FA'));
     const emptyFill = isStorageRack ? 'transparent' : (isVertical ? '#FFF3E0' : (isOfficeSpace ? 'transparent' : '#E3F2FD'));
     const highlightFill = '#FFF9C4';
     const hoverFillOccupied = isStorageRack ? 'transparent' : (isVertical ? '#FFCC80' : (isOfficeSpace ? 'rgba(96, 125, 139, 0.1)' : '#B2EBF2'));
@@ -905,8 +905,8 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: 60,
-            height: 60,
+            width: item.width || 60,
+            height: item.height || 60,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

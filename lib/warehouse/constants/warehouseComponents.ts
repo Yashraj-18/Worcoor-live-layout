@@ -279,21 +279,6 @@ export const WAREHOUSE_COMPONENTS = [
       },
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
-        name: "Storage Unit",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
-        defaultSize: { width: 60, height: 60 }, // 1×1 grid block
-        description: "Individual storage unit with sequential SKU ID assignment",
-        priority: "high",
-        snapToGrid: true,
-        gridAligned: true,
-        gridStep: 60,
-        resizable: false,
-        hasSku: true, // Enable SKU functionality
-        singleSku: true, // Single SKU per unit (not compartmentalized)
-        supportsMultipleLocationIds: true // Support multiple location IDs
-      },
-      {
-        type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Production Area",
         color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block

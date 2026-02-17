@@ -1000,17 +1000,11 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
       const primaryLocationId = data.locationIds[0] || '';
       handleUpdateItem(itemId, { 
         locationId: primaryLocationId, // Primary location ID for display
-        category: data.category || singleCategory, // Add category for color determination
         locationData: {
           isMultiLocation: true,
           locationIds: data.locationIds,
           primaryLocationId: primaryLocationId,
-          uniqueId: primaryLocationId,
-          sku: data.locationIds.join(','),
           quantity: data.locationIds.length,
-          status: 'planned',
-          category: data.category || singleCategory,
-          availability: 'available',
           createdAt: new Date().toISOString(),
           lastModified: new Date().toISOString(),
           metadata: {
@@ -1032,15 +1026,9 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     if (compartmentId === 'single-sku') {
       handleUpdateItem(itemId, { 
         locationId: locationId,
-        category: singleCategory, // Add category for color determination
         locationData: {
           locationId: locationId,
-          uniqueId: locationId,
-          sku: locationId,
           quantity: 1,
-          status: 'planned',
-          category: singleCategory,
-          availability: 'available',
           createdAt: new Date().toISOString(),
           lastModified: new Date().toISOString(),
           metadata: {
@@ -1058,13 +1046,8 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
         ...item.compartmentContents, 
         [compartmentId]: { 
           locationId: locationId,
-          uniqueId: locationId, // Keep for backward compatibility
-          sku: locationId, // Use the selected Location ID as the SKU
           quantity: 1,
-          status: 'planned',
-          category: '',
           storageSpace: `${Math.floor(item.width / 60)}x${Math.floor(item.height / 60)}`,
-          availability: 'available',
           createdAt: new Date().toISOString(),
           lastModified: new Date().toISOString(),
           position: {
@@ -1482,11 +1465,9 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
             .flatMap(item => 
               item.locationData?.locationIds || [item.locationId].filter(Boolean)
             )}
-          showCategories={pendingSkuRequest?.compartmentId === 'single-sku'}
-          allowCustomIds={pendingSkuRequest?.compartmentId === 'single-sku'}
-          allowMultipleIds={pendingSkuRequest?.compartmentalized}
           locationTags={locationTags}
           isLoadingLocationTags={isLoadingLocationTags}
+          allowMultipleIds={true}
         />
 
         {/* Multi Location ID Selector Modal for Vertical Storage Racks */}

@@ -321,16 +321,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
             </div>
             <div style={{ fontSize: '0.9rem', color: '#86efac', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Archive size={12} color="#86efac" />
-                <strong>Type:</strong> {displayName}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <MapPin size={12} color="#86efac" />
-                <strong>Location ID:</strong> {getContextualLabel(selectedItem, 'properties') || 'Not Assigned'}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Tag size={12} color="#86efac" />
-                <strong>Category:</strong> {displayName}
+                <strong>Location ID{selectedItem.locationData?.isMultiLocation ? 's' : ''}:</strong> 
+                {selectedItem.locationData?.isMultiLocation && selectedItem.locationData.locationIds 
+                  ? selectedItem.locationData.locationIds.join(', ') 
+                  : (getContextualLabel(selectedItem, 'properties') || 'Not Assigned')}
               </div>
               
               {/* Multiple Location IDs Display */}
@@ -345,7 +340,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Package size={12} color="#bbf7d0" />
-                    <strong>Multiple Location IDs ({selectedItem.locationData.locationIds.length}):</strong>
+                    <strong>Attached Location IDs ({selectedItem.locationData.locationIds.length}):</strong>
                   </div>
                   <div style={{ marginLeft: '20px', fontSize: '0.75rem' }}>
                     {selectedItem.locationData.locationIds.map((id: string, index: number) => (
@@ -359,11 +354,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
                           width: '8px', 
                           height: '8px', 
                           borderRadius: '50%', 
-                          backgroundColor: index === 0 ? '#4CAF50' : '#81C784',
+                          backgroundColor: '#4CAF50',
                           display: 'inline-block'
                         }} />
-                        <span style={{ color: index === 0 ? '#4CAF50' : '#81C784' }}>
-                          {id} {index === 0 && '(Primary)'}
+                        <span style={{ color: '#4CAF50' }}>
+                          {id}
                         </span>
                       </div>
                     ))}

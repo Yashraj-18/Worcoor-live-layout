@@ -487,7 +487,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
 
   useEffect(() => {
     if (!selectedUnitForDemo) {
-      setAvailableSkus([]);
+      //setAvailableSkus([]);
       setAvailableAssets([]);
       setLayoutLocationTags([]);
       return;
@@ -495,14 +495,14 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
 
     const selectedLayout = savedLayouts.find((layout) => layout.id === selectedUnitForDemo);
     if (!selectedLayout) {
-      setAvailableSkus([]);
+      //setAvailableSkus([]);
       setAvailableAssets([]);
       setLayoutLocationTags([]);
       return;
     }
 
     const { locationTags, skus, assets } = collectDropdownOptionsFromLayout(selectedLayout);
-    setAvailableSkus(skus);
+    //setAvailableSkus(skus);
     setAvailableAssets(assets);
     setLayoutLocationTags(locationTags);
   }, [selectedUnitForDemo, savedLayouts, collectDropdownOptionsFromLayout]);
@@ -553,21 +553,32 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
 
   // Fetch SKUs for the selected unit and build location-SKU mappings
   useEffect(() => {
+    console.log('⚙️ SKU useEffect triggered');
+    console.log('  selectedUnitForDemo:', selectedUnitForDemo);
+    console.log('  savedLayouts:', savedLayouts);
+
     if (!selectedUnitForDemo) {
+      console.log('  ⛔ No selectedUnitForDemo - returning');
       setSkuLocationMap({});
       setLocationSkuMap({});
       return;
     }
 
     const selectedLayout = savedLayouts.find((layout) => layout.id === selectedUnitForDemo);
+    console.log('  selectedLayout:', selectedLayout);
+
     if (!selectedLayout) {
+      console.log('  ⛔ No selectedLayout found - returning');
       setSkuLocationMap({});
       setLocationSkuMap({});
       return;
     }
 
     const unitId = selectedLayout.orgUnit?.id ?? selectedLayout.unitId;
+    console.log('  unitId:', unitId);
+
     if (!unitId) {
+      console.log('  ⛔ No unitId - returning');
       setSkuLocationMap({});
       setLocationSkuMap({});
       return;
@@ -575,9 +586,13 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
 
     let cancelled = false;
     const fetchSkus = async () => {
+      console.log('🔄 fetchSkus called with unitId:', unitId);
       try {
-        const response = await skuService.list({ unitId, limit: 1000 });
+        const response = await skuService.list({ unitId, limit: 100 });
         if (cancelled) return;
+
+        console.log('📦 SKU Response:', response);
+        console.log('📊 Number of SKUs:', response.items.length);
 
         const skuToLocs: Record<string, string[]> = {};
         const locToSku: Record<string, string> = {};
@@ -587,14 +602,12 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
           const locName = sku.locationTagName.trim();
           const skuName = sku.skuName.trim();
 
-          // location -> sku (first wins)
           if (!locToSku[locName]) {
             locToSku[locName] = skuName;
           }
           locToSku[locName.toUpperCase()] = skuName;
           locToSku[locName.toLowerCase()] = skuName;
 
-          // sku -> locations
           if (!skuToLocs[skuName]) {
             skuToLocs[skuName] = [];
           }
@@ -603,11 +616,17 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
 
         setSkuLocationMap(skuToLocs);
         setLocationSkuMap(locToSku);
+
+        const uniqueSkuNames = Array.from(new Set(response.items.map((sku) => sku.skuName.trim()))).sort();
+        console.log('🧾 Unique SKU Names:', uniqueSkuNames);
+        setAvailableSkus(uniqueSkuNames);
+        console.log('🧾 setAvailableSkus called');
       } catch (error) {
-        console.error('WarehouseMapView - Failed to load SKUs for unit', error);
+        console.error('⛔ Failed to load SKUs for unit', error);
         if (!cancelled) {
           setSkuLocationMap({});
           setLocationSkuMap({});
+          setAvailableSkus([]);
         }
       }
     };

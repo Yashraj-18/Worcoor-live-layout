@@ -334,14 +334,14 @@ export const WAREHOUSE_COMPONENTS = [
         name: "Fire Exit Marking",
         icon: "/assets/images/icons/Fire Exit marking.png",
         color: getComponentPanelColor(COMPONENT_TYPES.FIRE_EXIT_MARKING),
-        defaultSize: { width: 120, height: 60 }, // 2×1 grid blocks
+        defaultSize: { width: 120, height: 30 }, // 2×0.5 grid blocks
         description: "Fire exit safety marking for emergency evacuation routes",
         priority: "high",
         snapToGrid: true,
         gridAligned: true,
-        gridStep: 60,
+        gridStep: 30,
         resizable: true,
-        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
+        minSize: { width: 60, height: 30 }, // Minimum 1×0.5 grid block
         maxSize: { width: 240, height: 120 }, // Maximum 4×2 grid blocks
         isSafetyFeature: true,
         isPathway: true
@@ -351,14 +351,14 @@ export const WAREHOUSE_COMPONENTS = [
         name: "Security Area",
         icon: "/assets/images/icons/security.png",
         color: getComponentPanelColor(COMPONENT_TYPES.SECURITY_AREA),
-        defaultSize: { width: 180, height: 60 }, // 3×1 grid blocks
+        defaultSize: { width: 180, height: 30 }, // 3×0.5 grid blocks
         description: "Security monitoring and access control area",
         priority: "high",
         snapToGrid: true,
         gridAligned: true,
-        gridStep: 60,
+        gridStep: 30,
         resizable: true,
-        minSize: { width: 120, height: 60 }, // Minimum 2×1 grid blocks
+        minSize: { width: 120, height: 30 }, // Minimum 2×0.5 grid blocks
         maxSize: { width: 300, height: 120 }, // Maximum 5×2 grid blocks
         isRestricted: true,
         isContainer: true,
@@ -370,14 +370,14 @@ export const WAREHOUSE_COMPONENTS = [
         name: "Restrooms Area",
         icon: "/assets/images/icons/rest room area.png",
         color: getComponentPanelColor(COMPONENT_TYPES.RESTROOMS_AREA),
-        defaultSize: { width: 120, height: 60 }, // 2×1 grid blocks
+        defaultSize: { width: 120, height: 30 }, // 2×0.5 grid blocks
         description: "Restroom facilities area for warehouse personnel",
         priority: "medium",
         snapToGrid: true,
         gridAligned: true,
-        gridStep: 60,
+        gridStep: 30,
         resizable: true,
-        minSize: { width: 120, height: 60 }, // Minimum 2×1 grid blocks
+        minSize: { width: 120, height: 30 }, // Minimum 2×0.5 grid blocks
         maxSize: { width: 240, height: 120 }, // Maximum 4×2 grid blocks
         isFacility: true,
         isContainer: true,
@@ -389,14 +389,14 @@ export const WAREHOUSE_COMPONENTS = [
         name: "Pathways Arrows",
         icon: "/assets/images/icons/Pathways arrows.png",
         color: getComponentPanelColor(COMPONENT_TYPES.PATHWAYS_ARROWS),
-        defaultSize: { width: 180, height: 60 }, // 3×1 grid blocks
+        defaultSize: { width: 180, height: 30 }, // 3×0.5 grid blocks
         description: "Directional arrows for pathway and traffic flow guidance",
         priority: "medium",
         snapToGrid: true,
         gridAligned: true,
-        gridStep: 60,
+        gridStep: 30,
         resizable: true,
-        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
+        minSize: { width: 60, height: 30 }, // Minimum 1×0.5 grid block
         maxSize: { width: 360, height: 120 }, // Maximum 6×2 grid blocks
         isDirectional: true,
         isPathway: true,
@@ -414,14 +414,14 @@ export const WAREHOUSE_COMPONENTS = [
         name: "Conference Room",
         icon: "/assets/images/icons/Conference room.png",
         color: getComponentPanelColor(COMPONENT_TYPES.CONFERENCE_ROOM),
-        defaultSize: { width: 300, height: 240 }, // 5×4 grid blocks
+        defaultSize: { width: 300, height: 30 }, // 5×0.5 grid blocks
         description: "Large conference room for meetings and presentations",
         priority: "high",
         snapToGrid: true,
         gridAligned: true,
-        gridStep: 60,
+        gridStep: 30,
         resizable: true,
-        minSize: { width: 180, height: 120 }, // Minimum 3×2 grid blocks
+        minSize: { width: 180, height: 30 }, // Minimum 3×0.5 grid blocks
         maxSize: { width: 480, height: 360 }, // Maximum 8×6 grid blocks
         isFacility: true,
         isContainer: true,
@@ -433,14 +433,14 @@ export const WAREHOUSE_COMPONENTS = [
         name: "Meeting Rooms",
         icon: "/assets/images/icons/Meeting Room.png",
         color: getComponentPanelColor(COMPONENT_TYPES.MEETING_ROOMS),
-        defaultSize: { width: 180, height: 180 }, // 3×3 grid blocks
+        defaultSize: { width: 180, height: 30 }, // 3×0.5 grid blocks
         description: "Small meeting rooms for team discussions",
         priority: "medium",
         snapToGrid: true,
         gridAligned: true,
-        gridStep: 60,
+        gridStep: 30,
         resizable: true,
-        minSize: { width: 120, height: 120 }, // Minimum 2×2 grid blocks
+        minSize: { width: 120, height: 30 }, // Minimum 2×0.5 grid blocks
         maxSize: { width: 240, height: 240 }, // Maximum 4×4 grid blocks
         isFacility: true,
         isContainer: true,
@@ -452,14 +452,14 @@ export const WAREHOUSE_COMPONENTS = [
         name: "Pantry Area",
         icon: "/assets/images/icons/Pantry Area .png",
         color: getComponentPanelColor(COMPONENT_TYPES.PANTRY_AREA),
-        defaultSize: { width: 120, height: 120 }, // 2×2 grid blocks
+        defaultSize: { width: 120, height: 30 }, // 2×0.5 grid blocks
         description: "Kitchen and refreshment area for staff",
         priority: "medium",
         snapToGrid: true,
         gridAligned: true,
-        gridStep: 60,
+        gridStep: 30,
         resizable: true,
-        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
+        minSize: { width: 60, height: 30 }, // Minimum 1×0.5 grid block
         maxSize: { width: 180, height: 180 }, // Maximum 3×3 grid blocks
         isFacility: true,
         isContainer: true,
@@ -471,14 +471,14 @@ export const WAREHOUSE_COMPONENTS = [
         name: "Open Stage",
         icon: "/assets/images/icons/Open Stage.png",
         color: getComponentPanelColor(COMPONENT_TYPES.OPEN_STAGE),
-        defaultSize: { width: 360, height: 240 }, // 6×4 grid blocks
+        defaultSize: { width: 360, height: 30 }, // 6×0.5 grid blocks
         description: "Open stage area for presentations and performances",
         priority: "medium",
         snapToGrid: true,
         gridAligned: true,
-        gridStep: 60,
+        gridStep: 30,
         resizable: true,
-        minSize: { width: 180, height: 120 }, // Minimum 3×2 grid blocks
+        minSize: { width: 180, height: 30 }, // Minimum 3×0.5 grid blocks
         maxSize: { width: 600, height: 360 }, // Maximum 10×6 grid blocks
         isFacility: true,
         isContainer: true,
@@ -490,14 +490,14 @@ export const WAREHOUSE_COMPONENTS = [
         name: "Seating Area",
         icon: "/assets/images/icons/Seating Area.png",
         color: getComponentPanelColor(COMPONENT_TYPES.SEATING_AREA),
-        defaultSize: { width: 240, height: 60 }, // 4×1 grid blocks
+        defaultSize: { width: 240, height: 30 }, // 4×0.5 grid blocks
         description: "General seating area for informal gatherings",
         priority: "medium",
         snapToGrid: true,
         gridAligned: true,
-        gridStep: 60,
+        gridStep: 30,
         resizable: true,
-        minSize: { width: 120, height: 60 }, // Minimum 2×1 grid blocks
+        minSize: { width: 120, height: 30 }, // Minimum 2×0.5 grid blocks
         maxSize: { width: 360, height: 120 }, // Maximum 6×2 grid blocks
         isFacility: true,
         isContainer: true,
@@ -509,14 +509,14 @@ export const WAREHOUSE_COMPONENTS = [
         name: "Booths",
         icon: "/assets/images/icons/Booths.png",
         color: getComponentPanelColor(COMPONENT_TYPES.BOOTHS),
-        defaultSize: { width: 120, height: 120 }, // 2×2 grid blocks
+        defaultSize: { width: 120, height: 30 }, // 2×0.5 grid blocks
         description: "Private work booths for focused work",
         priority: "medium",
         snapToGrid: true,
         gridAligned: true,
-        gridStep: 60,
+        gridStep: 30,
         resizable: true,
-        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
+        minSize: { width: 60, height: 30 }, // Minimum 1×0.5 grid block
         maxSize: { width: 180, height: 180 }, // Maximum 3×3 grid blocks
         isFacility: true,
         isContainer: true,
@@ -528,14 +528,14 @@ export const WAREHOUSE_COMPONENTS = [
         name: "General Area",
         icon: "/assets/images/icons/General Area.png",
         color: getComponentPanelColor(COMPONENT_TYPES.GENERAL_AREA),
-        defaultSize: { width: 180, height: 180 }, // 3×3 grid blocks
+        defaultSize: { width: 180, height: 30 }, // 3×0.5 grid blocks
         description: "Multipurpose area for various activities",
         priority: "low",
         snapToGrid: true,
         gridAligned: true,
-        gridStep: 60,
+        gridStep: 30,
         resizable: true,
-        minSize: { width: 60, height: 60 }, // Minimum 1×1 grid block
+        minSize: { width: 60, height: 30 }, // Minimum 1×0.5 grid block
         maxSize: { width: 360, height: 360 }, // Maximum 6×6 grid blocks
         isFacility: true,
         isContainer: true,

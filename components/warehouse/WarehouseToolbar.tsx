@@ -12,7 +12,7 @@ const WarehouseToolbar = ({
   mode,
   onModeChange,
   onBack,
-  showLabels,
+  showLabels, // full
   onToggleLabels,
   onBulkLabelEdit,
   onAutoGenerateBoundary

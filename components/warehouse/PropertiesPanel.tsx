@@ -463,69 +463,72 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
         />
       </div>
 
-      <div className="property-group">
-        <label className="property-label">
-          Width
-        </label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <input
-            type="number"
-            className="property-input"
-            value={selectedItem.width}
-            onChange={(e) => handleNumberChange('width', e.target.value)}
-            min={selectedItem.minSize?.width || selectedItem.gridStep || 20}
-            max={selectedItem.maxSize?.width}
-            step={selectedItem.gridStep || 1}
-            style={{ 
-              flex: 1
-            }}
-          />
-          {selectedItem.gridStep && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <button
-                type="button"
-                onClick={() => handleNumberChange('width', String(selectedItem.width + selectedItem.gridStep))}
-                style={{
-                  width: '24px',
-                  height: '16px',
-                  border: '1px solid #ddd',
-                  background: '#f8f9fa',
-                  cursor: 'pointer',
-                  fontSize: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                title={`Increase by ${selectedItem.gridStep}px`}
-              >
-                +
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNumberChange('width', String(selectedItem.width - selectedItem.gridStep))}
-                style={{
-                  width: '24px',
-                  height: '16px',
-                  border: '1px solid #ddd',
-                  background: '#f8f9fa',
-                  cursor: 'pointer',
-                  fontSize: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                title={`Decrease by ${selectedItem.gridStep}px`}
-              >
-                -
-              </button>
-            </div>
-          )}
-        </div>
+      {/* Hide width field for common area icon components */}
+      {!['fire_exit_marking', 'security_area', 'restrooms_area', 'seating_area', 'pathways_arrows', 'conference_room', 'meeting_rooms', 'pantry_area', 'open_stage', 'booths', 'general_area'].includes(selectedItem.type) && (
+        <div className="property-group">
+          <label className="property-label">
+            Width
+          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input
+              type="number"
+              className="property-input"
+              value={selectedItem.width}
+              onChange={(e) => handleNumberChange('width', e.target.value)}
+              min={selectedItem.minSize?.width || selectedItem.gridStep || 20}
+              max={selectedItem.maxSize?.width}
+              step={selectedItem.gridStep || 1}
+              style={{ 
+                flex: 1
+              }}
+            />
+            {selectedItem.gridStep && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleNumberChange('width', String(selectedItem.width + selectedItem.gridStep))}
+                  style={{
+                    width: '24px',
+                    height: '16px',
+                    border: '1px solid #ddd',
+                    background: '#f8f9fa',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title={`Increase by ${selectedItem.gridStep}px`}
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNumberChange('width', String(selectedItem.width - selectedItem.gridStep))}
+                  style={{
+                    width: '24px',
+                    height: '16px',
+                    border: '1px solid #ddd',
+                    background: '#f8f9fa',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title={`Decrease by ${selectedItem.gridStep}px`}
+                >
+                  -
+                </button>
               </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="property-group">
         <label className="property-label">
-          Height
+          {['fire_exit_marking', 'security_area', 'restrooms_area', 'seating_area', 'pathways_arrows', 'conference_room', 'meeting_rooms', 'pantry_area', 'open_stage', 'booths', 'general_area'].includes(selectedItem.type) ? 'Image Scale' : 'Height'}
         </label>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <input

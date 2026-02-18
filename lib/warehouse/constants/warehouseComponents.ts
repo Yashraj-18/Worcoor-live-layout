@@ -113,7 +113,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.SKU_HOLDER,
         name: "Horizontal Storage Rack",
-        color: getComponentPanelColor(COMPONENT_TYPES.SKU_HOLDER),
+        color: getStorageComponentStatusColor("Horizontal Storage Rack"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block = 1 SKU compartment
         description: "Horizontal storage rack system where each 60×60px grid block holds 1 SKU unit",
         priority: "high",
@@ -133,7 +133,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.VERTICAL_SKU_HOLDER,
         name: "Vertical Storage Rack",
-        color: getComponentPanelColor(COMPONENT_TYPES.VERTICAL_SKU_HOLDER),
+        color: getStorageComponentStatusColor("Vertical Storage Rack"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block = 1 SKU compartment
         description: "Vertical storage rack system where each 60×60px grid block holds 1 SKU unit",
         priority: "high",

@@ -2,14 +2,20 @@
  * Component Status Color Configuration
  * 
  * Entry point for storage component status colors and borders.
- * This file serves as the centralized location where all storage unit variants
- * fetch their status colors and border configurations.
+ * This file serves as the centralized location where all storage components
+ * (storage units and storage racks) fetch their status colors and border configurations.
  * 
  * Current Implementation: All variants use 'transparent' with status-based borders
  * Status-based borders represent capacity from backend:
  * - Green: Full capacity
  * - Orange: Partially used
  * - Red: Empty
+ * - Black: No data (default)
+ * 
+ * Applies to:
+ * - Storage Unit variants (8 types)
+ * - Horizontal Storage Rack (compartment-based)
+ * - Vertical Storage Rack (compartment-based with levels)
  * 
  * Color Format: Hex color codes (e.g., '#4CAF50') or 'transparent'
  * Border Format: CSS border string (e.g., '1px solid #000000')
@@ -50,9 +56,10 @@ export interface CapacityBorderColors {
 
 /**
  * Storage Component Status Colors
- * All storage unit variants fetch their colors from here
+ * All storage components fetch their colors from here
  */
 export const STORAGE_COMPONENT_STATUS_COLORS: Record<string, string> = {
+  // Storage Unit Variants
   'Storage Unit': 'transparent',
   'Open Storage Space': 'transparent',
   'Dispatch Staging Area': 'transparent',
@@ -61,6 +68,10 @@ export const STORAGE_COMPONENT_STATUS_COLORS: Record<string, string> = {
   'Production Area': 'transparent',
   'Packaging Area': 'transparent',
   'Cold Storage': 'transparent',
+  
+  // Storage Racks
+  'Horizontal Storage Rack': 'transparent',
+  'Vertical Storage Rack': 'transparent',
 };
 
 /**

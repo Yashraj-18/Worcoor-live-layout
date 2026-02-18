@@ -153,12 +153,6 @@ export const LUCIDE_ICON_MAPPING: IconMapping = {
   
   // Storage Components
   'STORAGE_UNIT': Package,
-  'OPEN_STORAGE_SPACE': PackageOpen,
-  'DISPATCH_STAGING_AREA': PackagePlus,
-  'GRADING_AREA': PackageCheck,
-  'PRODUCTION_AREA': Factory,
-  'PACKAGING_AREA': PackageSearch,
-  'COLD_STORAGE': Snowflake,
   
   // Common Areas
   'FIRE_EXIT_MARKING': TriangleAlert,

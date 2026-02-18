@@ -58,6 +58,8 @@ export const LOCATION_ZONES = {
 // Fixed Component Color Coding for Consistency - Realistic Colors
 // Import component panel colors from centralized configuration
 import { getComponentPanelColor } from '../config/componentPanelColors';
+// Import storage component status colors
+import { getStorageComponentStatusColor } from '../config/componentStatusColor';
 
 // Legacy export for backward compatibility - now uses centralized color config
 export const COMPONENT_COLORS = {
@@ -205,7 +207,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Storage Unit",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Storage Unit"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Individual storage unit with sequential SKU ID assignment",
         priority: "high",
@@ -220,7 +222,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Open Storage Space",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Open Storage Space"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Open storage space with sequential SKU ID assignment",
         priority: "high",
@@ -235,7 +237,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Dispatch Staging Area",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Dispatch Staging Area"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Dispatch staging area with sequential SKU ID assignment",
         priority: "high",
@@ -250,7 +252,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Grading Area",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Grading Area"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Grading area with sequential SKU ID assignment",
         priority: "high",
@@ -265,7 +267,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Processing Area",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Processing Area"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Processing area with sequential SKU ID assignment",
         priority: "high",
@@ -280,7 +282,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Production Area",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Production Area"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Production area with sequential SKU ID assignment",
         priority: "high",
@@ -295,7 +297,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Packaging Area",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Packaging Area"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Packaging area with sequential SKU ID assignment",
         priority: "high",
@@ -310,7 +312,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Cold Storage",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Cold Storage"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Temperature-controlled cold storage unit for perishable goods",
         priority: "high",

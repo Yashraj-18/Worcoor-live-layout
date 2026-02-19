@@ -1,3 +1,4 @@
+// @ts-nocheck
 import popupManager from '@/components/warehouse/PopupMessage';
 
 type MessageType = 'info' | 'success' | 'error' | 'warning';

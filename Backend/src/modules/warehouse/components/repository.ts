@@ -8,6 +8,13 @@ export type CreateComponentDto = Omit<ComponentEntity, 'id' | 'createdAt'>;
 export type UpdateComponentDto = Partial<Omit<CreateComponentDto, 'layoutId' | 'organizationId'>>;
 
 export class ComponentsRepository {
+  async findAllByLayout(layoutId: string, organizationId: string): Promise<ComponentEntity[]> {
+    return db
+      .select()
+      .from(components)
+      .where(and(eq(components.layoutId, layoutId), eq(components.organizationId, organizationId)));
+  }
+
   async findById(id: string, organizationId: string): Promise<ComponentEntity | null> {
     const result = await db
       .select()

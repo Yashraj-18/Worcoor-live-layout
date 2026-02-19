@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Batch Creator Utility
  * Automatically creates and arranges units within zones

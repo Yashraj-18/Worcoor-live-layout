@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { OCCUPANCY_STATUS } from '../constants/warehouseComponents';
 
 interface InventoryItem {

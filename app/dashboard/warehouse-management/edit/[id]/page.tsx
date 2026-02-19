@@ -184,6 +184,7 @@ export default function EditLayoutPage() {
       <WarehouseLayoutBuilder
         initialOrgUnit={selectedOrgUnit}
         initialLayout={initialLayout}
+        layoutId={layout.id}
       />
     </div>
   );

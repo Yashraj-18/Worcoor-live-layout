@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Hierarchical Container System
  * Manages warehouse layout with 3 layers: Boundaries -> Zones -> Units

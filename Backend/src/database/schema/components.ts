@@ -1,4 +1,4 @@
-import { index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { organizations } from './organization.js';
 import { layouts } from './layouts.js';
@@ -21,7 +21,10 @@ export const components = pgTable(
     width: integer('width').notNull(),
     height: integer('height').notNull(),
     locationTagId: uuid('location_tag_id').references(() => locationTags.id),
+    locationTagName: text('location_tag_name'),
     color: text('color'),
+    label: text('label'),
+    metadata: jsonb('metadata'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({

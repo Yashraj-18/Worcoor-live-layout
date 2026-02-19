@@ -176,7 +176,10 @@ CREATE TABLE IF NOT EXISTS components (
     width INTEGER NOT NULL,
     height INTEGER NOT NULL,
     location_tag_id UUID REFERENCES location_tags(id),
+    location_tag_name TEXT,
     color TEXT,
+    label TEXT,
+    metadata JSONB,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 

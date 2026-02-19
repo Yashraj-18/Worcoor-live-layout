@@ -12,6 +12,11 @@ export async function registerWarehouseModule(app: FastifyInstance) {
   await app.register(componentRoutes, { prefix: '/api/components' });
   await app.register(locationTagsRoutes, { prefix: '/api/location-tags' });
 
+  // Layout-scoped component routes: /api/layouts/:layoutId/components
+  app.register(async (layoutScope) => {
+    layoutScope.register(componentsRoutes);
+  }, { prefix: '/api/layouts/:layoutId/components' });
+
   // Nested routes: /api/units/:unitId/layouts, /api/units/:unitId/live-map, /api/units/:unitId/search
   app.register(async (unitScope) => {
     unitScope.register(layoutsRoutes, { prefix: '/layouts' });

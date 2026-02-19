@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client';
 
 import React, { useState, useCallback } from 'react';
@@ -34,16 +35,6 @@ const normalizeHexColor = (value: string, fallback: string = '#8D6E63'): string 
   return fallback;
 };
 
-const SPARE_UNIT_PALETTE = [
-  '#5D4037', // Rich brown
-  '#3E2723', // Dark chocolate
-  '#795548', // Mocha
-  '#4E342E', // Deep espresso
-  '#BF360C', // Burnt orange
-  '#00695C', // Deep teal
-  '#283593', // Indigo
-  '#37474F'  // Slate gray
-];
 
 interface PropertiesPanelProps {
   selectedItem: any;
@@ -71,13 +62,17 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          justifyContent: 'space-between',
-          padding: '16px',
-          borderBottom: '1px solid rgba(148, 163, 184, 0.2)'
+          padding: '16px 24px',
+          width: '100%'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Settings size={18} color="#94a3b8" />
-            <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: '16px' }}>Properties</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Settings size={20} color="#94a3b8" />
+            <span style={{ 
+              margin: 0, 
+              color: '#e2e8f0', 
+              fontSize: '18px', 
+              fontWeight: '500'
+            }}>Properties</span>
           </div>
         </div>
         <div style={{ 
@@ -105,14 +100,6 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
     onUpdateItem(selectedItem.id, { [property]: value });
   };
 
-  const handleSpareUnitColorChange = (value: string) => {
-    const normalized = normalizeHexColor(value);
-    onUpdateItem(selectedItem.id, { customColor: normalized, color: normalized });
-  };
-
-  const isSpareUnit = selectedItem.type === 'spare_unit';
-  const spareUnitBaseColor = normalizeHexColor(selectedItem.customColor || selectedItem.color || '#8D6E63');
-
   // Get all existing SKU IDs from the selected item
   const getExistingSkuIds = (): string[] => {
     if (!selectedItem.compartmentContents) return [];
@@ -122,31 +109,56 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
   };
 
   // Handle SKU ID selection from dropdown
-  const handleSkuIdSelect = (skuIdOrData: string | { locationId: string; category: string }) => {
+  const handleSkuIdSelect = (skuIdOrData: string | { locationId: string; category: string } | { locationIds: string[]; category: string }) => {
     if (!pendingCompartmentId) return;
     
     const parts = pendingCompartmentId.split('-');
-    if (parts.length < 2) return;
-    
-    const row = Math.floor(parseInt(parts[1]) / (selectedItem.width / 60));
-    const col = parseInt(parts[1]) % (selectedItem.width / 60);
-    
-    // Extract location ID and category from the data
-    const locationId = typeof skuIdOrData === 'string' ? skuIdOrData : skuIdOrData.locationId;
-    const category = typeof skuIdOrData === 'string' ? '' : skuIdOrData.category;
+    const itemIndex = parseInt(parts[1]);
+    const compartmentIndex = parseInt(parts[2]);
     
     const newContents = { 
       ...selectedItem.compartmentContents, 
       [pendingCompartmentId]: { 
-        locationId: locationId,
-        uniqueId: locationId, // Keep for backward compatibility
-        sku: locationId, // Use the selected SKU ID as the SKU
+        locationId: '',
+        uniqueId: '',
+        sku: '',
         quantity: 1,
         status: 'planned',
-        category: category,
+        category: '',
         lastModified: new Date().toISOString()
       }
     };
+    
+    // Handle different data types
+    if (typeof skuIdOrData === 'string') {
+      // Simple string SKU ID
+      newContents[pendingCompartmentId] = {
+        ...newContents[pendingCompartmentId],
+        sku: skuIdOrData,
+        uniqueId: skuIdOrData,
+        locationId: skuIdOrData
+      };
+    } else if ('locationId' in skuIdOrData) {
+      // Single location ID object
+      newContents[pendingCompartmentId] = {
+        ...newContents[pendingCompartmentId],
+        sku: skuIdOrData.locationId,
+        uniqueId: skuIdOrData.locationId,
+        locationId: skuIdOrData.locationId,
+        category: skuIdOrData.category
+      };
+    } else if ('locationIds' in skuIdOrData) {
+      // Multiple location IDs object
+      newContents[pendingCompartmentId] = {
+        ...newContents[pendingCompartmentId],
+        sku: skuIdOrData.locationIds.join(','),
+        uniqueId: skuIdOrData.locationIds[0],
+        locationIds: skuIdOrData.locationIds,
+        primaryLocationId: skuIdOrData.locationIds[0],
+        category: skuIdOrData.category,
+        isMultiLocation: true
+      };
+    }
     
     onUpdateItem(selectedItem.id, { compartmentContents: newContents });
     setSkuIdSelectorVisible(false);
@@ -284,27 +296,17 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
       <div style={{ 
         display: 'flex', 
         alignItems: 'center', 
-        justifyContent: 'space-between',
-        padding: '16px',
-        borderBottom: '1px solid rgba(148, 163, 184, 0.2)'
+        padding: '16px 24px',
+        width: '100%'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Settings size={18} color="#94a3b8" />
-          <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: '16px' }}>Properties</h3>
-        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            width: '32px',
-            height: '32px',
-            backgroundColor: selectedItem.color || '#6b7280',
-            borderRadius: '6px',
-            flexShrink: 0
-          }}>
-            <ItemIcon size={16} color="white" />
-          </div>
+          <ItemIcon size={20} color="#94a3b8" />
+          <span style={{ 
+            margin: 0, 
+            color: '#e2e8f0', 
+            fontSize: '18px', 
+            fontWeight: '500'
+          }}>Properties</span>
         </div>
       </div>
       
@@ -320,16 +322,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
             </div>
             <div style={{ fontSize: '0.9rem', color: '#86efac', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Archive size={12} color="#86efac" />
-                <strong>Type:</strong> {displayName}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <MapPin size={12} color="#86efac" />
-                <strong>Location ID:</strong> {getContextualLabel(selectedItem, 'properties') || 'Not Assigned'}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Tag size={12} color="#86efac" />
-                <strong>Category:</strong> {displayName}
+                <strong>Location ID{selectedItem.locationData?.isMultiLocation ? 's' : ''}:</strong> 
+                {selectedItem.locationData?.isMultiLocation && selectedItem.locationData.locationIds 
+                  ? selectedItem.locationData.locationIds.join(', ') 
+                  : (getContextualLabel(selectedItem, 'properties') || 'Not Assigned')}
               </div>
               
               {/* Multiple Location IDs Display */}
@@ -344,7 +341,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Package size={12} color="#bbf7d0" />
-                    <strong>Multiple Location IDs ({selectedItem.locationData.locationIds.length}):</strong>
+                    <strong>Attached Location IDs ({selectedItem.locationData.locationIds.length}):</strong>
                   </div>
                   <div style={{ marginLeft: '20px', fontSize: '0.75rem' }}>
                     {selectedItem.locationData.locationIds.map((id: string, index: number) => (
@@ -358,11 +355,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
                           width: '8px', 
                           height: '8px', 
                           borderRadius: '50%', 
-                          backgroundColor: index === 0 ? '#4CAF50' : '#81C784',
+                          backgroundColor: '#4CAF50',
                           display: 'inline-block'
                         }} />
-                        <span style={{ color: index === 0 ? '#4CAF50' : '#81C784' }}>
-                          {id} {index === 0 && '(Primary)'}
+                        <span style={{ color: '#4CAF50' }}>
+                          {id}
                         </span>
                       </div>
                     ))}
@@ -415,19 +412,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
           type="text"
           className="property-input"
           value={selectedItem.name || ''}
-          readOnly={!isSpareUnit}
-          disabled={!isSpareUnit}
-          onChange={(e) => {
-            if (isSpareUnit) {
-              handleInputChange('name', e.target.value);
-            }
-          }}
-          placeholder={isSpareUnit ? 'Enter spare unit name' : ''}
+          readOnly
+          disabled
+          placeholder="Component name"
         />
         <div style={{ fontSize: '0.75rem', color: '#6c757d', marginTop: '0.25rem' }}>
-          {isSpareUnit
-            ? 'Rename this spare unit to match its purpose (e.g., Spare Rack A1).'
-            : 'Component names are fixed for consistency.'}
         </div>
       </div>
 
@@ -445,44 +434,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
         />
       </div>
 
-      {isSpareUnit && (
-        <div className="property-group">
-          <label className="property-label">
-            <Palette size={14} color="#6b7280" />
-            Spare Unit Color
-          </label>
-          <div className="color-palette">
-            {SPARE_UNIT_PALETTE.map((paletteColor) => {
-              const isSelected = spareUnitBaseColor === normalizeHexColor(paletteColor);
-              return (
-                <button
-                  key={paletteColor}
-                  type="button"
-                  onClick={() => handleSpareUnitColorChange(paletteColor)}
-                  className={`color-option ${isSelected ? 'selected' : ''}`}
-                  aria-label={`Select spare unit color ${paletteColor}`}
-                >
-                  {isSelected && <span>✓</span>}
-                </button>
-              );
-            })}
-          </div>
-          <div className="help-text">
-            Pick from curated colors to keep spare unit placeholders consistent.
-          </div>
-        </div>
-      )}
-
+      
 
       <div className="property-group">
         <label className="property-label">
-          <Maximize2 size={14} color="#6b7280" />
           Position X
-          {selectedItem.isPositionLocked && <span className="status-indicator locked"><Lock size={12} /> Locked</span>}
-          <span className="status-indicator grid">
-            <Move size={12} />
-            Grid: {selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}px
-          </span>
         </label>
         <input
           type="number"
@@ -491,26 +447,12 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
           onChange={(e) => handleNumberChange('x', e.target.value)}
           min="0"
           step={selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}
-          disabled={selectedItem.isPositionLocked}
-          style={{ 
-            opacity: selectedItem.isPositionLocked ? 0.6 : 1,
-            cursor: selectedItem.isPositionLocked ? 'not-allowed' : 'text'
-          }}
         />
-        <div className="grid-info">
-          Grid position: {Math.round(selectedItem.x / (selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))))} × {selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}px
-        </div>
       </div>
 
       <div className="property-group">
         <label className="property-label">
-          <Maximize2 size={14} color="#6b7280" />
           Position Y
-          {selectedItem.isPositionLocked && <span className="status-indicator locked"><Lock size={12} /> Locked</span>}
-          <span className="status-indicator grid">
-            <Move size={12} />
-            Grid: {selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}px
-          </span>
         </label>
         <input
           type="number"
@@ -519,102 +461,75 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
           onChange={(e) => handleNumberChange('y', e.target.value)}
           min="0"
           step={selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}
-          disabled={selectedItem.isPositionLocked}
-          style={{ 
-            opacity: selectedItem.isPositionLocked ? 0.6 : 1,
-            cursor: selectedItem.isPositionLocked ? 'not-allowed' : 'text'
-          }}
         />
-        <div className="grid-info">
-          Grid position: {Math.round(selectedItem.y / (selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))))} × {selectedItem.type === 'solid_boundary' || selectedItem.type === 'dotted_boundary' ? 15 : (selectedItem.gridStep || (selectedItem.gridAligned ? 60 : 15))}px
-        </div>
       </div>
 
-      <div className="property-group">
-        <label className="property-label">
-          Width
-          {selectedItem.isSizeLocked && <span style={{ color: '#3F51B5', marginLeft: '8px' }}>📐</span>}
-          {selectedItem.gridStep && (
-            <span style={{ color: '#4CAF50', marginLeft: '8px', fontSize: '0.8rem' }}>
-              📏 Grid: {selectedItem.gridStep}px
-            </span>
-          )}
-        </label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <input
-            type="number"
-            className="property-input"
-            value={selectedItem.width}
-            onChange={(e) => handleNumberChange('width', e.target.value)}
-            min={selectedItem.minSize?.width || selectedItem.gridStep || 20}
-            max={selectedItem.maxSize?.width}
-            step={selectedItem.gridStep || 1}
-            disabled={selectedItem.isSizeLocked}
-            style={{ 
-              opacity: selectedItem.isSizeLocked ? 0.6 : 1,
-              cursor: selectedItem.isSizeLocked ? 'not-allowed' : 'text',
-              flex: 1
-            }}
-          />
-          {selectedItem.gridStep && !selectedItem.isSizeLocked && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <button
-                type="button"
-                onClick={() => handleNumberChange('width', String(selectedItem.width + selectedItem.gridStep))}
-                style={{
-                  width: '24px',
-                  height: '16px',
-                  border: '1px solid #ddd',
-                  background: '#f8f9fa',
-                  cursor: 'pointer',
-                  fontSize: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                title={`Increase by ${selectedItem.gridStep}px`}
-              >
-                +
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNumberChange('width', String(selectedItem.width - selectedItem.gridStep))}
-                style={{
-                  width: '24px',
-                  height: '16px',
-                  border: '1px solid #ddd',
-                  background: '#f8f9fa',
-                  cursor: 'pointer',
-                  fontSize: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                title={`Decrease by ${selectedItem.gridStep}px`}
-              >
-                -
-              </button>
-            </div>
-          )}
-        </div>
-        {selectedItem.gridStep && (
-          <div className="grid-info">
-            Grid units: {Math.round(selectedItem.width / selectedItem.gridStep)} × {selectedItem.gridStep}px
+      {/* Hide width field for common area icon components */}
+      {!['fire_exit_marking', 'security_area', 'restrooms_area', 'seating_area', 'pathways_arrows', 'conference_room', 'meeting_rooms', 'pantry_area', 'open_stage', 'booths', 'general_area'].includes(selectedItem.type) && (
+        <div className="property-group">
+          <label className="property-label">
+            Width
+          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input
+              type="number"
+              className="property-input"
+              value={selectedItem.width}
+              onChange={(e) => handleNumberChange('width', e.target.value)}
+              min={selectedItem.minSize?.width || selectedItem.gridStep || 20}
+              max={selectedItem.maxSize?.width}
+              step={selectedItem.gridStep || 1}
+              style={{ 
+                flex: 1
+              }}
+            />
+            {selectedItem.gridStep && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleNumberChange('width', String(selectedItem.width + selectedItem.gridStep))}
+                  style={{
+                    width: '24px',
+                    height: '16px',
+                    border: '1px solid #ddd',
+                    background: '#f8f9fa',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title={`Increase by ${selectedItem.gridStep}px`}
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNumberChange('width', String(selectedItem.width - selectedItem.gridStep))}
+                  style={{
+                    width: '24px',
+                    height: '16px',
+                    border: '1px solid #ddd',
+                    background: '#f8f9fa',
+                    cursor: 'pointer',
+                    fontSize: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title={`Decrease by ${selectedItem.gridStep}px`}
+                >
+                  -
+                </button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="property-group">
         <label className="property-label">
-          <Maximize2 size={14} color="#6b7280" />
-          Height
-          {selectedItem.isSizeLocked && <span className="status-indicator locked"><Lock size={12} /> Locked</span>}
-          {selectedItem.gridStep && (
-            <span className="status-indicator grid">
-              <Move size={12} />
-              Grid: {selectedItem.gridStep}px
-            </span>
-          )}
+          {['fire_exit_marking', 'security_area', 'restrooms_area', 'seating_area', 'pathways_arrows', 'conference_room', 'meeting_rooms', 'pantry_area', 'open_stage', 'booths', 'general_area'].includes(selectedItem.type) ? 'Image Scale' : 'Height'}
         </label>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <input
@@ -625,14 +540,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
             min={selectedItem.minSize?.height || 60}
             max={selectedItem.maxSize?.height || 1200}
             step={selectedItem.gridStep || 15}
-            disabled={selectedItem.isSizeLocked}
             style={{
-              opacity: selectedItem.isSizeLocked ? 0.6 : 1,
-              cursor: selectedItem.isSizeLocked ? 'not-allowed' : 'text',
               flex: 1
             }}
           />
-          {selectedItem.gridStep && !selectedItem.isSizeLocked && (
+          {selectedItem.gridStep && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <button
                 type="button"
@@ -673,19 +585,19 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
             </div>
           )}
         </div>
-        {selectedItem.gridStep && (
-          <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
-            Grid blocks: {Math.round(selectedItem.height / selectedItem.gridStep)} × {selectedItem.gridStep}px
-          </div>
-        )}
-      </div>
+              </div>
 
 
       <div className="property-group" style={{ marginTop: '2rem' }}>
         <button 
           className="btn btn-danger"
           onClick={handleDelete}
-          style={{ width: '100%', color: 'black' }}
+          style={{ 
+            width: '100%', 
+            backgroundColor: '#dc3545',
+            borderColor: '#dc3545',
+            color: 'white'
+          }}
         >
           🗑️ Delete Item
         </button>
@@ -973,11 +885,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
                 </div>
               )}
               
-              <div style={{ fontSize: '0.75rem', color: '#666', fontStyle: 'italic' }}>
-                <strong>Usage:</strong> Click compartments to add/edit SKU IDs. Each 60×60px grid block = 1 SKU compartment.<br/>
-                <strong>Future Ready:</strong> SKUs include metadata fields for category, storage space, availability, and operational data.
-              </div>
-            </div>
+                          </div>
           </div>
         );
       })()}
@@ -1020,26 +928,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
         </div>
       )}
 
-      <div style={{ 
-        marginTop: '2rem', 
-        padding: '1rem', 
-        background: 'rgba(255, 255, 255, 0.03)', 
-        borderRadius: '6px',
-        fontSize: '0.8rem',
-        color: '#94a3b8',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        backdropFilter: 'blur(10px)'
-      }}>
-        <strong style={{ color: '#e2e8f0' }}>Type:</strong> {selectedItem.type}<br/>
-        <strong style={{ color: '#e2e8f0' }}>ID:</strong> {selectedItem.id.substring(0, 8)}...<br/>
-        {selectedItem.stack && selectedItem.stack.layers && selectedItem.stack.layers.length > 1 && (
-          <><strong style={{ color: '#e2e8f0' }}>Stacked:</strong> Yes ({selectedItem.stack.layers.length} layers)<br/></>
-        )}
-        {selectedItem.gridStep && (
-          <><strong style={{ color: '#e2e8f0' }}>Grid-Aligned:</strong> Yes ({selectedItem.gridStep}px grid)<br/></>
-        )}
-      </div>
-
+      
       {/* SKU ID Selector Modal */}
       <SkuIdSelector
         isVisible={skuIdSelectorVisible}

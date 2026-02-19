@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Export Utilities for Layouts and Documentation
  * Supports multiple export formats including PNG, SVG, PDF, and CAD

@@ -4266,30 +4266,16 @@ code {
 
 
 
-/* COMPLETE HOVER OVERRIDE FOR SKU HOLDER - ABSOLUTELY NO EFFECTS */
+/* COMPLETE HOVER REMOVAL FOR SKU HOLDER - ABSOLUTELY NO EFFECTS */
 
 div.warehouse-item[data-type="sku_holder"]:hover {
-
   transform: none !important;
-
-  z-index: 5 !important;
-
-  box-shadow: none !important;
-
-  border-color: transparent !important;
-
   background: transparent !important;
-
+  border: none !important;
+  box-shadow: none !important;
+  z-index: auto !important;
   transition: none !important;
-
   animation: none !important;
-
-  scale: 1 !important;
-
-  translate: 0 0 !important;
-
-  rotate: 0deg !important;
-
 }
 
 /* Force SKU Holder compartment cells to always be transparent */
@@ -4307,31 +4293,18 @@ body .warehouse-item[data-type="vertical_sku_holder"] svg rect {
 /* Disable all pseudo-element effects */
 
 div.warehouse-item[data-type="sku_holder"]:hover::before,
-
 div.warehouse-item[data-type="sku_holder"]:hover::after {
-
+  display: none !important;
   opacity: 0 !important;
-
-  transform: none !important;
-
-  scale: 1 !important;
-
-  translate: 0 0 !important;
-
+  content: none !important;
 }
-
-
 
 /* Disable all child element hover effects */
 
 div.warehouse-item[data-type="sku_holder"]:hover * {
-
   transform: none !important;
-
   transition: none !important;
-
   animation: none !important;
-
 }
 
 
@@ -4370,6 +4343,20 @@ div.warehouse-item[data-type="sku_holder"]:hover * {
 
   overflow: visible;
 
+  /* Fix: Override default white background */
+  background: transparent !important;
+  background-image: none !important;
+  background-color: transparent !important;
+
+}
+
+/* Additional fix: Ensure all storage component variants are transparent */
+.warehouse-item[data-type="storage_unit"]:hover,
+.warehouse-item[data-type="storage_unit"].selected,
+.warehouse-item[data-type="storage_unit"]:focus {
+  background: transparent !important;
+  background-image: none !important;
+  background-color: transparent !important;
 }
 
 
@@ -4940,44 +4927,25 @@ div.warehouse-item[data-type="vertical_sku_holder"]:hover * {
 
 
 
-.warehouse-item:hover {
-
+.warehouse-item:hover:not([data-type="sku_holder"]):not([data-type="vertical_sku_holder"]) {
   z-index: 15;
-
   transform: translateY(-2px) scale(1.02);
-
 }
 
 
 
-/* MAXIMUM SPECIFICITY OVERRIDE - Horizontal SKU Holder (keep hover effects) */
+/* COMPLETE HOVER REMOVAL FOR SKU HOLDER - NO Z-INDEX CHANGE */
 
 body .warehouse-canvas .warehouse-item[data-type="sku_holder"]:hover,
-
 body .warehouse-item[data-type="sku_holder"]:hover,
-
 div.warehouse-item[data-type="sku_holder"]:hover {
-
-  z-index: 5 !important;
-
+  z-index: auto !important;
   transform: none !important;
-
-  transition: none !important;
-
-  animation: none !important;
-
-  scale: none !important;
-
-  translate: none !important;
-
-  rotate: none !important;
-
-  box-shadow: none !important;
-
-  border-color: transparent !important;
-
   background: transparent !important;
-
+  border: none !important;
+  box-shadow: none !important;
+  transition: none !important;
+  animation: none !important;
 }
 
 
@@ -5080,10 +5048,8 @@ div.warehouse-item[data-type="vertical_sku_holder"]:hover {
 
 
 
-.warehouse-item:hover::before {
-
+.warehouse-item:hover:not([data-type="sku_holder"]):not([data-type="vertical_sku_holder"])::before {
   opacity: 1;
-
 }
 
 
@@ -5742,18 +5708,19 @@ div.warehouse-item[data-type="vertical_sku_holder"]:hover {
 
 /* Enhanced warehouse item styles */
 
-.warehouse-item {
-
+.warehouse-item:not([data-type="sku_holder"]):not([data-type="vertical_sku_holder"]) {
   transition: all 0.3s ease;
+}
 
+.warehouse-item[data-type="sku_holder"],
+.warehouse-item[data-type="vertical_sku_holder"] {
+  transition: none !important;
 }
 
 
 
-.warehouse-item:hover .info-button {
-
+.warehouse-item:hover:not([data-type="sku_holder"]):not([data-type="vertical_sku_holder"]) .info-button {
   opacity: 1 !important;
-
 }
 
 
@@ -6698,9 +6665,9 @@ div.warehouse-item[data-type="vertical_sku_holder"]:hover {
 
   background: transparent;
 
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  border: none;
 
-  border-radius: 6px;
+  border-radius: 0;
 
   padding: 8px 10px;
 
@@ -6729,8 +6696,6 @@ div.warehouse-item[data-type="vertical_sku_holder"]:hover {
 .control-btn:hover:not(.disabled) {
 
   background: rgba(30, 41, 59, 0.8);
-
-  border-color: rgba(59, 130, 246, 0.5);
 
   transform: translateY(-1px);
 
@@ -6764,11 +6729,11 @@ div.warehouse-item[data-type="vertical_sku_holder"]:hover {
 
 .status-badge {
 
-  background: rgba(30, 41, 59, 0.8);
+  background: transparent;
 
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  border: none;
 
-  border-radius: 6px;
+  border-radius: 0;
 
   padding: 6px 10px;
 
@@ -18387,18 +18352,16 @@ input:checked + .toggle-slider:before {
 
 
 
-/* FINAL OVERRIDE - SKU Holder hover effects completely disabled */
+/* FINAL OVERRIDE - SKU Holder hover effects completely removed */
 
 .warehouse-item[data-type="sku_holder"]:hover {
-
   transform: none !important;
-
-  z-index: 5 !important;
-
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  z-index: auto !important;
   transition: none !important;
-
   animation: none !important;
-
 }
 
 

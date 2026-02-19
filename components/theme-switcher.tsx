@@ -7,7 +7,7 @@ import { Switch } from "./ui/switch"
 import { Label } from "./ui/label"
 
 interface themeSwitcherProps {
-  isOpen: boolean
+  isOpen?: boolean
 }
 
 export function ThemeSwitcher({ isOpen }: themeSwitcherProps) {

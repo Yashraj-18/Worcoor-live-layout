@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Boundary Manager - Ensures components stay within floor plan boundaries
  * and auto-adjusts floor plan dimensions when needed

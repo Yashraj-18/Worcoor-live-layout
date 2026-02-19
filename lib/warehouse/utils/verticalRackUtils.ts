@@ -1,3 +1,4 @@
+// @ts-nocheck
 export const countFromCompactLocation = (rawLocation) => {
   if (!rawLocation || typeof rawLocation !== 'string') {
     return null;

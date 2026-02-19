@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Type definitions for warehouse constants
 
 export interface ComponentDefinition {

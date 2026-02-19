@@ -9,6 +9,9 @@ export const createComponentSchema = z.object({
   height: z.number().int().positive(),
   color: z.string().max(50).optional().nullable(),
   locationTagId: z.string().uuid().optional().nullable(),
+  locationTagName: z.string().max(255).optional().nullable(),
+  label: z.string().max(255).optional().nullable(),
+  metadata: z.record(z.unknown()).optional().nullable(),
 });
 
 export const updateComponentSchema = createComponentSchema.partial();

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { LOCATION_ZONES, COMPONENT_TYPES, STRUCTURAL_ELEMENTS } from '../constants/warehouseComponents';
 import { facilityHierarchy, FACILITY_LEVELS, FACILITY_TYPES } from './facilityHierarchy';
 

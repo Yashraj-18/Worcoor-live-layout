@@ -90,7 +90,6 @@ const WarehouseItem = ({
   snapToGrid, 
   gridSize, 
   onRequestSkuId, 
-  onRightClick, 
   onInfoClick, 
   stackMode, 
   isReadOnly,
@@ -455,14 +454,20 @@ const WarehouseItem = ({
   }, [hideTooltip, isReadOnly]);
 
   const handleCompartmentHover = useCallback((event, compartmentData, rowIndex, colIndex) => {
-    // Only show tooltips in read-only mode (viewer), not in edit mode (layout builder)
+    // DISABLED: No hover effects for compartments in edit mode
     if (!isReadOnly) {
       return;
     }
+    
+    // DISABLED: No hover effects for SKU holders
+    if (item.type === 'sku_holder' || item.type === 'vertical_sku_holder') {
+      return;
+    }
+    
     const content = buildCompartmentTooltipContent(rowIndex, colIndex, compartmentData);
     const variant = compartmentData ? 'occupied' : 'empty';
     showTooltip(event, content, variant, 'compartment');
-  }, [buildCompartmentTooltipContent, showTooltip, isReadOnly]);
+  }, [buildCompartmentTooltipContent, showTooltip, isReadOnly, item.type]);
 
   const renderCompartmentGrid = useCallback(() => {
     if (!hasCompartments) {
@@ -477,12 +482,6 @@ const WarehouseItem = ({
     const cellWidth = cols > 0 ? (item.width - gap * (cols - 1)) / cols : item.width;
     const cellHeight = rows > 0 ? (item.height - gap * (rows - 1)) / rows : item.height;
     const isVertical = item.type === 'vertical_sku_holder';
-    const filledFill = isVertical ? '#FFE0B2' : '#E0F7FA';
-    const emptyFill = isVertical ? '#FFF3E0' : '#E3F2FD';
-    const highlightFill = '#FFF9C4';
-    const hoverFillOccupied = isVertical ? '#FFCC80' : '#B2EBF2';
-    const hoverFillEmpty = isVertical ? '#FFE0CC' : '#BBDEFB';
-    const textColor = isVertical ? '#E65100' : '#006064';
 
     const resolveLabel = (compartmentData) => {
       if (!compartmentData) {
@@ -519,13 +518,15 @@ const WarehouseItem = ({
           const isCompartmentHighlighted = Array.isArray(highlightedCompartments)
             ? highlightedCompartments.includes(compartmentId)
             : false;
-          const isHovered = hoveredCompartment === compartmentId;
+          const isHovered = (item.type === 'sku_holder' || item.type === 'vertical_sku_holder') 
+            ? false 
+            : hoveredCompartment === compartmentId;
 
-          const baseFill = compartmentData ? filledFill : emptyFill;
+          const baseFill = 'transparent';
           const fill = isCompartmentHighlighted
-            ? highlightFill
+            ? 'transparent'
             : isHovered
-              ? (compartmentData ? hoverFillOccupied : hoverFillEmpty)
+              ? 'transparent'
               : baseFill;
 
           const x = col * (cellWidth + gap);
@@ -541,11 +542,25 @@ const WarehouseItem = ({
             <g
               key={compartmentId}
               onMouseEnter={(event) => {
+                // DISABLED: No hover effects for SKU holders
+                if (item.type === 'sku_holder' || item.type === 'vertical_sku_holder') {
+                  return;
+                }
                 setHoveredCompartment(compartmentId);
                 handleCompartmentHover(event, compartmentData, row, col);
               }}
-              onMouseMove={(event) => handleCompartmentHover(event, compartmentData, row, col)}
+              onMouseMove={(event) => {
+                // DISABLED: No hover effects for SKU holders
+                if (item.type === 'sku_holder' || item.type === 'vertical_sku_holder') {
+                  return;
+                }
+                handleCompartmentHover(event, compartmentData, row, col);
+              }}
               onMouseLeave={() => {
+                // DISABLED: No hover effects for SKU holders
+                if (item.type === 'sku_holder' || item.type === 'vertical_sku_holder') {
+                  return;
+                }
                 setHoveredCompartment(null);
                 hideTooltip();
               }}
@@ -594,7 +609,7 @@ const WarehouseItem = ({
                 textAnchor="middle"
                 fontSize={fontSize}
                 fontWeight={compartmentData ? 600 : 500}
-                fill={isCompartmentHighlighted ? '#1B5E20' : textColor}
+                fill={isCompartmentHighlighted ? '#000000' : '#000000'}
                 style={{ pointerEvents: 'none' }}
               >
                 {label}
@@ -644,26 +659,6 @@ const WarehouseItem = ({
   };
 
   const handleDoubleClick = (e) => {
-    e.stopPropagation();
-    if (isReadOnly) {
-      return;
-    }
-    const newName = prompt('Enter new name:', item.name);
-    if (newName && newName !== item.name) {
-      onUpdate(item.id, { name: newName });
-    }
-  };
-
-  const handleRightClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (onRightClick) {
-      onRightClick(e, item);
-    }
-  };
-
-  const handleInfoClick = (e) => {
-    e.stopPropagation();
     if (onInfoClick) {
       onInfoClick(e, item);
     }
@@ -786,7 +781,6 @@ const WarehouseItem = ({
       }}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
-      onContextMenu={handleRightClick}
       onMouseEnter={handleItemMouseEnter}
       onMouseMove={handleItemMouseMove}
       onMouseLeave={handleItemMouseLeave}
@@ -1108,7 +1102,6 @@ WarehouseItem.propTypes = {
   snapToGrid: PropTypes.bool,
   gridSize: PropTypes.number,
   onRequestSkuId: PropTypes.func,
-  onRightClick: PropTypes.func,
   onInfoClick: PropTypes.func,
   stackMode: PropTypes.bool,
   isReadOnly: PropTypes.bool,
@@ -1124,7 +1117,6 @@ WarehouseItem.defaultProps = {
   snapToGrid: false,
   gridSize: 15,
   onRequestSkuId: null,
-  onRightClick: null,
   onInfoClick: null,
   stackMode: false,
   isReadOnly: false,

@@ -13,10 +13,10 @@ const layoutResponseSchema = {
     organizationId: { type: 'string', format: 'uuid' },
     layoutName: { type: 'string' },
     status: { type: 'string', enum: ['operational', 'draft', 'archived'] },
-    layoutData: { type: 'object', additionalProperties: true },
-    metadata: { type: 'object', additionalProperties: true },
+    layoutData: { type: ['object', 'null'], additionalProperties: true },
+    metadata: { type: ['object', 'null'], additionalProperties: true },
     createdAt: { type: 'string', format: 'date-time' },
-    updatedAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: ['string', 'null'], format: 'date-time' },
   },
 };
 
@@ -43,8 +43,8 @@ const createLayoutBodySchema = {
   properties: {
     layoutName: { type: 'string', minLength: 1, maxLength: 255 },
     status: { type: 'string', enum: ['operational', 'draft', 'archived'] },
-    layoutData: { type: 'object', additionalProperties: true },
-    metadata: { type: 'object', additionalProperties: true },
+    layoutData: { type: ['object', 'null'], additionalProperties: true },
+    metadata: { type: ['object', 'null'], additionalProperties: true },
   },
 };
 

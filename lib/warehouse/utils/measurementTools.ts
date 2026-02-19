@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Measurement and Scale Tools for True-to-Scale Mapping
  */

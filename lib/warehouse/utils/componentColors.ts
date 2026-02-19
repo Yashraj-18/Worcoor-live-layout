@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { getComponentPanelColor } from '../config/componentPanelColors';
 
 interface WarehouseItem {

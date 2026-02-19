@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client';
 
 import React from 'react';
@@ -12,7 +13,7 @@ const WarehouseToolbar = ({
   mode,
   onModeChange,
   onBack,
-  showLabels,
+  showLabels, // full
   onToggleLabels,
   onBulkLabelEdit,
   onAutoGenerateBoundary

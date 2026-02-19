@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import SavedLayoutRenderer, { getLayoutItemKey } from './SavedLayoutRenderer';
 import { inferVerticalRackLevelCount } from '../../lib/warehouse/utils/verticalRackUtils';

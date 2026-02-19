@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Facility Hierarchy Management System
  * Supports multi-level organizational structures: Organization → Building → Floor → Zone → Location

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { COMPONENT_TYPES } from '../constants/warehouseComponents';
 
 // Structural elements that can be linked

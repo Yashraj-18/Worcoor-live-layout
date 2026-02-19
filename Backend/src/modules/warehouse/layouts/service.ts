@@ -56,16 +56,16 @@ export class LayoutsService {
   ) {
     const { layoutId } = request.params;
     const payload = request.body;
+    const updateData: Record<string, any> = { updatedAt: new Date() };
+    if (payload.layoutName !== undefined) updateData.layoutName = payload.layoutName;
+    if (payload.status !== undefined) updateData.status = payload.status;
+    if (payload.layoutData !== undefined) updateData.layoutData = payload.layoutData;
+    if (payload.metadata !== undefined) updateData.metadata = payload.metadata;
+
     const updated = await this.repository.update(
       layoutId,
       request.user.organizationId,
-      {
-        ...payload,
-        status: payload.status ?? undefined,
-        layoutData: payload.layoutData ?? null,
-        metadata: payload.metadata ?? null,
-        updatedAt: new Date(),
-      },
+      updateData,
     );
 
     if (!updated) {

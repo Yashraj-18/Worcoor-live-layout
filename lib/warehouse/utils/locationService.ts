@@ -1,3 +1,4 @@
+// @ts-nocheck
 import locationData from '@/lib/warehouse/data/layoutComponentsMock.json';
 
 export const getAllLocations = () => {

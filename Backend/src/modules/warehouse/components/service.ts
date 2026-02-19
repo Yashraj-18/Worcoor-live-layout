@@ -16,6 +16,22 @@ type ComponentParams = { componentId: string };
 export class ComponentsService {
   constructor(private readonly repository = new ComponentsRepository()) {}
 
+  async list(
+    request: FastifyRequest<{ Params: LayoutParams }>,
+    reply: FastifyReply,
+  ) {
+    const { layoutId } = request.params;
+    const orgId = request.user.organizationId;
+    const layout = await this.assertLayoutAccess(layoutId, orgId);
+
+    if (!layout) {
+      return reply.code(404).send({ error: 'Layout not found' });
+    }
+
+    const items = await this.repository.findAllByLayout(layoutId, orgId);
+    reply.send(items);
+  }
+
   private async assertLayoutAccess(layoutId: string, organizationId: string) {
     const result = await db
       .select()
@@ -61,6 +77,7 @@ export class ComponentsService {
       return reply.code(404).send({ error: 'Layout not found' });
     }
 
+    let resolvedTagName: string | null = null;
     if (request.body.locationTagId) {
       const tag = await this.assertLocationTagAccess(
         request.body.locationTagId,
@@ -70,12 +87,16 @@ export class ComponentsService {
       if (!tag) {
         return reply.code(404).send({ error: 'Location tag not found' });
       }
+      resolvedTagName = tag.locationTagName;
     }
 
     const component = await this.repository.create({
       ...request.body,
       color: request.body.color ?? null,
       locationTagId: request.body.locationTagId ?? null,
+      locationTagName: resolvedTagName,
+      label: request.body.label ?? null,
+      metadata: request.body.metadata ?? null,
       organizationId: orgId,
       layoutId,
     });
@@ -95,15 +116,22 @@ export class ComponentsService {
       return reply.code(404).send({ error: 'Component not found' });
     }
 
+    let locationTagName: string | null | undefined = undefined;
     if (request.body.locationTagId !== undefined) {
       if (request.body.locationTagId) {
-        await this.assertLocationTagAccess(request.body.locationTagId, orgId);
+        const tag = await this.assertLocationTagAccess(request.body.locationTagId, orgId);
+        locationTagName = tag?.locationTagName ?? null;
       } else {
         request.body.locationTagId = null;
+        locationTagName = null;
       }
     }
 
-    const updated = await this.repository.update(componentId, orgId, request.body);
+    const updateData: Record<string, any> = { ...request.body };
+    if (locationTagName !== undefined) {
+      updateData.locationTagName = locationTagName;
+    }
+    const updated = await this.repository.update(componentId, orgId, updateData);
     reply.send(updated);
   }
 
@@ -134,17 +162,23 @@ export class ComponentsService {
       return reply.code(404).send({ error: 'Component not found' });
     }
 
+    let resolvedTagName: string | null = null;
     if (request.body.locationTagId) {
       const layout = await this.assertLayoutAccess(component.layoutId, orgId);
       if (!layout) {
         return reply.code(404).send({ error: 'Layout not found for component' });
       }
 
-      await this.assertLocationTagAccess(request.body.locationTagId, orgId, layout.unitId);
+      const tag = await this.assertLocationTagAccess(request.body.locationTagId, orgId, layout.unitId);
+      if (!tag) {
+        return reply.code(404).send({ error: 'Location tag not found' });
+      }
+      resolvedTagName = tag.locationTagName;
     }
 
     const updated = await this.repository.update(componentId, orgId, {
       locationTagId: request.body.locationTagId ?? null,
+      locationTagName: resolvedTagName,
     });
 
     reply.send(updated);

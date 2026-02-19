@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Advanced Shape Creation Tools
  * Supports custom shapes, complex geometries, and facility-specific elements

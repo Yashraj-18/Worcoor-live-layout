@@ -123,6 +123,19 @@ const mapLocationTagToDisplayRow = (tag: LocationTag, unitCode?: string | null) 
   }
 }
 
+// Normalize common SKU unit abbreviations to backend enum values
+const SKU_UNIT_ALIASES: Record<string, string> = {
+  pcs: 'pieces', pc: 'pieces', piece: 'pieces', pieces: 'pieces',
+  kg: 'kg', kgs: 'kg',
+  ltr: 'liters', ltrs: 'liters', liter: 'liters', litre: 'liters', litres: 'liters', liters: 'liters', l: 'liters',
+  box: 'boxes', bx: 'boxes', boxes: 'boxes',
+}
+
+const normalizeSkuUnit = (value: string): string => {
+  const key = String(value).trim().toLowerCase()
+  return SKU_UNIT_ALIASES[key] ?? key
+}
+
 // Backend schema definitions - matching exact form fields
 const BACKEND_SCHEMAS = {
   skus: {
@@ -445,8 +458,15 @@ export default function BulkUploadPage() {
         }
         break
       case 'date':
+        const dateStr = String(value).trim()
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/
-        if (!dateRegex.test(String(value))) {
+        if (!dateRegex.test(dateStr)) {
+          // Try to parse other common date formats from Excel
+          const parsed = new Date(dateStr)
+          if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900) {
+            // Parseable date but wrong format — will be normalized later
+            return { valid: true }
+          }
           return { valid: false, error: `${fieldName} must be in YYYY-MM-DD format` }
         }
         break
@@ -577,17 +597,33 @@ export default function BulkUploadPage() {
         reader.onload = (e) => {
           try {
             const data = new Uint8Array(e.target?.result as ArrayBuffer)
-            const workbook = XLSX.read(data, { type: 'array' })
+            const workbook = XLSX.read(data, { type: 'array', cellDates: true })
             const sheetName = workbook.SheetNames[0]
             const worksheet = workbook.Sheets[sheetName]
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' })
 
             const headers = jsonData[0] as string[]
             const rows = jsonData.slice(1) as any[][]
             const objects = rows.map(row => {
               const obj: any = {}
               headers.forEach((header, index) => {
-                obj[header] = row[index]
+                let value = row[index]
+                // Normalize date values: convert Date objects or Excel serial numbers to YYYY-MM-DD
+                if (value instanceof Date && !isNaN(value.getTime())) {
+                  const yyyy = value.getFullYear()
+                  const mm = String(value.getMonth() + 1).padStart(2, '0')
+                  const dd = String(value.getDate()).padStart(2, '0')
+                  value = `${yyyy}-${mm}-${dd}`
+                } else if (typeof value === 'number' && value > 25569 && value < 2958466) {
+                  // Excel serial number range — convert to date
+                  const excelEpoch = new Date(Date.UTC(1899, 11, 30))
+                  const jsDate = new Date(excelEpoch.getTime() + value * 86400000)
+                  const yyyy = jsDate.getUTCFullYear()
+                  const mm = String(jsDate.getUTCMonth() + 1).padStart(2, '0')
+                  const dd = String(jsDate.getUTCDate()).padStart(2, '0')
+                  value = `${yyyy}-${mm}-${dd}`
+                }
+                obj[header] = value
               })
               return obj
             })
@@ -650,6 +686,16 @@ export default function BulkUploadPage() {
           if (!typeValidation.valid) {
             rowErrors.push(typeValidation.error!)
             isValid = false
+          }
+          // Normalize date fields to YYYY-MM-DD if they passed validation but aren't in the right format
+          if (fieldType === 'date' && typeValidation.valid) {
+            const dStr = String(row[field]).trim()
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(dStr)) {
+              const d = new Date(dStr)
+              if (!isNaN(d.getTime())) {
+                row[field] = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+              }
+            }
           }
         }
       }
@@ -817,7 +863,7 @@ export default function BulkUploadPage() {
                   skuId: emptyToUndefined(row.sku_id) ?? null,
                   skuName: row.sku_name,
                   skuCategory: row.sku_category,
-                  skuUnit: row.sku_unit,
+                  skuUnit: normalizeSkuUnit(row.sku_unit) as any,
                   quantity: Number(row.quantity) || 0,
                   effectiveDate: row.effective_date,
                   expiryDate: emptyToUndefined(row.expiry_date) ?? null,
@@ -829,7 +875,7 @@ export default function BulkUploadPage() {
                 const payload: Partial<CreateSkuInput> = {
                   skuName: row.sku_name,
                   skuCategory: row.sku_category,
-                  skuUnit: row.sku_unit,
+                  skuUnit: row.sku_unit ? normalizeSkuUnit(row.sku_unit) as any : undefined,
                   quantity: Number.isNaN(quantity) ? undefined : quantity,
                   effectiveDate: row.effective_date,
                   expiryDate: emptyToUndefined(row.expiry_date) ?? null,

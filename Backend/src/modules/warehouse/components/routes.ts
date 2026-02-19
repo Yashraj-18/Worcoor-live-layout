@@ -22,7 +22,10 @@ const componentResponseSchema = {
     width: { type: 'integer' },
     height: { type: 'integer' },
     color: { type: ['string', 'null'] },
-    locationTagId: { type: ['string', 'null'], format: 'uuid' },
+    locationTagId: { oneOf: [{ type: 'string', format: 'uuid' }, { type: 'null' }] },
+    locationTagName: { type: ['string', 'null'] },
+    label: { type: ['string', 'null'] },
+    metadata: { type: ['object', 'null'], additionalProperties: true },
     createdAt: { type: 'string', format: 'date-time' },
   },
 };
@@ -39,7 +42,10 @@ const createComponentBodySchema = {
     width: { type: 'integer', minimum: 1 },
     height: { type: 'integer', minimum: 1 },
     color: { type: ['string', 'null'], maxLength: 50 },
-    locationTagId: { type: ['string', 'null'], format: 'uuid' },
+    locationTagId: { oneOf: [{ type: 'string', format: 'uuid' }, { type: 'null' }] },
+    locationTagName: { type: ['string', 'null'], maxLength: 255 },
+    label: { type: ['string', 'null'], maxLength: 255 },
+    metadata: { type: ['object', 'null'], additionalProperties: true },
   },
 };
 
@@ -68,7 +74,7 @@ const updateLocationTagBodySchema = {
   type: 'object',
   required: ['locationTagId'],
   properties: {
-    locationTagId: { type: ['string', 'null'], format: 'uuid' },
+    locationTagId: { oneOf: [{ type: 'string', format: 'uuid' }, { type: 'null' }] },
   },
 };
 
@@ -78,6 +84,19 @@ type ComponentParams = { componentId: string };
 export async function componentsRoutes(app: FastifyInstance) {
   const repository = new ComponentsRepository();
   const service = new ComponentsService(repository);
+
+  // GET /api/layouts/:layoutId/components
+  app.get<{ Params: LayoutParams }>('/', {
+    preHandler: [app.authenticate],
+    schema: {
+      params: layoutIdParamsSchema,
+      response: {
+        200: { type: 'array', items: componentResponseSchema },
+        404: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+    handler: (request, reply) => service.list(request, reply),
+  });
 
   // POST /api/layouts/:layoutId/components
   app.post<{ Params: LayoutParams; Body: CreateComponentInput }>('/', {

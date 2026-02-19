@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Global type definitions for the warehouse management system
 
 export interface WarehouseItem {

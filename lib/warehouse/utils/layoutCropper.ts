@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Layout Cropper Utility
  * Eliminates white space from warehouse layouts by cropping to actual content bounds

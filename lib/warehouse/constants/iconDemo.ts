@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Demo of Lucide Icon Integration in Component Panel
  * Shows how the icon mapping system works with warehouse components

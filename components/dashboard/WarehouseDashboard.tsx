@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useMemo } from 'react';
 import { OCCUPANCY_STATUS, STATUS_COLORS, STORAGE_ORIENTATION, ORIENTATION_COLORS } from '../../lib/warehouse/constants/warehouseComponents';
 

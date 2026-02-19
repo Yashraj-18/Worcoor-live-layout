@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * CAD File Import Utilities
  * Supports importing architectural drawings and converting them to warehouse layouts

@@ -1,51 +1,68 @@
-// Core enums
-export type UnitStatus = 'LIVE' | 'OFFLINE' | 'MAINTENANCE' | 'PLANNING';
-export type UnitOfMeasurement = 'meters' | 'feet' | 'inches' | 'centimeters';
-export type LayoutStatus = 'operational' | 'draft' | 'archived';
-export type SearchResultType = 'location' | 'sku';
+// Warehouse Type Definitions
 
-// Primitive warehouse models
-export interface LocationTag {
-  id: string;
-  unitId: string;
-  organizationId: string;
-  locationTagName: string;
-  capacity: number;
-  length: number | null;
-  breadth: number | null;
-  height: number | null;
-  unitOfMeasurement: UnitOfMeasurement | null;
-  currentItems: number;
-  utilizationPercentage: number;
-  createdAt: string;
+export interface FacilityData {
+  name: string;
+  description: string;
+  areas: Array<{
+    id: string;
+    name: string;
+    type: string;
+  }>;
+  zones: Array<{
+    id: string;
+    name: string;
+    type: string;
+    color: string;
+  }>;
 }
 
-export interface Sku {
+export interface WarehouseItem {
   id: string;
-  skuId?: string | null;
-  skuName: string;
-  skuCategory: string;
-  skuUnit: string;
-  quantity: number;
-  effectiveDate: string;
-  expiryDate?: string | null;
-  locationTagId?: string | null;
-  locationTagName?: string | null;
-  unitId?: string | null;
-  organizationId: string;
-  createdAt: string;
+  name: string;
+  type: string;
+  locationId?: string;
+  primaryLocationId?: string;
+  locationIds?: string[];
+  sku?: string;
+  uniqueId?: string;
+  primarySku?: string;
+  levelLocationMappings?: Record<string, any>;
+  levelIds?: Record<string, any>;
+  compartmentContents?: Record<string, any>;
+  layoutData?: any;
+  inventoryData?: {
+    capacity?: number;
+    utilization?: number;
+    inventory?: any[];
+    lastActivity?: string;
+  };
+  [key: string]: any;
 }
 
+export interface MainDashboardProps {
+  onNavigateToBuilder: () => void;
+}
+
+// More flexible type definitions for dynamic data
+export type SearchResults = any[];
+export type LocationTag = any;
+export type SKU = any;
+export type Asset = any;
+export type UnitData = any;
+export type ZoneData = any;
+export type OperationalData = any;
+
+// Backend-integrated types used by warehouseService and dashboard pages
 export interface Layout {
   id: string;
   unitId: string;
-  organizationId: string;
   layoutName: string;
-  status: LayoutStatus;
-  layoutData: Record<string, any> | null;
-  metadata: Record<string, any> | null;
+  status: string;
+  items: any;
+  metadata?: Record<string, any>;
   createdAt: string;
-  updatedAt: string | null;
+  updatedAt?: string;
+  [key: string]: any;
 }
 
 export interface Component {
@@ -58,79 +75,38 @@ export interface Component {
   positionY: number;
   width: number;
   height: number;
-  color: string | null;
-  locationTagId: string | null;
+  locationTagId?: string | null;
+  color?: string | null;
+  label?: string | null;
+  metadata?: Record<string, any> | null;
   createdAt: string;
-  updatedAt: string | null;
-}
-
-// Live map data structures
-export interface LiveMapSku {
-  id: string;
-  skuName: string;
-  quantity: number;
-  skuUnit: string;
-}
-
-export interface LiveMapLocationTag {
-  id: string;
-  tagName: string;
-  capacity: number;
-  currentItems: number;
-  utilizationPercentage: number;
-  skus: LiveMapSku[];
-}
-
-export interface LiveMapComponent {
-  id: string;
-  componentType: string;
-  displayName: string;
-  positionX: number;
-  positionY: number;
-  width: number;
-  height: number;
-  color: string | null;
-  locationTag: LiveMapLocationTag | null;
-}
-
-export interface LiveMapLayout {
-  id: string;
-  layoutName: string;
-  components: LiveMapComponent[];
+  [key: string]: any;
 }
 
 export interface LiveMapResponse {
-  unit: {
-    id: string;
-    unitName: string;
-    status: UnitStatus;
-    utilizationPercentage: number;
-  };
-  layouts: LiveMapLayout[];
-}
-
-// Search
-export interface SearchResult {
-  type: SearchResultType;
-  id: string;
-  name: string;
-  componentId?: string | null;
-  locationTagId?: string | null;
+  layout: Layout;
+  components: Component[];
+  locationTags: any[];
+  [key: string]: any;
 }
 
 export interface SearchResponse {
-  results: SearchResult[];
+  results: any[];
 }
 
-// Layout + component inputs
 export interface CreateLayoutInput {
   layoutName: string;
-  status?: LayoutStatus;
+  status?: string;
   layoutData?: Record<string, any>;
   metadata?: Record<string, any>;
 }
 
-export interface UpdateLayoutInput extends Partial<CreateLayoutInput> {}
+export interface UpdateLayoutInput {
+  layoutName?: string;
+  status?: string;
+  layoutData?: Record<string, any>;
+  metadata?: Record<string, any>;
+}
 
 export interface CreateComponentInput {
   componentType: string;
@@ -141,13 +117,61 @@ export interface CreateComponentInput {
   height: number;
   color?: string | null;
   locationTagId?: string | null;
+  label?: string | null;
+  metadata?: Record<string, any> | null;
 }
 
 export interface UpdateComponentInput {
+  componentType?: string;
   displayName?: string;
   positionX?: number;
   positionY?: number;
   width?: number;
   height?: number;
   color?: string | null;
+  locationTagId?: string | null;
+  label?: string | null;
+  metadata?: Record<string, any> | null;
 }
+
+export interface WarehouseMapDashboardProps {
+  orgUnits: any[];
+  layouts: Layout[];
+  isLoading: boolean;
+  onMapSelect: (layoutId: string) => void;
+  onEditLayout: (layoutId: string) => void;
+}
+
+// Component Type Definitions
+export const COMPONENT_TYPES = {
+  STORAGE_UNIT: 'storage_unit',
+  SPARE_UNIT: 'spare_unit',
+  SKU_HOLDER: 'sku_holder',
+  VERTICAL_SKU_HOLDER: 'vertical_sku_holder',
+  SOLID_BOUNDARY: 'solid_boundary',
+  DOTTED_BOUNDARY: 'dotted_boundary',
+  SQUARE_BOUNDARY: 'square_boundary',
+  WAREHOUSE_BLOCK: 'warehouse_block',
+  STORAGE_ZONE: 'storage_zone',
+  PROCESSING_AREA: 'processing_area',
+  CONTAINER_UNIT: 'container_unit',
+  ZONE_DIVIDER: 'zone_divider',
+  AREA_BOUNDARY: 'area_boundary'
+} as const;
+
+export type ComponentType = typeof COMPONENT_TYPES[keyof typeof COMPONENT_TYPES];
+
+// Status Colors
+export const STATUS_COLORS = {
+  EMPTY: '#4CAF50',
+  OCCUPIED: '#F44336',
+  RESERVED: '#FF9800',
+  MAINTENANCE: '#9C27B0',
+  DAMAGED: '#795548'
+} as const;
+
+export const ORIENTATION_COLORS = {
+  HORIZONTAL: '#2196F3',
+  VERTICAL: '#FF5722',
+  GRID: '#607D8B'
+} as const;

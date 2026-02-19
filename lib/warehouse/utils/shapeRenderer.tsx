@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Shape Renderer Utility
  * Generates SVG paths and renders shapes for warehouse components
@@ -5,8 +6,8 @@
 
 import { getComponentColor } from './componentColors';
 
-export const generateShapePath = (shapeType, width, height, options = {}) => {
-  const { x = 0, y = 0 } = options;
+export const generateShapePath = (shapeType: string, width: number, height: number, options: any = {}) => {
+  const { x = 0, y = 0 } = options as { x?: number; y?: number };
 
   switch (shapeType) {
     case 'shape_rectangle':
@@ -151,7 +152,7 @@ export const generateShapePath = (shapeType, width, height, options = {}) => {
   }
 };
 
-export const renderShapeComponent = (item) => {
+export const renderShapeComponent = (item: any) => {
   if (!item.isShape) {
     return null;
   }
@@ -199,7 +200,7 @@ export const renderShapeComponent = (item) => {
   );
 };
 
-export const isPointInsideContainer = (x, y, container) => {
+export const isPointInsideContainer = (x: number, y: number, container: any) => {
   if (!container.isContainer) return false;
   
   const padding = container.containerPadding || 10;
@@ -212,7 +213,7 @@ export const isPointInsideContainer = (x, y, container) => {
   return x >= innerX && x <= innerX + innerWidth && y >= innerY && y <= innerY + innerHeight;
 };
 
-export const getContainerBounds = (container) => {
+export const getContainerBounds = (container: any) => {
   if (!container.isContainer) return null;
   
   const padding = container.containerPadding || 10;

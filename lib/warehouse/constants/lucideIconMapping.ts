@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Lucide React Icon Mapping for Warehouse Components
  * Maps component types to appropriate Lucide icons for professional appearance

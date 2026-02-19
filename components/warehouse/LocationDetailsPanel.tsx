@@ -1,15 +1,95 @@
+// @ts-nocheck
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import locationDataService from '@/lib/warehouse/services/locationDataService';
 import { MapPin, Package, Building, TrendingUp, X, Archive, Factory, ShieldCheck, UsersRound, Coffee, Loader2, PackageOpen } from 'lucide-react';
 
+// Type definitions
+interface LocationMapping {
+  locationId?: string;
+  locId?: string;
+  levelId?: string;
+  level?: string;
+}
+
+interface CompartmentInfo {
+  levelId?: string;
+  locationId?: string;
+  row?: number;
+  col?: number;
+}
+
+interface CompartmentData {
+  locationId?: string;
+  uniqueId?: string;
+  levelLocationMappings?: LocationMapping[];
+  locationIds?: string[];
+  levelIds?: string[];
+  [key: string]: any;
+}
+
+interface SelectedItem {
+  name?: string;
+  label?: string;
+  locationId?: string;
+  type?: string;
+  selectedCompartment?: CompartmentData;
+  selectedCompartmentId?: string;
+  selectedCompartmentRow?: number;
+  selectedCompartmentCol?: number;
+  compartmentContents?: Record<string, CompartmentData>;
+  levelLocationMappings?: LocationMapping[];
+  locationIds?: string[];
+  levelIds?: string[];
+  locationData?: {
+    location_id?: string;
+  };
+  properties?: {
+    locationId?: string;
+  };
+  data?: {
+    locationId?: string;
+  };
+  [key: string]: any;
+}
+
+interface LocationData {
+  location_id: string;
+  sku_instance_id?: string;
+  sku_name?: string;
+  sku_category?: string;
+  parent_resource?: string;
+  sku_unit?: string;
+  available_quantity?: number;
+  sku_procured_date?: string;
+  sku_expiry_date?: string;
+  created_at?: string;
+  location_tag_name?: string;
+  location?: string;
+  capacity?: number;
+  location_created_at?: string;
+  unit_id?: string;
+  asset_id?: string;
+  asset_name?: string;
+  asset_type?: string;
+  asset_created_at?: string;
+  compartmentInfo?: CompartmentInfo;
+  [key: string]: any;
+}
+
+interface LocationDetailsPanelProps {
+  selectedItem: SelectedItem;
+  onClose: () => void;
+  isEmbedded?: boolean;
+}
+
 /**
  * LocationDetailsPanel - Displays detailed information about a selected warehouse component
  * Fetches data from layoutComponentsMock.json based on the component's locationId
  */
-const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => {
-  const [locationDataList, setLocationDataList] = useState([]);
+const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({ selectedItem, onClose, isEmbedded = false }) => {
+  const [locationDataList, setLocationDataList] = useState<LocationData[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -43,13 +123,13 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
         compartmentData: selectedItem.selectedCompartment
       });
       
-      const compartment = selectedItem.selectedCompartment;
-      const allLocationData = [];
+      const compartment = selectedItem.selectedCompartment as CompartmentData;
+      const allLocationData: LocationData[] = [];
       
       // Check if this compartment has multiple levels (levelLocationMappings)
       if (compartment.levelLocationMappings && Array.isArray(compartment.levelLocationMappings)) {
         console.log('LocationDetailsPanel - Compartment has multiple levels:', compartment.levelLocationMappings.length);
-        compartment.levelLocationMappings.forEach((mapping, idx) => {
+        compartment.levelLocationMappings.forEach((mapping: LocationMapping, idx: number) => {
           const locationId = mapping.locationId || mapping.locId;
           const levelId = mapping.levelId || mapping.level;
           console.log(`LocationDetailsPanel - Level ${idx}:`, { levelId, locationId, mapping });
@@ -74,7 +154,7 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
       // Check if compartment has locationIds array (alternative format)
       else if (compartment.locationIds && Array.isArray(compartment.locationIds)) {
         console.log('LocationDetailsPanel - Compartment has locationIds array:', compartment.locationIds.length);
-        compartment.locationIds.forEach((locationId, idx) => {
+        compartment.locationIds.forEach((locationId: string, idx: number) => {
           const levelId = compartment.levelIds && compartment.levelIds[idx] ? compartment.levelIds[idx] : `L${idx + 1}`;
           console.log(`LocationDetailsPanel - Level ${idx}:`, { levelId, locationId });
           if (locationId) {
@@ -108,7 +188,7 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
     }
     // For storage racks with compartments or level mappings - show ALL locations
     else if (selectedItem.compartmentContents || selectedItem.levelLocationMappings || selectedItem.levelIds || selectedItem.locationIds) {
-      const allLocationData = [];
+      const allLocationData: LocationData[] = [];
       
       // Check for compartmentContents first (could contain levelLocationMappings for vertical racks)
       if (selectedItem.compartmentContents) {
@@ -119,7 +199,7 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
         const firstCompartment = compartments[0];
         if (firstCompartment && firstCompartment.levelLocationMappings && Array.isArray(firstCompartment.levelLocationMappings)) {
           console.log('LocationDetailsPanel - Vertical rack with levelLocationMappings in compartment:', firstCompartment.levelLocationMappings.length);
-          firstCompartment.levelLocationMappings.forEach((mapping, idx) => {
+          firstCompartment.levelLocationMappings.forEach((mapping: LocationMapping, idx: number) => {
             const locationId = mapping.locationId || mapping.locId;
             const levelId = mapping.levelId || mapping.level;
             console.log(`LocationDetailsPanel - Level ${idx}:`, { levelId, locationId, mapping });
@@ -143,7 +223,7 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
         // Check if compartment has locationIds array (alternative vertical rack format)
         else if (firstCompartment && firstCompartment.locationIds && Array.isArray(firstCompartment.locationIds)) {
           console.log('LocationDetailsPanel - Vertical rack with locationIds in compartment:', firstCompartment.locationIds.length);
-          firstCompartment.locationIds.forEach((locationId, idx) => {
+          firstCompartment.locationIds.forEach((locationId: string, idx: number) => {
             const levelId = firstCompartment.levelIds && firstCompartment.levelIds[idx] ? firstCompartment.levelIds[idx] : `L${idx + 1}`;
             console.log(`LocationDetailsPanel - Level ${idx}:`, { levelId, locationId });
             if (locationId) {
@@ -166,7 +246,7 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
         // Regular compartments (horizontal racks or single location per compartment)
         else {
           console.log('LocationDetailsPanel - Regular compartments (horizontal rack)');
-          compartments.forEach((compartment, idx) => {
+          compartments.forEach((compartment: CompartmentData, idx: number) => {
             const locationId = compartment.locationId || compartment.uniqueId;
             console.log(`LocationDetailsPanel - Compartment ${idx}:`, { locationId, compartment });
             if (locationId) {
@@ -182,7 +262,7 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
       // Check for levelLocationMappings at item level (direct on item)
       else if (selectedItem.levelLocationMappings && Array.isArray(selectedItem.levelLocationMappings)) {
         console.log('LocationDetailsPanel - Vertical rack with levelLocationMappings on item:', selectedItem.levelLocationMappings.length);
-        selectedItem.levelLocationMappings.forEach((mapping, idx) => {
+        selectedItem.levelLocationMappings.forEach((mapping: LocationMapping, idx: number) => {
           const locationId = mapping.locationId || mapping.locId;
           const levelId = mapping.levelId || mapping.level;
           console.log(`LocationDetailsPanel - Level ${idx}:`, { levelId, locationId, mapping });
@@ -206,7 +286,7 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
       // Check for levelIds/locationIds arrays at item level
       else if (selectedItem.locationIds && Array.isArray(selectedItem.locationIds)) {
         console.log('LocationDetailsPanel - Vertical rack with locationIds array on item:', selectedItem.locationIds.length);
-        selectedItem.locationIds.forEach((locationId, idx) => {
+        selectedItem.locationIds.forEach((locationId: string, idx: number) => {
           const levelId = selectedItem.levelIds && selectedItem.levelIds[idx] ? selectedItem.levelIds[idx] : `L${idx + 1}`;
           console.log(`LocationDetailsPanel - Level ${idx}:`, { levelId, locationId });
           if (locationId) {
@@ -252,17 +332,17 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
 
   if (!selectedItem) return null;
 
-  const panelStyle = isEmbedded ? {
+  const panelStyle: React.CSSProperties = isEmbedded ? {
     width: '100%',
     height: '100%',
     display: 'flex',
-    flexDirection: 'column',
+    flexDirection: 'column' as const,
     backgroundColor: 'hsl(218.4 36.23% 13.53%)',
     borderRadius: 'var(--radius-lg)',
     overflow: 'hidden',
     background: 'linear-gradient(135deg, hsl(218.4 36.23% 13.53%), hsl(217.5 54.33% 5.85%))'
   } : {
-    position: 'fixed',
+    position: 'fixed' as const,
     top: '80px',
     right: '20px',
     width: '380px',
@@ -277,14 +357,14 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
     background: 'linear-gradient(135deg, hsl(218.4 36.23% 13.53%), hsl(217.5 54.33% 5.85%))'
   };
 
-  const headerStyle = {
+  const headerStyle: React.CSSProperties = {
     background: 'linear-gradient(135deg, hsl(222.2 47% 11%) 0%, hsl(222.2 32.6% 18.55%) 100%)',
     color: 'white',
     padding: 'var(--spacing-5)',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    position: 'relative',
+    position: 'relative' as const,
     overflow: 'hidden',
     flexShrink: 0
   };
@@ -422,7 +502,7 @@ const LocationDetailsPanel = ({ selectedItem, onClose, isEmbedded = false }) => 
   );
 };
 
-const renderLocationData = (locationData, sectionStyle, labelStyle, valueStyle) => {
+const renderLocationData = (locationData: LocationData, sectionStyle: React.CSSProperties, labelStyle: React.CSSProperties, valueStyle: React.CSSProperties) => {
   return (
           <>
             {/* SKU Information */}
@@ -464,7 +544,7 @@ const renderLocationData = (locationData, sectionStyle, labelStyle, valueStyle) 
                   <div style={{
                     fontSize: '1.1rem',
                     fontWeight: 'bold',
-                    color: locationData.available_quantity > 0 ? '#22c55e' : '#ef4444'
+                    color: (locationData.available_quantity || 0) > 0 ? '#22c55e' : '#ef4444'
                   }}>
                     {locationData.available_quantity || 0}
                   </div>

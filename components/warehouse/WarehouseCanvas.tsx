@@ -43,6 +43,8 @@ const WarehouseCanvas = ({
   
   // ADD right after those two lines:
   const [keyboardFocusedId, setKeyboardFocusedId] = useState(null);
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+  const [editingLabelValue, setEditingLabelValue] = useState<string>('');
   
   const handleCanvasKeyDown = useCallback((e) => {
     const navigableItems = items.filter(
@@ -801,21 +803,63 @@ const WarehouseCanvas = ({
                     boxSizing: 'border-box',
                   }}
                 >
-                  <span style={{
-                    position: 'absolute',
-                    top: 5,
-                    left: 8,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: '#000000',
-                    background: 'rgba(250,250,250,0.85)',
-                    padding: '1px 5px',
-                    borderRadius: 3,
-                    pointerEvents: 'none',
-                    userSelect: 'none',
-                  }}>
-                    {item.name}
-                  </span>
+                  {editingLabelId === item.id ? (
+                    <input
+                      autoFocus
+                      value={editingLabelValue}
+                      onChange={(e) => setEditingLabelValue(e.target.value)}
+                      onBlur={() => {
+                        onUpdateItem(item.id, { name: editingLabelValue });
+                        setEditingLabelId(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          onUpdateItem(item.id, { name: editingLabelValue });
+                          setEditingLabelId(null);
+                        }
+                        if (e.key === 'Escape') {
+                          setEditingLabelId(null);
+                        }
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: 5,
+                        left: 8,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: '#000000',
+                        background: 'white',
+                        border: '1px solid #000',
+                        borderRadius: 3,
+                        padding: '1px 5px',
+                        outline: 'none',
+                        width: 100,
+                      }}
+                    />
+                  ) : (
+                    <span
+                      onDoubleClick={() => {
+                        setEditingLabelId(item.id);
+                        setEditingLabelValue(item.name);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: 5,
+                        left: 8,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: '#000000',
+                        background: 'rgba(250,250,250,0.85)',
+                        padding: '1px 5px',
+                        borderRadius: 3,
+                        pointerEvents: 'auto',
+                        userSelect: 'none',
+                        cursor: 'text',
+                      }}
+                    >
+                      {item.name}
+                    </span>
+                  )}
                 </div>
               );
             }

@@ -54,11 +54,29 @@ interface AppProps {
   initialOrgUnit?: OrgUnit | null;
   initialLayout?: LayoutData | null;
 }
+const dropdownItemStyle = (color: string): React.CSSProperties => ({
+  width: '100%',
+  padding: '10px 16px',
+  border: 'none',
+  background: 'transparent',
+  textAlign: 'left',
+  cursor: 'pointer',
+  fontSize: 13,
+  color,
+  fontWeight: 600,
+  display: 'flex',
+  alignItems: 'center',
+  transition: 'background 0.1s',
+  whiteSpace: 'nowrap',
+});
 
 function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
   const router = useRouter();
   const [warehouseItems, setWarehouseItems] = useState<any[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  // STEP 1
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [showBoundaryDropdown, setShowBoundaryDropdown] = useState(false);
   const [stackMode, setStackMode] = useState<string>(STACK_MODES.HORIZONTAL);
   const [contextMenu, setContextMenu] = useState<any>({ visible: false, x: 0, y: 0, item: null });
   const [stackManager, setStackManager] = useState<any>({ visible: false, item: null });
@@ -90,6 +108,31 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
   const [mapTypeSelectorVisible, setMapTypeSelectorVisible] = useState<boolean>(false);
 
   const selectedItem = warehouseItems.find(item => item.id === selectedItemId);
+  
+  // STEP 2 — add right here ↓
+  const selectionBoundingBox = React.useMemo(() => {
+    if (selectedItemIds.length === 0) return null;
+    const BOUNDARY_TYPES = ['square_boundary', 'inner_boundary'];
+    const selected = warehouseItems.filter(
+      i => selectedItemIds.includes(i.id) && !BOUNDARY_TYPES.includes(i.type)
+    );
+    if (selected.length === 0) return null;
+    return {
+      minX: Math.min(...selected.map(i => i.x)),
+      minY: Math.min(...selected.map(i => i.y)),
+      maxX: Math.max(...selected.map(i => i.x + (i.width || 100))),
+      maxY: Math.max(...selected.map(i => i.y + (i.height || 80))),
+    };
+  }, [selectedItemIds, warehouseItems]);
+  
+  const existingInnerBoundaryForSelection = React.useMemo(() => {
+    if (selectedItemIds.length === 0) return null;
+    return warehouseItems.find(item => {
+      if (item.type !== 'inner_boundary') return false;
+      return selectedItemIds.every(id => (item.boundedItemIds || []).includes(id));
+    }) || null;
+  }, [selectedItemIds, warehouseItems]);
+
 
   // Handle org unit selection
   const handleOrgUnitSelect = useCallback((selection: any) => {
@@ -538,8 +581,22 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     }, 100);
   }, []);
 
-  const handleSelectItem = useCallback((itemId: string) => {
-    setSelectedItemId(itemId);
+  // STEP 3 — replace with this:
+  const handleSelectItem = useCallback((itemId: string, isMultiSelect = false) => {
+    setSelectedItemId(itemId);       // keeps PropertiesPanel working as before
+    setShowBoundaryDropdown(false);
+    
+    if (isMultiSelect) {
+      // Shift+click → toggle item in/out of multi-selection
+      setSelectedItemIds(prev =>
+        prev.includes(itemId)
+          ? prev.filter(id => id !== itemId)
+          : [...prev, itemId]
+      );
+    } else {
+      // Normal click → single select
+      setSelectedItemIds([itemId]);
+    }
   }, []);
 
   const handleUpdateItem = useCallback((itemId: string, updates: any) => {
@@ -597,6 +654,8 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
 
   const handleCanvasClick = useCallback(() => {
     setSelectedItemId(null);
+    setSelectedItemIds([]);
+    setShowBoundaryDropdown(false);
     setContextMenu(null);
     setInfoPopup(null);
     setZoneContextMenu(null);
@@ -1306,8 +1365,54 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
     setWarehouseItems(prev => [...prev, boundary]);
     showMessage.success(`Boundary generated! ${boundary.width}×${boundary.height}px, ${components.length} components`);
   }, [warehouseItems]);
+  
+  // STEP 5 — paste the two new functions right here ↓
+  const handleGenerateInnerBoundary = useCallback(() => {
+    if (selectedItemIds.length === 0) return;
 
+    const BOUNDARY_TYPES = ['square_boundary', 'inner_boundary'];
+    const selectedItems = warehouseItems.filter(
+      i => selectedItemIds.includes(i.id) && !BOUNDARY_TYPES.includes(i.type)
+    );
+    if (selectedItems.length === 0) return;
 
+    const padding = 24;
+    const minX = Math.min(...selectedItems.map(i => i.x)) - padding;
+    const minY = Math.min(...selectedItems.map(i => i.y)) - padding;
+    const maxX = Math.max(...selectedItems.map(i => i.x + (i.width || 100))) + padding;
+    const maxY = Math.max(...selectedItems.map(i => i.y + (i.height || 80))) + padding;
+
+    const innerBoundaryCount = warehouseItems.filter(i => i.type === 'inner_boundary').length;
+
+    const newBoundary = {
+      id: uuidv4(),
+      type: 'inner_boundary',
+      name: `Zone ${innerBoundaryCount + 1}`,
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      boundedItemIds: [...selectedItemIds],
+      color: '#4A90E2',
+      padding,
+      containerLevel: 1,
+    };
+
+    setWarehouseItems(prev => [...prev, newBoundary]);
+    setSelectedItemIds([]);
+    setSelectedItemId(null);
+    setShowBoundaryDropdown(false);
+    showMessage.success(`Inner boundary created for ${selectedItems.length} component(s).`);
+  }, [selectedItemIds, warehouseItems]);
+
+  const handleRemoveInnerBoundary = useCallback(() => {
+    if (!existingInnerBoundaryForSelection) return;
+    setWarehouseItems(prev => prev.filter(i => i.id !== existingInnerBoundaryForSelection.id));
+    setSelectedItemIds([]);
+    setSelectedItemId(null);
+    setShowBoundaryDropdown(false);
+    showMessage.success('Inner boundary removed.');
+  }, [existingInnerBoundaryForSelection]);
   
   // Navigation handlers
   const handleNavigateToBuilder = useCallback(() => {
@@ -1369,6 +1474,7 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
                   onMoveItem={handleMoveItem}
                   onSelectItem={handleSelectItem}
                   selectedItemId={selectedItemId}
+                  selectedItemIds={selectedItemIds}
                   onUpdateItem={handleUpdateItem}
                   onCanvasClick={handleCanvasClick}
                   stackMode={stackMode}
@@ -1427,7 +1533,78 @@ function App({ initialOrgUnit = null, initialLayout = null }: AppProps) {
               />
             )}
 
-            
+            {/* Inner Boundary Floating Dropdown */}
+            {selectionBoundingBox && selectedItemIds.length > 0 && (
+              <div
+                style={{
+                  position: 'fixed',
+                  left: '330px',
+                  top: '70px',
+                  zIndex: 9999,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                }}
+              >
+                {/* ▾ trigger button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowBoundaryDropdown(prev => !prev);
+                  }}
+                  style={{
+                    width: 26,
+                    height: 26,
+                    background: existingInnerBoundaryForSelection ? '#E53E3E' : '#4A90E2',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 5,
+                    fontSize: 16,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+                    fontWeight: 'bold',
+                  }}
+                  title="Boundary options"
+                >
+                  ▾
+                </button>
+                
+                {/* Dropdown menu */}
+                {showBoundaryDropdown && (
+                  <div
+                    style={{
+                      marginTop: 4,
+                      background: '#1e2530',
+                      border: '1px solid #30363d',
+                      borderRadius: 7,
+                      boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
+                      overflow: 'hidden',
+                      minWidth: 180,
+                    }}
+                  >
+                    {existingInnerBoundaryForSelection ? (
+                      <button
+                        onClick={handleRemoveInnerBoundary}
+                        style={dropdownItemStyle('#fc8181')}
+                      >
+                        ✕ &nbsp; Remove Boundary
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleGenerateInnerBoundary}
+                        style={dropdownItemStyle('#68d391')}
+                      >
+                        ⬡ &nbsp; Generate Boundary
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
 
             
             {/* Zone Context Menu */}

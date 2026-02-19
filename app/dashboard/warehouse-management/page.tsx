@@ -15,6 +15,7 @@ import { warehouseService } from '@/src/services/warehouseService';
 import { orgUnitService, type OrgUnit } from '@/src/services/orgUnits';
 import { notification } from '@/src/services/notificationService';
 import type { Layout } from '@/types/warehouse';
+import '@/styles/warehouse.css';
 
 export default function WarehouseManagementPage() {
   const router = useRouter();
@@ -327,6 +328,7 @@ export default function WarehouseManagementPage() {
           <WarehouseMapView 
             facilityData={{}} 
             initialSelectedLayoutId={selectedLayoutId}
+            prefetchedLayouts={layouts}
             onModalClose={() => {
               setShowMapModal(false);
               setSelectedLayoutId(null);

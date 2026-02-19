@@ -95,9 +95,10 @@ interface WarehouseMapViewProps {
   initialSelectedLayoutId?: string | null;
   onModalClose?: () => void;
   fullscreenMode?: boolean;
+  prefetchedLayouts?: any[];
 }
 
-const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initialSelectedLayoutId, onModalClose, fullscreenMode }) => {
+const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initialSelectedLayoutId, onModalClose, fullscreenMode, prefetchedLayouts }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const layoutId = searchParams?.get('layoutId');
@@ -126,66 +127,100 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   const [selectedSku, setSelectedSku] = useState<string>('');
   const [selectedAsset, setSelectedAsset] = useState<string>('');
   const [selectedUnit, setSelectedUnit] = useState<string | null>(null);
-  const [savedLayouts, setSavedLayouts] = useState<WarehouseLayout[]>([]);
+  const [savedLayouts, setSavedLayouts] = useState<WarehouseLayout[]>(() => {
+    // Seed from prefetched layouts immediately so data is available on first render
+    if (prefetchedLayouts?.length) {
+      return prefetchedLayouts.map((bl: any) => {
+        const items = bl.layoutData?.items || [];
+        return {
+          id: bl.id,
+          name: bl.layoutName || 'Warehouse Layout',
+          location: '',
+          size: `${items.length} components`,
+          status: bl.status || 'operational',
+          utilization: 0,
+          zones: 0,
+          items: items.length,
+          lastActivity: bl.createdAt || new Date().toISOString(),
+          unitId: bl.unitId ?? null,
+          orgUnit: bl.orgUnit ?? null,
+          layoutData: { items, ...bl.layoutData },
+        } as WarehouseLayout;
+      });
+    }
+    return [];
+  });
   const [selectedItem, setSelectedItem] = useState<WarehouseItem | null>(null);
   const [showLocationDetails, setShowLocationDetails] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [cameFromDashboard, setCameFromDashboard] = useState(false);
 
-  // Load saved layouts from localStorage
-  const refreshSavedLayouts = useCallback(() => {
-    const storedLayouts = localStorage.getItem('warehouseLayouts');
-    if (storedLayouts) {
-      const parsedLayouts = JSON.parse(storedLayouts);
-      setSavedLayouts(parsedLayouts);
-    } else {
-      setSavedLayouts([]);
-    }
+  const isExternallyControlled = Boolean(initialSelectedLayoutId || fullscreenMode);
+  const shouldShowLiveMap = isExternallyControlled
+    ? Boolean(selectedUnitForDemo)
+    : showDemoMapModal;
+
+  // Convert a backend Layout into the WarehouseLayout shape this component expects
+  const convertBackendLayout = useCallback((bl: any): WarehouseLayout => {
+    const items = bl.layoutData?.items || [];
+    return {
+      id: bl.id,
+      name: bl.layoutName || 'Warehouse Layout',
+      location: '',
+      size: `${items.length} components`,
+      status: bl.status || 'operational',
+      utilization: 0,
+      zones: 0,
+      items: items.length,
+      lastActivity: bl.createdAt || new Date().toISOString(),
+      unitId: bl.unitId ?? null,
+      orgUnit: bl.orgUnit ?? null,
+      layoutData: { items, ...bl.layoutData },
+    };
   }, []);
+
+  // Seed with layouts passed from parent (e.g., dashboard already fetched them)
+  useEffect(() => {
+    if (!prefetchedLayouts?.length) return;
+    setSavedLayouts(prev => {
+      const prefetchedConverted = prefetchedLayouts.map(convertBackendLayout);
+      const existingIds = new Set(prefetchedConverted.map(l => l.id));
+      const filteredPrev = prev.filter(l => !existingIds.has(l.id));
+      return [...prefetchedConverted, ...filteredPrev];
+    });
+  }, [prefetchedLayouts, convertBackendLayout]);
+
+  // Load all layouts from backend API (replaces localStorage)
+  const refreshSavedLayouts = useCallback(async () => {
+    try {
+      const units = await orgUnitService.list();
+      const layoutArrays = await Promise.all(
+        units.map(unit =>
+          warehouseService.getLayouts(unit.id).catch(() => [] as any[])
+        )
+      );
+      const allBackendLayouts = layoutArrays.flat();
+      const converted = allBackendLayouts.map(convertBackendLayout);
+      setSavedLayouts(converted);
+    } catch (error) {
+      console.error('Failed to load layouts from backend:', error);
+    }
+  }, [convertBackendLayout]);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefreshMinutes, setAutoRefreshMinutes] = useState<number>(0);
 
   const refreshLiveData = useCallback(async () => {
-    console.log('WarehouseMapView - Refresh triggered', { selectedUnitForDemo });
     setIsRefreshing(true);
     try {
-      refreshSavedLayouts();
-      window.dispatchEvent(new Event('layoutSaved'));
-
-      if (!selectedUnitForDemo) {
-        console.warn('WarehouseMapView - Refresh skipped: no selectedUnitForDemo');
-        return;
-      }
-
-      const storedLayouts = localStorage.getItem('warehouseLayouts');
-      if (!storedLayouts) {
-        console.warn('WarehouseMapView - Refresh skipped: no warehouseLayouts in localStorage');
-        return;
-      }
-
-      const parsedLayouts = JSON.parse(storedLayouts) as any[];
-      const selectedLayout = parsedLayouts.find((layout) => layout?.id === selectedUnitForDemo);
-      const unitId: string | undefined = selectedLayout?.orgUnit?.id || selectedLayout?.unitId;
-
-      if (!unitId) {
-        console.warn('WarehouseMapView - Refresh skipped: selected layout missing unitId/orgUnit.id', {
-          selectedUnitForDemo,
-          selectedLayout,
-        });
-        return;
-      }
-
-      const tags = await locationTagService.listByUnit(unitId);
-      const tagNames = tags.map((tag) => tag.locationTagName).filter(Boolean);
-      setAvailableLocationTags(tagNames);
+      await refreshSavedLayouts();
     } catch (error) {
       console.error('Failed to refresh live map data:', error);
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshSavedLayouts, selectedUnitForDemo]);
+  }, [refreshSavedLayouts]);
 
   useEffect(() => {
     if (!autoRefreshMinutes) {
@@ -242,7 +277,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
 
   useEffect(() => {
     setMounted(true);
-    refreshSavedLayouts();
+    void refreshSavedLayouts();
     // Reset transition state when layoutId changes
     setIsTransitioning(false);
     
@@ -250,67 +285,25 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     if (layoutId) {
       setCameFromDashboard(true);
       setSelectedUnitForDemo(layoutId);
-      setShowDemoMapModal(true);
+      // Don't show modal yet — wait until layout data is available
     }
 
     if (fullscreenMode && initialSelectedLayoutId) {
       setSelectedUnitForDemo(initialSelectedLayoutId);
-      setShowDemoMapModal(true);
+      // Don't show modal yet — wait until layout data is available
     }
   }, [layoutId]);
 
-  // Fetch layout from backend API when a layoutId is provided (not found in localStorage)
+  // Show the modal once the target layout is actually available in savedLayouts
   useEffect(() => {
-    const targetId = initialSelectedLayoutId || layoutId;
+    if (isExternallyControlled) return;
+    const targetId = selectedUnitForDemo;
     if (!targetId) return;
-
-    // Check if we already have this layout in savedLayouts
-    const alreadyLoaded = savedLayouts.some(l => l.id === targetId);
-    if (alreadyLoaded) return;
-
-    let cancelled = false;
-
-    const fetchBackendLayout = async () => {
-      try {
-        const backendLayout = await warehouseService.getLayout(targetId);
-        if (cancelled) return;
-
-        // Convert backend layout shape to the WarehouseLayout shape this component expects
-        const items = backendLayout.layoutData?.items || [];
-        const converted: WarehouseLayout = {
-          id: backendLayout.id,
-          name: backendLayout.layoutName || 'Warehouse Layout',
-          location: '',
-          size: `${items.length} components`,
-          status: backendLayout.status || 'operational',
-          utilization: 0,
-          zones: 0,
-          items: items.length,
-          lastActivity: backendLayout.createdAt || new Date().toISOString(),
-          unitId: backendLayout.unitId ?? backendLayout.orgUnit?.id ?? null,
-          orgUnit: backendLayout.orgUnit ?? null,
-          layoutData: {
-            items,
-            ...backendLayout.layoutData,
-          },
-        };
-
-        setSavedLayouts(prev => {
-          // Avoid duplicates
-          if (prev.some(l => l.id === targetId)) return prev;
-          return [...prev, converted];
-        });
-
-        console.log('✅ Fetched layout from backend for live view:', backendLayout.id);
-      } catch (err: any) {
-        console.error('❌ Failed to fetch layout from backend:', err?.response?.status, err?.message);
-      }
-    };
-
-    fetchBackendLayout();
-
-    return () => { cancelled = true; };
-  }, [initialSelectedLayoutId, layoutId, savedLayouts]);
+    const found = savedLayouts.some(l => l.id === targetId);
+    if (found && !showDemoMapModal) {
+      setShowDemoMapModal(true);
+    }
+  }, [savedLayouts, selectedUnitForDemo, isExternallyControlled, showDemoMapModal]);
 
   // Handle browser back button to close modal
   useEffect(() => {
@@ -349,19 +342,16 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     window.open(url, '_blank', 'noopener,noreferrer');
   }, [selectedUnitForDemo]);
 
+  // Re-fetch layouts from backend when a layout is saved/updated elsewhere
   useEffect(() => {
-    refreshSavedLayouts();
-
-    const handleStorageChange = () => {
-      refreshSavedLayouts();
+    const handleLayoutSaved = () => {
+      void refreshSavedLayouts();
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('layoutSaved', handleStorageChange);
+    window.addEventListener('layoutSaved', handleLayoutSaved);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('layoutSaved', handleStorageChange);
+      window.removeEventListener('layoutSaved', handleLayoutSaved);
     };
   }, [refreshSavedLayouts]);
 
@@ -611,18 +601,18 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     }
   };
 
-  const handleDeleteLayout = (layoutId: string | undefined) => {
-    if (!layoutId || typeof window === 'undefined') return;
+  const handleDeleteLayout = async (layoutId: string | undefined) => {
+    if (!layoutId) return;
 
     const confirmed = window.confirm('Delete this layout permanently? This action cannot be undone.');
     if (!confirmed) return;
 
-    setSavedLayouts(prevLayouts => {
-      const updatedLayouts = prevLayouts.filter(layout => layout.id !== layoutId);
-      window.localStorage.setItem('warehouseLayouts', JSON.stringify(updatedLayouts));
-      window.dispatchEvent(new Event('layoutSaved'));
-      return updatedLayouts;
-    });
+    try {
+      await warehouseService.deleteLayout(layoutId);
+      setSavedLayouts(prev => prev.filter(layout => layout.id !== layoutId));
+    } catch (error) {
+      console.error('Failed to delete layout:', error);
+    }
   };
 
   const handleUnitAction = (unitId: string, action: string) => {
@@ -1241,7 +1231,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     <div className="warehouse-dashboard">
       {/* Main Content Grid */}
       <div className="dashboard-content">
-        {currentSection === 'layout-builder' ? (
+        {isExternallyControlled ? null : currentSection === 'layout-builder' ? (
           <div className="layout-builder-container">
             <div className="layout-builder-header">
               <h2>Layout Builder - {warehouseUnits.find(u => u.id === selectedUnit)?.name || 'Unit'}</h2>
@@ -1267,7 +1257,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
               })()}
             />
           </div>
-        ) : (
+        ) : isExternallyControlled ? null : (
           <div>
             {/* Header section removed */}
           
@@ -1334,7 +1324,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       )}
 
       {/* Live Map Modal */}
-      {showDemoMapModal && selectedUnitForDemo && (
+      {shouldShowLiveMap && selectedUnitForDemo && (
           <div 
             className={`demo-map-modal-overlay ${fullscreenMode ? 'fullscreen-mode' : ''}`}
             onClick={() => {

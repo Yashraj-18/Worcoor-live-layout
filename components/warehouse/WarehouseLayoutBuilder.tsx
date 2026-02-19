@@ -223,18 +223,6 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
     if (!activeLayoutId && initialLayout && initialLayout.items) {
       console.log('Setting warehouse items from initialLayout (no backend layout):', initialLayout.items);
       
-      // Check if this is an existing layout by looking for it in saved layouts
-      const savedLayouts = JSON.parse(localStorage.getItem('warehouseLayouts') || '[]');
-      const existingLayout = savedLayouts.find((layout: any) => 
-        layout.name === initialLayout.name && 
-        layout.orgUnit === (initialOrgUnit?.name || 'Unknown')
-      );
-      
-      if (existingLayout) {
-        setOriginalLayoutId(existingLayout.id);
-        console.log('📝 Found existing layout ID for editing:', existingLayout.id);
-      }
-      
       // Auto-center components in the canvas
       const items = initialLayout.items;
       if (items.length > 0) {
@@ -1461,74 +1449,6 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       }
     };
     
-    // Save to localStorage for warehouse maps integration
-    const savedLayouts = JSON.parse(localStorage.getItem('warehouseLayouts') || '[]');
-    
-    // Check if we're editing an existing layout
-    if (originalLayoutId) {
-      // Find and update existing layout
-      const existingIndex = savedLayouts.findIndex((layout: any) => layout.id === originalLayoutId);
-      if (existingIndex !== -1) {
-        // Update existing layout
-        savedLayouts[existingIndex] = {
-          ...savedLayouts[existingIndex],
-          name: layoutName,
-          status: operationalStatus,
-          location: savedLayouts[existingIndex].location || 'Unknown',
-          orgUnit: selectedOrgUnit?.name || savedLayouts[existingIndex].orgUnit || 'Unknown',
-          unitId: selectedOrgUnit?.id || savedLayouts[existingIndex].unitId || null,
-          size: `${operationalMetadata.croppedDimensions.width}x${operationalMetadata.croppedDimensions.height}`,
-          items: warehouseItems.length,
-          zones: warehouseItems.filter(item => item.type && (item.type.includes('zone') || item.type.includes('storage'))).length,
-          utilization: Math.floor(Math.random() * 40) + 60, // Random utilization 60-100%
-          lastActivity: new Date().toISOString(),
-          layoutData: layoutData
-        };
-        console.log('✅ Updated existing layout:', originalLayoutId);
-      } else {
-        // Fallback: Create new layout if original not found
-        const layoutForMaps = {
-          id: originalLayoutId,
-          name: layoutName,
-          status: operationalStatus,
-          location: 'Unknown',
-          orgUnit: selectedOrgUnit?.name || 'Unknown',
-          unitId: selectedOrgUnit?.id || null,
-          size: `${operationalMetadata.croppedDimensions.width}x${operationalMetadata.croppedDimensions.height}`,
-          items: warehouseItems.length,
-          zones: warehouseItems.filter(item => item.type && (item.type.includes('zone') || item.type.includes('storage'))).length,
-          utilization: Math.floor(Math.random() * 40) + 60, // Random utilization 60-100%
-          lastActivity: new Date().toISOString(),
-          layoutData: layoutData
-        };
-        savedLayouts.push(layoutForMaps);
-        console.log('⚠️ Original layout not found, created new with original ID:', originalLayoutId);
-      }
-    } else {
-      // Create new layout
-      const layoutForMaps = {
-        id: `layout-${Date.now()}`,
-        name: layoutName,
-        status: operationalStatus,
-        location: 'Unknown',
-        orgUnit: selectedOrgUnit?.name || 'Unknown',
-        unitId: selectedOrgUnit?.id || null,
-        size: `${operationalMetadata.croppedDimensions.width}x${operationalMetadata.croppedDimensions.height}`,
-        items: warehouseItems.length,
-        zones: warehouseItems.filter(item => item.type && (item.type.includes('zone') || item.type.includes('storage'))).length,
-        utilization: Math.floor(Math.random() * 40) + 60, // Random utilization 60-100%
-        lastActivity: new Date().toISOString(),
-        layoutData: layoutData
-      };
-      
-      savedLayouts.push(layoutForMaps);
-      console.log('🆕 Created new layout:', layoutForMaps.id);
-    }
-    localStorage.setItem('warehouseLayouts', JSON.stringify(savedLayouts));
-    
-    // Trigger custom event to update warehouse maps
-    window.dispatchEvent(new CustomEvent('layoutSaved'));
-
     // -----------------------------------------------------------------------
     // Backend persistence: save/update layout in the database
     // -----------------------------------------------------------------------
@@ -1554,6 +1474,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       warehouseService.updateLayout(activeLayoutId, backendPayload)
         .then(updatedLayout => {
           console.log('✅ Layout updated in backend:', updatedLayout.id);
+          window.dispatchEvent(new CustomEvent('layoutSaved'));
           return syncComponentsToBackend(updatedLayout.id);
         })
         .catch(err => console.error('❌ Failed to update layout in backend:', err?.response?.status, err?.response?.data || err.message));
@@ -1564,6 +1485,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
           console.log('✅ Layout created in backend:', createdLayout.id);
           setActiveLayoutId(createdLayout.id);
           setOriginalLayoutId(createdLayout.id);
+          window.dispatchEvent(new CustomEvent('layoutSaved'));
           return syncComponentsToBackend(createdLayout.id);
         })
         .catch(err => console.error('❌ Failed to create layout in backend:', err?.response?.status, err?.response?.data || err.message));

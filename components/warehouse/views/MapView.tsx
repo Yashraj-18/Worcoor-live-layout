@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import WarehouseDesigner from '@/components/warehouse/WarehouseDesigner';
 import Dashboard from '../../dashboard/WarehouseDashboard';
 import LocationDetailsPanel from '@/components/warehouse/LocationDetailsPanel';
@@ -9,6 +10,7 @@ import layoutComponentsMock from '@/warehouse/data/layoutComponentsMock.json';
 import { RefreshCw } from 'lucide-react';
 
 const WarehouseMapView = ({ facilityData }) => {
+  const router = useRouter();
   const [selectedZone, setSelectedZone] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedUnitForDemo, setSelectedUnitForDemo] = useState(null);
@@ -42,23 +44,51 @@ const WarehouseMapView = ({ facilityData }) => {
   const [autoRefreshMinutes, setAutoRefreshMinutes] = useState(0);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
 
-  // Load saved layouts from localStorage
-  const refreshSavedLayouts = useCallback(() => {
-    const storedLayouts = localStorage.getItem('warehouseLayouts');
-    if (storedLayouts) {
-      const parsedLayouts = JSON.parse(storedLayouts);
-      setSavedLayouts(parsedLayouts);
-    } else {
+  // Convert backend layout to local dashboard shape
+  const convertBackendLayout = useCallback((bl) => {
+    const items = bl.layoutData?.items || [];
+    return {
+      id: bl.id,
+      name: bl.layoutName || 'Warehouse Layout',
+      status: bl.status || 'operational',
+      location: bl.metadata?.location || 'Unknown',
+      orgUnit: bl.metadata?.orgUnit || bl.layoutData?.orgUnit || 'Unknown',
+      size: bl.metadata?.croppedDimensions
+        ? `${bl.metadata.croppedDimensions.width || '-'}×${bl.metadata.croppedDimensions.height || '-'}`
+        : `${items.length} components`,
+      items: bl.metadata?.totalItems ?? items.length,
+      zones: bl.metadata?.zones ?? 0,
+      utilization: bl.metadata?.utilizationPercentage ?? 0,
+      lastActivity: bl.updatedAt || bl.createdAt,
+      unitId: bl.unitId ?? null,
+      layoutData: bl.layoutData || { items: [] },
+      metadata: bl.metadata || {},
+      isCustomLayout: true,
+    };
+  }, []);
+
+  // Load saved layouts from backend API
+  const refreshSavedLayouts = useCallback(async () => {
+    try {
+      const units = await orgUnitService.list();
+      const layoutResponses = await Promise.all(
+        units.map((unit) =>
+          warehouseService.getLayouts(unit.id).catch(() => [])
+        )
+      );
+      const converted = layoutResponses.flat().map(convertBackendLayout);
+      setSavedLayouts(converted);
+    } catch (error) {
+      console.error('MapView - Failed to load layouts from backend:', error);
       setSavedLayouts([]);
     }
-  }, []);
+  }, [convertBackendLayout]);
 
   const refreshLiveData = useCallback(async () => {
     console.log('MapView - Refresh triggered', { selectedUnitForDemo });
     setIsRefreshing(true);
     try {
-      refreshSavedLayouts();
-      window.dispatchEvent(new Event('layoutSaved'));
+      await refreshSavedLayouts();
     } catch (error) {
       console.error('MapView - Refresh failed:', error);
     } finally {
@@ -83,18 +113,16 @@ const WarehouseMapView = ({ facilityData }) => {
   }, [autoRefreshMinutes, refreshLiveData]);
 
   useEffect(() => {
-    refreshSavedLayouts();
+    void refreshSavedLayouts();
 
-    const handleStorageChange = () => {
-      refreshSavedLayouts();
+    const handleLayoutSaved = () => {
+      void refreshSavedLayouts();
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('layoutSaved', handleStorageChange);
+    window.addEventListener('layoutSaved', handleLayoutSaved);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('layoutSaved', handleStorageChange);
+      window.removeEventListener('layoutSaved', handleLayoutSaved);
     };
   }, [refreshSavedLayouts]);
 
@@ -615,7 +643,7 @@ const WarehouseMapView = ({ facilityData }) => {
         // Navigate to all units view
         break;
       case 'layout-builder':
-        // Navigate to layout builder
+        router.push('/dashboard/warehouse-management/layout-builder');
         break;
       case 'live-map':
         // Navigate to live map
@@ -625,18 +653,18 @@ const WarehouseMapView = ({ facilityData }) => {
     }
   };
 
-  const handleDeleteLayout = (layoutId) => {
-    if (!layoutId || typeof window === 'undefined') return;
+  const handleDeleteLayout = async (layoutId) => {
+    if (!layoutId) return;
 
     const confirmed = window.confirm('Delete this layout permanently? This action cannot be undone.');
     if (!confirmed) return;
 
-    setSavedLayouts(prevLayouts => {
-      const updatedLayouts = prevLayouts.filter(layout => layout.id !== layoutId);
-      window.localStorage.setItem('warehouseLayouts', JSON.stringify(updatedLayouts));
-      window.dispatchEvent(new Event('layoutSaved'));
-      return updatedLayouts;
-    });
+    try {
+      await warehouseService.deleteLayout(layoutId);
+      setSavedLayouts(prevLayouts => prevLayouts.filter(layout => layout.id !== layoutId));
+    } catch (error) {
+      console.error('Failed to delete layout:', error);
+    }
   };
 
   const handleUnitAction = (unitId, action) => {
@@ -1622,11 +1650,7 @@ const WarehouseMapView = ({ facilityData }) => {
                           <button 
                             className="action-btn edit-btn"
                             onClick={() => {
-                              // Load layout back into builder
-                              if (unit.layoutData && unit.layoutData.items) {
-                                localStorage.setItem('loadLayoutData', JSON.stringify(unit.layoutData));
-                                setCurrentSection('layout-builder');
-                              }
+                              router.push(`/dashboard/warehouse-management/edit/${unit.id}`);
                             }}
                           >
                             Edit Layout

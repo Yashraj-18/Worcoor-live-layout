@@ -26,7 +26,7 @@ export default function NewOrgUnitPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild>
-          <Link href="/dashboard/reference-data/org-units">
+          <Link href="/reference-data/org-units">
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Back</span>
           </Link>
@@ -130,7 +130,7 @@ export default function NewOrgUnitPage() {
 
         <div className="flex justify-end gap-4">
           <Button variant="outline" asChild>
-            <Link href="/dashboard/reference-data/org-units">Cancel</Link>
+            <Link href="/reference-data/org-units">Cancel</Link>
           </Button>
           <Button>Save Changes</Button>
         </div>

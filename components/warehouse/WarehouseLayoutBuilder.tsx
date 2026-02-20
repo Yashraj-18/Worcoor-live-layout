@@ -1708,7 +1708,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   }, []);
 
   const handleNavigateToDashboard = useCallback(() => {
-    router.push('/dashboard/warehouse-management');
+    router.push('/warehouse-management');
   }, [router]);
 
   // Check if we're in fullscreen map mode

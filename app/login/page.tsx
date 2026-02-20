@@ -22,7 +22,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isAuthLoading && isAuthenticated) {
-      router.replace('/dashboard')
+      router.replace('/reference-data')
     }
   }, [isAuthenticated, isAuthLoading, router])
 
@@ -49,7 +49,7 @@ export default function LoginPage() {
       })
       setLoading(false)
       notification.success('Login Successful', `Welcome back!`)
-      router.replace('/dashboard')
+      router.replace('/reference-data')
     } catch (error: any) {
       setLoading(false)
       if (error?.response?.status === 401) {

@@ -643,7 +643,7 @@ const WarehouseMapView = ({ facilityData }) => {
         // Navigate to all units view
         break;
       case 'layout-builder':
-        router.push('/dashboard/warehouse-management/layout-builder');
+        router.push('/warehouse-management/layout-builder');
         break;
       case 'live-map':
         // Navigate to live map
@@ -1650,7 +1650,7 @@ const WarehouseMapView = ({ facilityData }) => {
                           <button 
                             className="action-btn edit-btn"
                             onClick={() => {
-                              router.push(`/dashboard/warehouse-management/edit/${unit.id}`);
+                              router.push(`/warehouse-management/edit/${unit.id}`);
                             }}
                           >
                             Edit Layout

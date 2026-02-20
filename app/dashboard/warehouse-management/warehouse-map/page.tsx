@@ -83,14 +83,14 @@ function WarehouseMapPage() {
 
   const handleMapSelect = useCallback(
     (selectedLayoutId: string) => {
-      router.push(`/dashboard/warehouse-management/warehouse-map?layoutId=${selectedLayoutId}`);
+      router.push(`/warehouse-management/warehouse-map?layoutId=${selectedLayoutId}`);
     },
     [router]
   );
 
   const handleEditLayout = useCallback(
     (selectedLayoutId: string) => {
-      router.push(`/dashboard/warehouse-management/edit/${selectedLayoutId}`);
+      router.push(`/warehouse-management/edit/${selectedLayoutId}`);
     },
     [router]
   );
@@ -116,10 +116,10 @@ function WarehouseMapPage() {
       setTimeout(() => {
         if (cameFromDashboard) {
           // User came from main dashboard, go back there
-          router.push('/dashboard/warehouse-management');
+          router.push('/warehouse-management');
         } else {
           // User is on warehouse-map page, stay here
-          router.push('/dashboard/warehouse-management/warehouse-map');
+          router.push('/warehouse-management/warehouse-map');
         }
       }, 150);
     };
@@ -142,7 +142,7 @@ function WarehouseMapPage() {
           <PageTitle title="Warehouse Maps" />
           <p className="text-gray-600 mt-1">View, edit, and monitor layouts directly from the live backend.</p>
         </div>
-        <Link href="/dashboard/warehouse-management/layout-builder">
+        <Link href="/warehouse-management/layout-builder">
           <Button>Create New Layout</Button>
         </Link>
       </div>

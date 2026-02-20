@@ -140,7 +140,7 @@ export default function EditLayoutPage() {
             <h2 className="text-xl font-semibold text-red-800 mb-2">Error Loading Layout</h2>
             <p className="text-red-600 mb-4">{error || 'Layout not found'}</p>
             <button
-              onClick={() => router.push('/dashboard/warehouse-management')}
+              onClick={() => router.push('/warehouse-management')}
               className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
             >
               Back to Warehouse Management
@@ -162,7 +162,7 @@ export default function EditLayoutPage() {
             </p>
           </div>
           <button
-            onClick={() => router.push('/dashboard/warehouse-management')}
+            onClick={() => router.push('/warehouse-management')}
             className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors"
           >
             Back to Dashboard

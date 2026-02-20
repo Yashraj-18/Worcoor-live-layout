@@ -5,16 +5,6 @@ import { COMPONENT_TYPES } from './componentTypes';
 // Re-export for other files
 export { COMPONENT_TYPES };
 
-// Storage category colors used by componentLabeling
-export const STORAGE_CATEGORY_COLORS: Record<string, string> = {
-  'storage': '#4CAF50',
-  'dry_storage': '#8BC34A',
-  'cold_storage': '#03A9F4',
-  'hazardous': '#F44336',
-  'fragile': '#FF9800',
-  'bulk': '#795548',
-};
-
 // Drag and drop types
 export const DRAG_TYPES = {
   COMPONENT: 'component',
@@ -69,6 +59,8 @@ export const LOCATION_ZONES = {
 // Fixed Component Color Coding for Consistency - Realistic Colors
 // Import component panel colors from centralized configuration
 import { getComponentPanelColor } from '../config/componentPanelColors';
+// Import storage component status colors
+import { getStorageComponentStatusColor } from '../config/componentStatusColor';
 
 // Legacy export for backward compatibility - now uses centralized color config
 export const COMPONENT_COLORS = {
@@ -122,7 +114,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.SKU_HOLDER,
         name: "Horizontal Storage Rack",
-        color: getComponentPanelColor(COMPONENT_TYPES.SKU_HOLDER),
+        color: getStorageComponentStatusColor("Horizontal Storage Rack"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block = 1 SKU compartment
         description: "Horizontal storage rack system where each 60×60px grid block holds 1 SKU unit",
         priority: "high",
@@ -142,7 +134,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.VERTICAL_SKU_HOLDER,
         name: "Vertical Storage Rack",
-        color: getComponentPanelColor(COMPONENT_TYPES.VERTICAL_SKU_HOLDER),
+        color: getStorageComponentStatusColor("Vertical Storage Rack"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block = 1 SKU compartment
         description: "Vertical storage rack system where each 60×60px grid block holds 1 SKU unit",
         priority: "high",
@@ -216,7 +208,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Storage Unit",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Storage Unit"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Individual storage unit with sequential SKU ID assignment",
         priority: "high",
@@ -231,7 +223,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Open Storage Space",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Open Storage Space"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Open storage space with sequential SKU ID assignment",
         priority: "high",
@@ -246,7 +238,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Dispatch Staging Area",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Dispatch Staging Area"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Dispatch staging area with sequential SKU ID assignment",
         priority: "high",
@@ -261,7 +253,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Grading Area",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Grading Area"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Grading area with sequential SKU ID assignment",
         priority: "high",
@@ -276,7 +268,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Processing Area",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Processing Area"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Processing area with sequential SKU ID assignment",
         priority: "high",
@@ -291,7 +283,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Production Area",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Production Area"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Production area with sequential SKU ID assignment",
         priority: "high",
@@ -306,7 +298,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Packaging Area",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Packaging Area"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Packaging area with sequential SKU ID assignment",
         priority: "high",
@@ -321,7 +313,7 @@ export const WAREHOUSE_COMPONENTS = [
       {
         type: COMPONENT_TYPES.STORAGE_UNIT,
         name: "Cold Storage",
-        color: getComponentPanelColor(COMPONENT_TYPES.STORAGE_UNIT),
+        color: getStorageComponentStatusColor("Cold Storage"),
         defaultSize: { width: 60, height: 60 }, // 1×1 grid block
         description: "Temperature-controlled cold storage unit for perishable goods",
         priority: "high",

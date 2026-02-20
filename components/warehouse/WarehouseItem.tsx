@@ -9,6 +9,7 @@ import { getComponentColor } from '@/lib/warehouse/utils/componentColors';
 import { renderShapeComponent } from '@/lib/warehouse/utils/shapeRenderer';
 import { getContextualLabel } from '@/lib/warehouse/utils/componentLabeling';
 import { inferVerticalRackLevelCount } from '@/lib/warehouse/utils/verticalRackUtils';
+import { getStorageComponentBorder, STORAGE_COMPONENT_BORDER_CONFIG } from '@/lib/warehouse/config/componentStatusColor';
 import HoverInfoTooltip from './HoverInfoTooltip';
 import ResizeHandle from './ResizeHandle';
 
@@ -538,8 +539,15 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           const x = col * (cellWidth + gap);
           const y = row * (cellHeight + gap);
 
-          const borderColor = compartmentData ? '#000000' : '#000000';
-          const borderWidth = compartmentData ? 2 : 1;
+          // Use status-based border colors for storage racks
+          const hasLocationData = Boolean(compartmentData);
+          const capacityStatus = compartmentData?.capacityStatus; // Will come from backend
+          const borderStyle = getStorageComponentBorder(hasLocationData, capacityStatus);
+          
+          // Extract color and width from border string (e.g., "2px solid #000000")
+          const borderMatch = borderStyle.match(/(\d+)px\s+solid\s+(#[0-9A-Fa-f]{6})/);
+          const borderWidth = borderMatch ? parseInt(borderMatch[1]) : (hasLocationData ? 2 : 1);
+          const borderColor = borderMatch ? borderMatch[2] : '#000000';
 
           const label = resolveLabel(compartmentData);
           const fontSize = Math.min(Math.max(cellWidth / 5.5, 7), 12);
@@ -906,7 +914,7 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
       {/* Shape rendering for shape components */}
       {item.isShape && renderShapeComponent(item)}
 
-      {(isSingleSkuStorageComponent || normalizedType === 'spare_unit') && (
+      {isSingleSkuStorageComponent && (
         <div
           style={{
             position: 'absolute',
@@ -918,8 +926,8 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            border: `${hasResolvedLocation ? 2 : 1}px solid #000000`,
-            borderRadius: 0,
+            border: getStorageComponentBorder(hasResolvedLocation),
+            borderRadius: STORAGE_COMPONENT_BORDER_CONFIG.borderRadius,
             backgroundColor: 'transparent',
             color: '#111827',
             fontWeight: hasResolvedLocation ? 600 : 500,

@@ -29,7 +29,7 @@ export const COMPONENT_PANEL_COLORS: Record<string, string> = {
   [COMPONENT_TYPES.STORAGE_UNIT]: 'transparent',       // Transparent - No color (fresh start)
   [COMPONENT_TYPES.SKU_HOLDER]: 'transparent',             // Transparent - Horizontal storage racks
   [COMPONENT_TYPES.VERTICAL_SKU_HOLDER]: 'transparent',    // Transparent - Vertical storage racks
-  [COMPONENT_TYPES.SPARE_UNIT]: 'transparent',             // Transparent - Spare units
+  // [COMPONENT_TYPES.SPARE_UNIT]: 'transparent',             // Transparent - Spare units
   
   // Zone Components
   [COMPONENT_TYPES.WAREHOUSE_BLOCK]: 'transparent',        // Transparent - Warehouse blocks

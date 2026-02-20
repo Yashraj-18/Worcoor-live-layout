@@ -16,7 +16,8 @@ const WarehouseCanvas = ({
   onAddItem, 
   onMoveItem, 
   onSelectItem, 
-  selectedItemId, 
+  selectedItemId,
+  selectedItemIds = [],
   onUpdateItem,
   onCanvasClick,
   stackMode,
@@ -40,6 +41,53 @@ const WarehouseCanvas = ({
   const [drawingPreview, setDrawingPreview] = useState(null);
   const [selectionBox, setSelectionBox] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
+  
+  // ADD right after those two lines:
+  const [keyboardFocusedId, setKeyboardFocusedId] = useState(null);
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+  const [editingLabelValue, setEditingLabelValue] = useState<string>('');
+  
+  const handleCanvasKeyDown = useCallback((e) => {
+    const navigableItems = items.filter(
+      i => i.type !== 'square_boundary' && i.type !== 'inner_boundary'
+    );
+    if (navigableItems.length === 0) return;
+    
+    const currentIndex = navigableItems.findIndex(i => i.id === keyboardFocusedId);
+    
+    switch (e.key) {
+      case 'Tab':
+      case 'ArrowRight':
+      case 'ArrowDown': {
+        e.preventDefault();
+        const nextIdx = currentIndex === -1 ? 0 : (currentIndex + 1) % navigableItems.length;
+        setKeyboardFocusedId(navigableItems[nextIdx].id);
+        break;
+      }
+      case 'ArrowLeft':
+      case 'ArrowUp': {
+        e.preventDefault();
+        const prevIdx = currentIndex <= 0
+          ? navigableItems.length - 1
+          : currentIndex - 1;
+        setKeyboardFocusedId(navigableItems[prevIdx].id);
+        break;
+      }
+      case ' ':
+      case 'Enter': {
+        e.preventDefault();
+        if (keyboardFocusedId) {
+          onSelectItem(keyboardFocusedId, true); // additive select
+        }
+        break;
+      }
+      case 'Escape': {
+        setKeyboardFocusedId(null);
+        onCanvasClick();
+        break;
+      }
+    }
+  }, [items, keyboardFocusedId, onSelectItem, onCanvasClick]);
 
   // Prevent browser zoom when canvas is focused and handle drawing mode keys
   useEffect(() => {
@@ -666,6 +714,11 @@ const WarehouseCanvas = ({
       }}
       className={`warehouse-canvas ${isOver ? 'drag-over' : ''} ${canDrop ? 'can-drop' : ''} ${drawingMode ? 'drawing-mode' : ''}`}
       onClick={handleCanvasClick}
+      tabIndex={0}
+      onKeyDown={handleCanvasKeyDown}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
       onWheel={(e) => {
         // Only handle zoom if Ctrl is pressed, otherwise allow scrolling
         if (e.ctrlKey || e.metaKey) {
@@ -673,6 +726,7 @@ const WarehouseCanvas = ({
         }
       }}
       style={{
+        outline: 'none',
         cursor: drawingMode ? 'crosshair' : (isDragging.current ? 'grabbing' : 'default'),
         position: 'fixed',
         top: '60px',
@@ -693,7 +747,7 @@ const WarehouseCanvas = ({
         </div>
       )}
       {/* Scrollable content area */}
-      <div className="scrollable-canvas-content" style={{
+      <div className="scrollable-canvas-content drop-zone" style={{
         width: '5000px',
         height: '5000px',
         position: 'relative',
@@ -716,7 +770,7 @@ const WarehouseCanvas = ({
           left: 0,
           width: '100%',
           height: '100%'
-        }}>
+        }} className="drop-zone">
           {items.map((item, index) => {
             console.log(`Rendering item ${index}:`, {
               id: item.id,
@@ -728,18 +782,120 @@ const WarehouseCanvas = ({
               height: item.height,
               color: item.color
             });
+            const isMultiSelected = selectedItemIds.includes(item.id);
+            const isKeyboardFocused = keyboardFocusedId === item.id;
+            
+            // ✅ FIX 1: inner_boundary now has position/left/top — was rendering at (0,0) and blocking other items
+            if (item.type === 'inner_boundary') {
+              return (
+                <div
+                  key={item.id}
+                  style={{
+                    position: 'absolute',
+                    left: item.x,
+                    top: item.y,
+                    width: item.width,
+                    height: item.height,
+                    border: `2px solid #000000`,
+                    borderRadius: 6,
+                    backgroundColor: 'transparent',
+                    pointerEvents: 'none',
+                    zIndex: 2,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  {editingLabelId === item.id ? (
+                    <input
+                      autoFocus
+                      value={editingLabelValue}
+                      onChange={(e) => setEditingLabelValue(e.target.value)}
+                      onBlur={() => {
+                        onUpdateItem(item.id, { name: editingLabelValue });
+                        setEditingLabelId(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          onUpdateItem(item.id, { name: editingLabelValue });
+                          setEditingLabelId(null);
+                        }
+                        if (e.key === 'Escape') {
+                          setEditingLabelId(null);
+                        }
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: 5,
+                        left: 8,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: '#000000',
+                        background: 'white',
+                        border: '1px solid #000',
+                        borderRadius: 3,
+                        padding: '1px 5px',
+                        outline: 'none',
+                        width: 100,
+                      }}
+                    />
+                  ) : (
+                    <span
+                      onDoubleClick={() => {
+                        setEditingLabelId(item.id);
+                        setEditingLabelValue(item.name);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: 5,
+                        left: 8,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: '#000000',
+                        background: 'rgba(250,250,250,0.85)',
+                        padding: '1px 5px',
+                        borderRadius: 3,
+                        pointerEvents: 'auto',
+                        userSelect: 'none',
+                        cursor: 'text',
+                      }}
+                    >
+                      {item.name}
+                    </span>
+                  )}
+                </div>
+              );
+            }
+            // All other items render normally with selection highlight wrapper
             return (
-              <WarehouseItem
+              <div
                 key={item.id}
-                item={item}
-                onSelect={onSelectItem}
-                isSelected={selectedItemId === item.id || selectedItems.includes(item.id)}
-                onUpdate={onUpdateItem}
-                onRightClick={onRightClick}
-                onInfoClick={onInfoClick}
-                stackMode={stackMode}
-                onRequestSkuId={onRequestSkuId}
-              />
+                style={{
+                  position: 'absolute',
+                  left: item.x,
+                  top: item.y,
+                  outline: isMultiSelected
+                    ? '2px solid #4A90E2'        // blue = selected
+                    : isKeyboardFocused
+                      ? '2px dashed #F39C12'     // orange = keyboard focused
+                      : 'none',
+                  outlineOffset: 3,
+                  opacity: selectedItemIds.length > 0 && !isMultiSelected ? 0.75 : 1,
+                  borderRadius: 3,
+                  zIndex: isMultiSelected ? 10 : 'auto',
+                  pointerEvents: 'auto',
+                }}
+              >
+                <WarehouseItem
+                  key={item.id}
+                  item={{ ...item, x: 0, y: 0 }}
+                  onSelect={onSelectItem}
+                  isSelected={selectedItemId === item.id || selectedItems.includes(item.id)}
+                  onUpdate={onUpdateItem}
+                  onRightClick={onRightClick}
+                  onInfoClick={onInfoClick}
+                  stackMode={stackMode}
+                  onRequestSkuId={onRequestSkuId}
+                />
+              </div>
             );
           })}
         </div>
@@ -869,4 +1025,3 @@ const WarehouseCanvas = ({
 };
 
 export default WarehouseCanvas;
-

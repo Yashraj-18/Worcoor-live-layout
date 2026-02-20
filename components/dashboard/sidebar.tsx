@@ -42,12 +42,12 @@ export function DashboardSidebar({ isOpen, toggle }: SidebarProps) {
   }
 
   const navItems = [
-    // Dashboard Menu
-    {
-      title: "Dashboard",
-      href: "/dashboard",
-      icon: LayoutDashboard,
-    },
+    // Dashboard Menu - Hidden from frontend as per client request (code preserved)
+    // {
+    //   title: "Dashboard",
+    //   href: "/dashboard",
+    //   icon: LayoutDashboard,
+    // },
                 // Task Management Menu
     // {
     //   title: "Task Management",

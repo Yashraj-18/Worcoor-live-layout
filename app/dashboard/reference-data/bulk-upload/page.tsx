@@ -1801,7 +1801,7 @@ export default function BulkUploadPage() {
                     size="sm"
                     className="border-green-300 text-green-700 hover:bg-green-100"
                   >
-                    <Link href={`/dashboard/reference-data/${uploadType}`}>
+                    <Link href={`/reference-data/${uploadType}`}>
                       View Imported Data
                     </Link>
                   </Button>

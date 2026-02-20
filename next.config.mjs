@@ -15,6 +15,14 @@ const nextConfig = {
         source: '/api/:path*',
         destination: 'http://localhost:4000/api/:path*',
       },
+      {
+        source: '/reference-data/:path*',
+        destination: '/dashboard/reference-data/:path*',
+      },
+      {
+        source: '/warehouse-management/:path*',
+        destination: '/dashboard/warehouse-management/:path*',
+      },
     ]
   },
 }

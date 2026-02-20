@@ -151,7 +151,7 @@ export default function WarehouseManagementPage() {
           </Select>
         </div>
 
-        <Button onClick={() => router.push('/dashboard/warehouse-management/layout-builder')}>
+        <Button onClick={() => router.push('/warehouse-management/layout-builder')}>
           <LayoutDashboard className="mr-2 h-4 w-4" />
           Launch Layout Builder
         </Button>
@@ -227,7 +227,7 @@ export default function WarehouseManagementPage() {
               <p className="text-slate-600 dark:text-slate-200 max-w-md">
                 {selectedUnit ? `Unit ${selectedUnit.unitName} does not have any saved layouts yet.` : 'Select an organizational unit to view its layouts.'}
               </p>
-              <Link href="/dashboard/warehouse-management/layout-builder">
+              <Link href="/warehouse-management/layout-builder">
                 <Button className="mt-4">
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   Create Layout
@@ -302,7 +302,7 @@ export default function WarehouseManagementPage() {
                     size="sm" 
                     className="w-full justify-center"
                     onClick={() => {
-                      router.push(`/dashboard/warehouse-management/edit/${layout.id}`);
+                     router.push(`/warehouse-management/edit/${layout.id}`) ;
                     }}
                   >
                     Edit Layout

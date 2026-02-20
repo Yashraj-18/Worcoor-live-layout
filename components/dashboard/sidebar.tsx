@@ -19,7 +19,7 @@ import { useAuth } from '@/src/utils/AuthContext'
 import { Logo } from '../logo'
 
 type SidebarProps = {
-  isOpen: boolean
+  isOpen: boolean 
   toggle: () => void
 }
 
@@ -93,36 +93,36 @@ export function DashboardSidebar({ isOpen, toggle }: SidebarProps) {
     // Reference Data Management Menu
     {
       title: "Reference Data Management",
-      href: "/dashboard/reference-data",
+      href: "/reference-data",
       icon: Database,
     },
     {
       title: "Org Unit Data",
-      href: "/dashboard/reference-data/org-units",
+      href: "/reference-data/org-units",
       icon: Layers,
       parent: "Reference Data Management",
     },
     {
       title: "Location Tag Data",
-      href: "/dashboard/reference-data/location-tags",
+      href: "/reference-data/location-tags",
       icon: Database,
       parent: "Reference Data Management",
     },
     {
       title: "SKU Data",
-      href: "/dashboard/reference-data/skus",
+      href: "/reference-data/skus",
       icon: Layers,
       parent: "Reference Data Management",
     },
     {
       title: "Asset Data",
-      href: "/dashboard/reference-data/asset-management",
+      href: "/reference-data/asset-management",
       icon: Database,
       parent: "Reference Data Management",
     },
     {
       title: "Bulk Upload",
-      href: "/dashboard/reference-data/bulk-upload",
+      href: "/reference-data/bulk-upload",
       icon: Upload,
       parent: "Reference Data Management",
     },
@@ -141,7 +141,7 @@ export function DashboardSidebar({ isOpen, toggle }: SidebarProps) {
     // Warehouse Management Menu
     {
       title: "Warehouse Management",
-      href: "/dashboard/warehouse-management",
+      href: "/warehouse-management",
       icon: Layers,
     },
     // {
@@ -152,7 +152,7 @@ export function DashboardSidebar({ isOpen, toggle }: SidebarProps) {
     // },
     {
       title: "Layout Builder",
-      href: "/dashboard/warehouse-management/layout-builder",
+      href: "/warehouse-management/layout-builder",
       icon: LayoutDashboard,
       parent: "Warehouse Management",
     },

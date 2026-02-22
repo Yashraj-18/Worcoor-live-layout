@@ -20,40 +20,35 @@ import '@/styles/warehouse.css';
 export default function WarehouseManagementPage() {
   const router = useRouter();
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
-  const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
   const [layouts, setLayouts] = useState<Layout[]>([]);
-  const [isLoadingUnits, setIsLoadingUnits] = useState(false);
   const [isLoadingLayouts, setIsLoadingLayouts] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showMapModal, setShowMapModal] = useState(false);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
 
-  const fetchOrgUnits = async () => {
-    setIsLoadingUnits(true);
-    try {
-      const units = await orgUnitService.list();
-      setOrgUnits(units);
-      if (!selectedUnitId && units.length > 0) {
-        setSelectedUnitId(units[0].id);
-      }
-    } catch (err) {
-      console.error('Failed to load org units', err);
-      notification.error('Unable to load organizational units');
-    } finally {
-      setIsLoadingUnits(false);
-    }
-  };
-
-  const fetchLayouts = async (unitId: string) => {
+  const fetchAllLayouts = async () => {
     setIsLoadingLayouts(true);
     setError(null);
     try {
-      const data = await warehouseService.getLayouts(unitId);
-      setLayouts(data);
+      const units = await orgUnitService.list();
+      setOrgUnits(units);
+      
+      const layoutResponses = await Promise.all(
+        units.map(async (unit) => {
+          try {
+            return await warehouseService.getLayouts(unit.id);
+          } catch (layoutsError) {
+            console.warn(`Failed to fetch layouts for unit ${unit.unitName}`, layoutsError);
+            return [] as Layout[];
+          }
+        })
+      );
+      
+      setLayouts(layoutResponses.flat());
     } catch (err) {
       console.error('Failed to load layouts', err);
       setLayouts([]);
-      setError('Failed to load layouts for the selected unit.');
+      setError('Failed to load layouts.');
       notification.error('Unable to load layouts');
     } finally {
       setIsLoadingLayouts(false);
@@ -61,17 +56,9 @@ export default function WarehouseManagementPage() {
   };
 
   useEffect(() => {
-    fetchOrgUnits();
+    fetchAllLayouts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (selectedUnitId) {
-      fetchLayouts(selectedUnitId);
-    } else {
-      setLayouts([]);
-    }
-  }, [selectedUnitId]);
 
   // Helper function to get status colors
   function getStatusColor(status: string) {
@@ -85,13 +72,13 @@ export default function WarehouseManagementPage() {
   }
 
   const handleDeleteLayout = async (layoutId: string) => {
-    if (!layoutId || !selectedUnitId) return;
+    if (!layoutId) return;
     const confirmed = window.confirm('Delete this layout permanently? This action cannot be undone.');
     if (!confirmed) return;
     try {
       await warehouseService.deleteLayout(layoutId);
       notification.success('Layout deleted');
-      fetchLayouts(selectedUnitId);
+      fetchAllLayouts();
     } catch (err) {
       console.error('Failed to delete layout', err);
       notification.error('Failed to delete layout');
@@ -112,7 +99,6 @@ export default function WarehouseManagementPage() {
     }
   };
 
-  const selectedUnit = useMemo(() => orgUnits.find((unit) => unit.id === selectedUnitId) ?? null, [orgUnits, selectedUnitId]);
   const totalLayouts = layouts.length;
   const activeWarehouses = layouts.filter((layout) => layout.status === 'operational').length;
   const utilizationFor = (layout: Layout) => {
@@ -130,27 +116,7 @@ export default function WarehouseManagementPage() {
         icon={Warehouse}
       />
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div className="flex flex-col gap-2 w-full md:max-w-sm">
-          <p className="text-sm font-medium text-muted-foreground">Organization Unit</p>
-          <Select
-            value={selectedUnitId ?? undefined}
-            onValueChange={(value) => setSelectedUnitId(value)}
-            disabled={isLoadingUnits || orgUnits.length === 0}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={isLoadingUnits ? 'Loading units…' : 'Select a unit'} />
-            </SelectTrigger>
-            <SelectContent>
-              {orgUnits.map((unit) => (
-                <SelectItem key={unit.id} value={unit.id}>
-                  {unit.unitName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
+      <div className="flex justify-end">
         <Button onClick={() => router.push('/warehouse-management/layout-builder')}>
           <LayoutDashboard className="mr-2 h-4 w-4" />
           Launch Layout Builder
@@ -223,9 +189,9 @@ export default function WarehouseManagementPage() {
               <div className="rounded-full bg-slate-100 p-6">
                 <Map className="h-12 w-12 text-slate-400" />
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50">No Layouts in this Unit</h3>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50">No Layouts Available</h3>
               <p className="text-slate-600 dark:text-slate-200 max-w-md">
-                {selectedUnit ? `Unit ${selectedUnit.unitName} does not have any saved layouts yet.` : 'Select an organizational unit to view its layouts.'}
+                No warehouse layouts have been created yet. Create your first layout to get started.
               </p>
               <Link href="/warehouse-management/layout-builder">
                 <Button className="mt-4">
@@ -240,7 +206,7 @@ export default function WarehouseManagementPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {layouts.map((layout) => {
             const meta = layout.metadata ?? {};
-            const unitLabel = typeof meta.orgUnit === 'string' ? meta.orgUnit : selectedUnit?.unitName ?? 'Unit';
+            const unitLabel = typeof meta.orgUnit === 'string' ? meta.orgUnit : meta.orgUnit?.name ?? orgUnits.find(u => u.id === layout.unitId)?.unitName ?? 'Unit';
             const locationLabel = typeof meta.location === 'string' ? meta.location : meta.orgUnit?.location ?? '—';
             const sizeLabel = meta.croppedDimensions
               ? `${meta.croppedDimensions.width ?? '-'}×${meta.croppedDimensions.height ?? '-'}` 

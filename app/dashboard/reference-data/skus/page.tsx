@@ -5,6 +5,13 @@ import { Tag, Plus, Search, Edit, Trash2, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 import {
   Dialog,
@@ -20,7 +27,8 @@ import PageHeader from "@/components/layout/page-header"
 import SkuForm from "@/components/inventory/sku-form"
 import { skuService, type Sku } from "@/src/services/skus"
 import { locationTagService } from "@/src/services/locationTags"
-import { orgUnitService } from "@/src/services/orgUnits"
+import { orgUnitService, type OrgUnit } from "@/src/services/orgUnits"
+
 import { useToast } from "@/components/ui/use-toast"
 
 export default function SkuManagementPage() {
@@ -33,6 +41,8 @@ export default function SkuManagementPage() {
 
   const [search, setSearch] = useState("")
   const [selectedSku, setSelectedSku] = useState<Sku | null>(null)
+  const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([])
+  const [selectedUnitId, setSelectedUnitId] = useState<string>("all")
 
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -41,6 +51,7 @@ export default function SkuManagementPage() {
   const loadLocationTags = useCallback(async () => {
     try {
       const units = await orgUnitService.list()
+      setOrgUnits(units)
       const tagOptions: { value: string; label: string }[] = []
 
       await Promise.all(
@@ -66,11 +77,13 @@ export default function SkuManagementPage() {
     }
   }, [])
 
-  const loadSkus = useCallback(async () => {
+  const loadSkus = useCallback(async (unitFilter?: string) => {
     setIsLoading(true)
     setErrorMessage(null)
     try {
-      const response = await skuService.list()
+      const response = await skuService.list(
+        unitFilter && unitFilter !== "all" ? { unitId: unitFilter } : undefined,
+      )
       setSkus(response.items)
     } catch (error) {
       console.error("Failed to load SKUs", error)
@@ -81,9 +94,12 @@ export default function SkuManagementPage() {
   }, [])
 
   useEffect(() => {
-    loadSkus()
+    loadSkus(selectedUnitId)
+  }, [loadSkus, selectedUnitId])
+
+  useEffect(() => {
     loadLocationTags()
-  }, [loadSkus, loadLocationTags])
+  }, [loadLocationTags])
 
   const getLocationTagLabel = (sku: Sku) => {
     if (sku.locationTagName) return sku.locationTagName
@@ -200,6 +216,19 @@ export default function SkuManagementPage() {
               className="h-11 bg-background border-input rounded-xl pl-8 focus:outline-transparent focus:ring-0"
             />
           </div>
+          <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
+            <SelectTrigger className="w-full md:w-60 h-11 rounded-xl bg-background border-input">
+              <SelectValue placeholder="All Warehouses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Warehouses</SelectItem>
+              {orgUnits.map((unit) => (
+                <SelectItem key={unit.id} value={unit.id}>
+                  {unit.unitId ? `${unit.unitId} - ${unit.unitName}` : unit.unitName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="h-full grow rounded-2xl border-0 sm:border border-slate-200 backdrop-blur-sm shadow-soft dark:border-slate-700 dark:bg-slate-800/80 p-0 sm:p-6 overflow-y-auto">

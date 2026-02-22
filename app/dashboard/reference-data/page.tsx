@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ArrowRight, BarChart3, Box, Database, Package, Trash, Upload, Warehouse } from "lucide-react"
 
@@ -7,8 +8,43 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { Badge } from "@/components/ui/badge"
+import { referenceDataService, type ReferenceDataCounts } from "@/src/services/referenceData"
 
 export default function InventoryManagementPage() {
+  const [counts, setCounts] = useState<ReferenceDataCounts | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const fetchCounts = async () => {
+      setIsLoading(true)
+      try {
+        const data = await referenceDataService.getCounts()
+        if (!cancelled) {
+          setCounts(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch reference data counts:', error)
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    fetchCounts()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const displayCount = (value: number | undefined) => {
+    if (isLoading) return '...'
+    return value ?? 0
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -24,7 +60,7 @@ export default function InventoryManagementPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-orange-100">Total Org Units</p>
-                <p className="text-3xl font-bold text-white">12</p>
+                <p className="text-3xl font-bold text-white">{displayCount(counts?.totalUnits)}</p>
                 <p className="text-xs text-orange-200 font-medium">Warehouses, production units, offices</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -39,7 +75,7 @@ export default function InventoryManagementPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-blue-100">Total SKUs</p>
-                <p className="text-3xl font-bold text-white">248</p>
+                <p className="text-3xl font-bold text-white">{displayCount(counts?.totalSkus)}</p>
                 <p className="text-xs text-blue-200 font-medium">Active inventory items</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -54,7 +90,7 @@ export default function InventoryManagementPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-indigo-100">Total Location Tags</p>
-                <p className="text-3xl font-bold text-white">24</p>
+                <p className="text-3xl font-bold text-white">{displayCount(counts?.totalLocationTags)}</p>
                 <p className="text-xs text-indigo-200 font-medium">Organized location categories</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -69,7 +105,7 @@ export default function InventoryManagementPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-teal-100">Total Assets</p>
-                <p className="text-3xl font-bold text-white">156</p>
+                <p className="text-3xl font-bold text-white">{displayCount(counts?.totalAssets)}</p>
                 <p className="text-xs text-teal-200 font-medium">Warehouse equipment & resources</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -101,7 +137,7 @@ export default function InventoryManagementPage() {
               <div className="flex items-center gap-2 pt-3 mt-auto">
                 <span className="text-xs text-muted-foreground dark:text-slate-300">Total units:</span>
                 <Badge variant="secondary" className="text-xs font-medium">
-                  12 units
+                  {displayCount(counts?.totalUnits)} units
                 </Badge>
               </div>
               <Button
@@ -136,7 +172,7 @@ export default function InventoryManagementPage() {
               <div className="flex items-center gap-2 pt-3 mt-auto">
                 <span className="text-xs text-muted-foreground dark:text-slate-300">Total tags:</span>
                 <Badge variant="secondary" className="text-xs font-medium">
-                  24 tags
+                  {displayCount(counts?.totalLocationTags)} tags
                 </Badge>
               </div>
               <Button
@@ -171,7 +207,7 @@ export default function InventoryManagementPage() {
               <div className="flex items-center gap-2 pt-3 mt-auto">
                 <span className="text-xs text-muted-foreground dark:text-slate-300">Available SKUs:</span>
                 <Badge variant="secondary" className="text-xs font-medium">
-                  248 SKUs
+                  {displayCount(counts?.totalSkus)} SKUs
                 </Badge>
               </div>
               <Button
@@ -206,7 +242,7 @@ export default function InventoryManagementPage() {
               <div className="flex items-center gap-2 pt-3 mt-auto">
                 <span className="text-xs text-muted-foreground dark:text-slate-300">Total assets:</span>
                 <Badge variant="secondary" className="text-xs font-medium">
-                  156 assets
+                  {displayCount(counts?.totalAssets)} assets
                 </Badge>
               </div>
               <Button

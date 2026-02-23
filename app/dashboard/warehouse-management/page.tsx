@@ -291,11 +291,14 @@ export default function WarehouseManagementPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {layouts.map((layout) => {
             const meta = layout.metadata ?? {};
-            const unitLabel = typeof meta.orgUnit === 'string' ? meta.orgUnit : meta.orgUnit?.name ?? orgUnits.find(u => u.id === layout.unitId)?.unitName ?? 'Unit';
+            const orgUnit = orgUnits.find(u => u.id === layout.unitId);
+            const unitLabel = typeof meta.orgUnit === 'string' ? meta.orgUnit : meta.orgUnit?.name ?? orgUnit?.unitName ?? 'Unit';
             const locationLabel = typeof meta.location === 'string' ? meta.location : meta.orgUnit?.location ?? '—';
-            const sizeLabel = meta.croppedDimensions
-              ? `${meta.croppedDimensions.width ?? '-'}×${meta.croppedDimensions.height ?? '-'}` 
-              : meta.size ?? '—';
+            const sizeLabel = orgUnit?.area 
+              ? orgUnit.area 
+              : meta.croppedDimensions
+                ? `${meta.croppedDimensions.width ?? '-'}×${meta.croppedDimensions.height ?? '-'}` 
+                : meta.size ?? '—';
             const itemsLabel = meta.totalItems ?? meta.items ?? meta.croppedItems ?? 0;
             const lastActivity = layout.updatedAt ?? layout.createdAt;
             const tagStats = locationTagUtilizationFor(layout);

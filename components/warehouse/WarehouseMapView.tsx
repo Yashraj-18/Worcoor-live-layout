@@ -233,32 +233,86 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefreshMinutes, setAutoRefreshMinutes] = useState<number>(0);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
+  const [nextRefreshTime, setNextRefreshTime] = useState<Date | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const refreshLiveData = useCallback(async () => {
     setIsRefreshing(true);
+    setRefreshError(null);
+    
+    // Store current selected layout before clearing
+    const currentSelectedLayout = selectedUnitForDemo;
+    
+    // Hard refresh: Clear all cached state first
+    setSavedLayouts([]);
+    setSearchResults([]);
+    setSelectedLocationTag('');
+    setSelectedSku('');
+    setSelectedAsset('');
+    setSelectedItem(null);
+    setGlobalSearchResults([]);
+    setGlobalSearchQuery('');
+    setSearchQuery('');
+    
     try {
+      // Fetch fresh data from backend
       await refreshSavedLayouts();
+      
+      // Update last refresh timestamp
+      const now = new Date();
+      setLastRefreshTime(now);
+      
+      // Calculate next refresh time if auto-refresh is enabled
+      if (autoRefreshMinutes > 0) {
+        const nextTime = new Date(now.getTime() + autoRefreshMinutes * 60 * 1000);
+        setNextRefreshTime(nextTime);
+      }
+      
+      // Re-select the layout if there was one selected
+      if (currentSelectedLayout) {
+        setTimeout(() => {
+          setSelectedUnitForDemo(currentSelectedLayout);
+        }, 100);
+      }
+      
+      console.log('Live map data refreshed successfully');
     } catch (error) {
       console.error('Failed to refresh live map data:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setRefreshError(errorMessage);
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshSavedLayouts]);
+  }, [refreshSavedLayouts, selectedUnitForDemo, autoRefreshMinutes]);
 
+  // Auto-refresh interval effect
   useEffect(() => {
     if (!autoRefreshMinutes) {
+      setNextRefreshTime(null);
       return;
+    }
+
+    // Calculate next refresh time when auto-refresh is enabled
+    if (lastRefreshTime) {
+      const nextTime = new Date(lastRefreshTime.getTime() + autoRefreshMinutes * 60 * 1000);
+      setNextRefreshTime(nextTime);
+    } else {
+      const nextTime = new Date(Date.now() + autoRefreshMinutes * 60 * 1000);
+      setNextRefreshTime(nextTime);
     }
 
     const intervalMs = autoRefreshMinutes * 60 * 1000;
     const id = window.setInterval(() => {
+      console.log(`Auto-refresh triggered (${autoRefreshMinutes} min interval)`);
       void refreshLiveData();
     }, intervalMs);
 
     return () => {
       window.clearInterval(id);
+      console.log('Auto-refresh interval cleared');
     };
-  }, [autoRefreshMinutes, refreshLiveData]);
+  }, [autoRefreshMinutes, refreshLiveData, lastRefreshTime]);
 
   // Fetch location tags and SKUs from backend for the selected layout's unit
   const hydrateDropdownsFromBackend = useCallback(async (layout: WarehouseLayout | undefined) => {
@@ -1466,18 +1520,40 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                 </div>
                 
                 <div className="demo-map-controls">
+                  {/* Refresh Status Indicator */}
+                  {(lastRefreshTime || isRefreshing || refreshError) && (
+                    <div style={{ 
+                      fontSize: '11px', 
+                      color: refreshError ? '#dc3545' : '#6c757d',
+                      marginRight: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      {isRefreshing && <span>Refreshing...</span>}
+                      {!isRefreshing && refreshError && <span title={refreshError}>⚠️ Refresh failed</span>}
+                      {!isRefreshing && !refreshError && lastRefreshTime && (
+                        <span title={`Last refreshed: ${lastRefreshTime.toLocaleTimeString()}`}>
+                          ✓ {lastRefreshTime.toLocaleTimeString()}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="dropdown-filter">
                     <select
                       value={autoRefreshMinutes}
                       onChange={(e) => setAutoRefreshMinutes(Number(e.target.value) || 0)}
                       className="search-dropdown"
-                      title="Auto Refresh"
+                      title={autoRefreshMinutes > 0 && nextRefreshTime 
+                        ? `Next refresh: ${nextRefreshTime.toLocaleTimeString()}` 
+                        : "Auto Refresh"}
                       disabled={isRefreshing}
                     >
-                      <option value={0}>Off</option>
-                      <option value={1}>1 min</option>
-                      <option value={5}>5 min</option>
-                      <option value={10}>10 min</option>
+                      <option value={0}>Auto: Off</option>
+                      <option value={1}>Auto: 1 min</option>
+                      <option value={5}>Auto: 5 min</option>
+                      <option value={10}>Auto: 10 min</option>
                     </select>
                   </div>
                   <button
@@ -1486,10 +1562,13 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                       console.log('WarehouseMapView - Refresh button clicked');
                       void refreshLiveData();
                     }}
-                    title="Refresh"
+                    title={isRefreshing ? "Refreshing..." : "Force Refresh"}
                     type="button"
                     disabled={isRefreshing}
-                    style={{ opacity: isRefreshing ? 0.6 : 1 }}
+                    style={{ 
+                      opacity: isRefreshing ? 0.6 : 1,
+                      animation: isRefreshing ? 'spin 1s linear infinite' : 'none'
+                    }}
                   >
                     <RefreshCw size={16} />
                   </button>

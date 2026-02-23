@@ -77,6 +77,21 @@ export default function WarehouseManagementPage() {
     }
   };
 
+  const handleHardRefresh = async () => {
+    // Clear all state first (hard refresh)
+    setLayouts([]);
+    setOrgUnits([]);
+    setError(null);
+    setShowMapModal(false);
+    setSelectedLayoutId(null);
+    
+    // Show notification
+    notification.success('Refreshing all layouts...');
+    
+    // Fetch fresh data
+    await fetchAllLayouts();
+  };
+
   useEffect(() => {
     fetchAllLayouts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -181,16 +196,15 @@ export default function WarehouseManagementPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageTitle
-        title="Warehouse Management"
-        description="Manage your warehouse layouts and operational maps"
-        icon={Warehouse}
-      />
-
-      <div className="flex justify-end">
-        <Button onClick={() => router.push('/warehouse-management/layout-builder')}>
+      <div className="flex items-start justify-between gap-4">
+        <PageTitle
+          title="Warehouse Management"
+          description="Manage your warehouse layouts and operational maps"
+          icon={Warehouse}
+        />
+        <Button onClick={handleHardRefresh} disabled={isLoadingLayouts} className="shrink-0">
           <LayoutDashboard className="mr-2 h-4 w-4" />
-          Launch Layout Builder
+          {isLoadingLayouts ? 'Refreshing...' : 'Refresh All Layouts'}
         </Button>
       </div>
 

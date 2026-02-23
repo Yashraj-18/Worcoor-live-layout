@@ -16,7 +16,7 @@ import { Progress } from '@/components/ui/progress';
 import { ArrowRight, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { locationTagService } from '@/src/services/locationTags';
-import { warehouseService } from '@/src/services/warehouseService';
+import { warehouseService, componentToItem } from '@/src/services/warehouseService';
 import { orgUnitService } from '@/src/services/orgUnits';
 import { skuService } from '@/src/services/skus';
 
@@ -201,7 +201,30 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         )
       );
       const allBackendLayouts = layoutArrays.flat();
-      const converted = allBackendLayouts.map(convertBackendLayout);
+
+      // For each layout, fetch live components from the components table and
+      // merge them into layoutData.items so utilization reflects real-time state
+      // (layoutData JSONB is only updated on Save, components table is always live)
+      const converted = await Promise.all(
+        allBackendLayouts.map(async (bl: any) => {
+          try {
+            const liveComponents = await warehouseService.getComponents(bl.id);
+            const liveItems = liveComponents.map(componentToItem);
+            const merged = {
+              ...bl,
+              layoutData: {
+                ...(bl.layoutData || {}),
+                items: liveItems,
+              },
+            };
+            return convertBackendLayout(merged);
+          } catch {
+            // Fall back to stale layoutData if components fetch fails
+            return convertBackendLayout(bl);
+          }
+        })
+      );
+
       setSavedLayouts(converted);
     } catch (error) {
       console.error('Failed to load layouts from backend:', error);
@@ -274,6 +297,17 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       console.error('Failed to hydrate dropdowns from backend:', error);
     }
   }, []);
+
+  // Refresh savedLayouts whenever the layout builder saves (add/remove/update components)
+  useEffect(() => {
+    const handleLayoutSaved = () => {
+      void refreshSavedLayouts();
+    };
+    window.addEventListener('layoutSaved', handleLayoutSaved);
+    return () => {
+      window.removeEventListener('layoutSaved', handleLayoutSaved);
+    };
+  }, [refreshSavedLayouts]);
 
   useEffect(() => {
     setMounted(true);

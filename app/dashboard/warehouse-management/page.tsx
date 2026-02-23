@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PageTitle } from '@/components/page-title';
 import WarehouseMapView from '@/components/warehouse/WarehouseMapView';
-import { warehouseService } from '@/src/services/warehouseService';
+import { warehouseService, componentToItem } from '@/src/services/warehouseService';
 import { orgUnitService, type OrgUnit } from '@/src/services/orgUnits';
 import { notification } from '@/src/services/notificationService';
 import type { Layout } from '@/types/warehouse';
@@ -44,7 +44,29 @@ export default function WarehouseManagementPage() {
         })
       );
       
-      setLayouts(layoutResponses.flat());
+      const allLayouts = layoutResponses.flat();
+
+      // Merge live components into each layout's layoutData.items so
+      // utilizationFor() reflects real-time state from the components table
+      const layoutsWithLiveItems = await Promise.all(
+        allLayouts.map(async (layout) => {
+          try {
+            const liveComponents = await warehouseService.getComponents(layout.id);
+            const liveItems = liveComponents.map(componentToItem);
+            return {
+              ...layout,
+              layoutData: {
+                ...((layout as any).layoutData || {}),
+                items: liveItems,
+              },
+            } as Layout;
+          } catch {
+            return layout;
+          }
+        })
+      );
+
+      setLayouts(layoutsWithLiveItems);
     } catch (err) {
       console.error('Failed to load layouts', err);
       setLayouts([]);
@@ -101,10 +123,59 @@ export default function WarehouseManagementPage() {
 
   const totalLayouts = layouts.length;
   const activeWarehouses = layouts.filter((layout) => layout.status === 'operational').length;
-  const utilizationFor = (layout: Layout) => {
-    const value = Number(layout.metadata?.utilizationPercentage ?? 0);
-    return Number.isFinite(value) ? Math.min(Math.max(value, 0), 100) : 0;
+  // Slot-based capacity utilization: filled compartment slots / total compartment slots
+  const slotUtilizationFor = (layout: Layout): number => {
+    const stored = Number(layout.metadata?.utilizationPercentage ?? NaN);
+    if (Number.isFinite(stored)) return Math.min(Math.max(stored, 0), 100);
+    const items: any[] = (layout as any).layoutData?.items ?? [];
+    if (!items.length) return 0;
+    const GRID = 60;
+    const RACKS = new Set(['sku_holder', 'vertical_sku_holder']);
+    let totalMax = 0;
+    let totalUsed = 0;
+    items.forEach((item: any) => {
+      if (RACKS.has(item.type)) {
+        const cols = Math.max(1, Math.round((Number(item.width) || GRID) / GRID));
+        const rows = Math.max(1, Math.round((Number(item.height) || GRID) / GRID));
+        const compartments = cols * rows;
+        totalMax += compartments * (item.maxSKUsPerCompartment || 1);
+        if (item.compartmentContents && typeof item.compartmentContents === 'object') {
+          Object.values(item.compartmentContents).forEach((c: any) => {
+            if (!c) return;
+            let qty = 1;
+            if (typeof c.quantity === 'number' && c.quantity > 0) qty = c.quantity;
+            else if (Array.isArray(c.locationIds)) qty = Math.max(1, c.locationIds.length);
+            else if (Array.isArray(c.levelLocationMappings)) qty = Math.max(1, c.levelLocationMappings.length);
+            totalUsed += qty;
+          });
+        }
+      } else {
+        totalMax += 1;
+        const hasId = (item.locationId || item.primaryLocationId || item.sku || '').toString().trim();
+        const hasInv = item.inventoryData && (
+          (Array.isArray(item.inventoryData.inventory) && item.inventoryData.inventory.length > 0) ||
+          (typeof item.inventoryData.utilization === 'number' && item.inventoryData.utilization > 0)
+        );
+        if (hasId || hasInv) totalUsed += 1;
+      }
+    });
+    return totalMax > 0 ? Math.round(Math.min(totalUsed, totalMax) / totalMax * 100) : 0;
   };
+
+  // Location tag utilization: components with a locationTagId assigned / total components
+  const locationTagUtilizationFor = (layout: Layout): { pct: number; tagged: number; total: number } => {
+    const items: any[] = (layout as any).layoutData?.items ?? [];
+    if (!items.length) return { pct: 0, tagged: 0, total: 0 };
+    const total = items.length;
+    const tagged = items.filter((item: any) =>
+      item.locationTagId != null && String(item.locationTagId).trim() !== ''
+    ).length;
+    return { pct: Math.round((tagged / total) * 100), tagged, total };
+  };
+
+  const avgTagUtilization = layouts.length > 0
+    ? Math.round(layouts.reduce((sum, l) => sum + locationTagUtilizationFor(l).pct, 0) / layouts.length)
+    : null;
 
   const isEmptyState = !isLoadingLayouts && layouts.length === 0;
 
@@ -167,8 +238,8 @@ export default function WarehouseManagementPage() {
           <CardContent className="p-6 flex flex-col">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-purple-100">Storage Capacity</p>
-                <p className="text-3xl font-bold text-white">-</p>
+                <p className="text-sm font-medium text-purple-100">Avg Tag Utilization</p>
+                <p className="text-3xl font-bold text-white">{avgTagUtilization !== null ? `${avgTagUtilization}%` : '—'}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
                 <Map className="h-6 w-6 text-white" />
@@ -212,9 +283,42 @@ export default function WarehouseManagementPage() {
               ? `${meta.croppedDimensions.width ?? '-'}×${meta.croppedDimensions.height ?? '-'}` 
               : meta.size ?? '—';
             const itemsLabel = meta.totalItems ?? meta.items ?? meta.croppedItems ?? 0;
-            const zonesLabel = meta.zones ?? meta.croppedItems ?? 0;
             const lastActivity = layout.updatedAt ?? layout.createdAt;
-            const utilization = utilizationFor(layout);
+            const tagStats = locationTagUtilizationFor(layout);
+            const slotCapacity = (() => {
+              const items: any[] = (layout as any).layoutData?.items ?? [];
+              const GRID = 60;
+              const RACKS = new Set(['sku_holder', 'vertical_sku_holder']);
+              let total = 0;
+              let used = 0;
+              items.forEach((item: any) => {
+                if (RACKS.has(item.type)) {
+                  const cols = Math.max(1, Math.round((Number(item.width) || GRID) / GRID));
+                  const rows = Math.max(1, Math.round((Number(item.height) || GRID) / GRID));
+                  const compartments = cols * rows;
+                  total += compartments * (item.maxSKUsPerCompartment || 1);
+                  if (item.compartmentContents && typeof item.compartmentContents === 'object') {
+                    Object.values(item.compartmentContents).forEach((c: any) => {
+                      if (!c) return;
+                      let qty = 1;
+                      if (typeof c.quantity === 'number' && c.quantity > 0) qty = c.quantity;
+                      else if (Array.isArray(c.locationIds)) qty = Math.max(1, c.locationIds.length);
+                      else if (Array.isArray(c.levelLocationMappings)) qty = Math.max(1, c.levelLocationMappings.length);
+                      used += qty;
+                    });
+                  }
+                } else {
+                  total += 1;
+                  const hasId = (item.locationId || item.primaryLocationId || item.sku || '').toString().trim();
+                  const hasInv = item.inventoryData && (
+                    (Array.isArray(item.inventoryData.inventory) && item.inventoryData.inventory.length > 0) ||
+                    (typeof item.inventoryData.utilization === 'number' && item.inventoryData.utilization > 0)
+                  );
+                  if (hasId || hasInv) used += 1;
+                }
+              });
+              return { total, used, utilised: used };
+            })();
 
             return (
               <Card key={layout.id} className="group relative overflow-hidden border-0 bg-white/80 backdrop-blur-sm shadow-soft hover:shadow-medium transition-all duration-300 h-full min-w-[320px] max-w-[380px]">
@@ -241,15 +345,15 @@ export default function WarehouseManagementPage() {
                   <div className="space-y-3">
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Utilization</p>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{utilization}%</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Location Tag Utilization</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{tagStats.tagged}/{tagStats.total} tagged ({tagStats.pct}%)</p>
                       </div>
-                      <Progress value={utilization} className="h-2" />
+                      <Progress value={tagStats.pct} className="h-2" />
                     </div>
 
                     <div className="flex items-center justify-between pt-1">
-                      <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Zones</p>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{zonesLabel}</p>
+                      <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Utilised / Total</p>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{slotCapacity.utilised} / {slotCapacity.total}</p>
                     </div>
                   </div>
                 </CardContent>

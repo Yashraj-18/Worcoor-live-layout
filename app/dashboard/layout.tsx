@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { SidebarProvider, useSidebar } from "@/components/dashboard/sidebar-context"
 import { MobileHeader } from "@/components/dashboard/mobile-header"
@@ -19,6 +20,8 @@ export default function DashboardLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
+  const pathname = usePathname()
+  const isLayoutBuilder = pathname?.includes('layout-builder')
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
  const { toggle } = useSidebar()
@@ -49,9 +52,11 @@ export default function DashboardLayout({
     <ReferenceDataProvider>
       <SidebarProvider>
         <div className="flex h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 overflow-hidden">
-           <div className={`${isMobile && !sidebarOpen ? "hidden" : "block"}`}>
-          <DashboardSidebar isOpen={sidebarOpen} toggle={toggleSidebar} />
-          </div>
+          {!isLayoutBuilder && (
+            <div className={`${isMobile && !sidebarOpen ? "hidden" : "block"}`}>
+              <DashboardSidebar isOpen={sidebarOpen} toggle={toggleSidebar} />
+            </div>
+          )}
           <div className="flex flex-col flex-1 overflow-hidden">
             {/* <MobileHeader /> */}
             <div className="md:hidden flex items-center justify-between p-4 border-b bg-background">

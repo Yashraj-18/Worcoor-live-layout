@@ -363,9 +363,11 @@ export function DashboardSidebar({ isOpen, toggle }: SidebarProps) {
       </div>
 
       {/* User Profile */}
-      <div className="hidden md:block py-2 border-t border-slate-700/50">
-        <ThemeSwitcher isOpen={isOpen} />
-      </div>
+      {!pathname?.includes('layout-builder') && (
+        <div className="hidden md:block py-2 border-t border-slate-700/50">
+          <ThemeSwitcher isOpen={isOpen} />
+        </div>
+      )}
       <div className="p-4 border-t border-slate-700/50 bg-slate-900/30">
         {isOpen ? (
           <div className="flex items-center gap-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors duration-200">

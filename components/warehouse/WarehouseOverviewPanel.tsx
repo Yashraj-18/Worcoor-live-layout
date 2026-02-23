@@ -13,146 +13,222 @@ interface WarehouseLayoutData {
   name?: string;
 }
 
+// Mirror of GRID_SIZE used in layoutComponentSummary
+const GRID_SIZE = 60;
+
+const RACK_TYPES = new Set(['sku_holder', 'vertical_sku_holder']);
+
+/**
+ * Derive per-item capacity metrics using the same logic as layoutComponentSummary.ts.
+ * Returns { maxCapacity, usedCapacity } for a single layout item.
+ */
+const deriveItemCapacity = (item: any): { maxCapacity: number; usedCapacity: number } => {
+  if (RACK_TYPES.has(item.type)) {
+    const width = Number(item.width) || GRID_SIZE;
+    const height = Number(item.height) || GRID_SIZE;
+    const cols = Math.max(1, Math.round(width / GRID_SIZE));
+    const rows = Math.max(1, Math.round(height / GRID_SIZE));
+    const compartments = cols * rows;
+    const maxPerCompartment = item.maxSKUsPerCompartment || 1;
+    const maxCapacity = compartments * maxPerCompartment;
+
+    let usedCapacity = 0;
+    if (item.compartmentContents && typeof item.compartmentContents === 'object') {
+      Object.values(item.compartmentContents).forEach((content: any) => {
+        if (!content) return;
+        let qty = 1;
+        if (typeof content.quantity === 'number' && content.quantity > 0) {
+          qty = content.quantity;
+        } else if (Array.isArray(content.locationIds)) {
+          qty = Math.max(1, content.locationIds.length);
+        } else if (Array.isArray(content.levelLocationMappings)) {
+          qty = Math.max(1, content.levelLocationMappings.length);
+        }
+        usedCapacity += qty;
+      });
+    }
+
+    return { maxCapacity, usedCapacity: Math.min(maxCapacity, usedCapacity) };
+  }
+
+  // Non-rack single-slot components
+  const maxCapacity = 1;
+  let usedCapacity = 0;
+
+  if (item.inventoryData && typeof item.inventoryData === 'object') {
+    const { inventory, utilization } = item.inventoryData;
+    if (Array.isArray(inventory) && inventory.length > 0) usedCapacity = 1;
+    else if (typeof utilization === 'number' && utilization > 0) usedCapacity = 1;
+  }
+
+  if (!usedCapacity) {
+    const hasId = (item.locationId || item.primaryLocationId || item.sku || '').toString().trim();
+    if (hasId) usedCapacity = 1;
+  }
+
+  return { maxCapacity, usedCapacity };
+};
+
 const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutData }) => {
   // Calculate overview data from layout items
   const overviewData = useMemo(() => {
-    if (!layoutData?.items) {
-      return {
-        totalLocations: 0,
-        totalSkus: 0,
-        totalAssets: 0,
-        totalComponents: 0,
-        totalCapacity: 0,
-        usedCapacity: 0,
-        utilizationPercentage: 0,
-        storageUnits: 0,
-        horizontalRacks: 0,
-        verticalRacks: 0,
-        zones: 0
-      };
-    }
+    const empty = {
+      totalLocations: 0,
+      totalSkus: 0,
+      totalAssets: 0,
+      totalComponents: 0,
+      locationTagData: [] as any[],
+      totalShelves: 0,
+      fullShelves: 0,
+      emptyShelves: 0,
+      newlyAdded: 0,
+      locationTagUsage: 0,
+    };
+
+    if (!layoutData?.items?.length) return empty;
 
     const items = layoutData.items;
-    const allLocationIds = new Set();
-    const allSkus = new Set();
+    const allLocationIds = new Set<string>();
+    const allSkus = new Set<string>();
 
-    // Extract location IDs and SKUs from all components
+    // ── Collect all location IDs and SKUs ──────────────────────────────────
     items.forEach((item: any) => {
-      // Single location ID
-      if (item.locationId) {
-        allLocationIds.add(item.locationId);
+      if (item.locationId) allLocationIds.add(item.locationId);
+      if (item.primaryLocationId) allLocationIds.add(item.primaryLocationId);
+      if (Array.isArray(item.locationIds)) item.locationIds.forEach((id: any) => id && allLocationIds.add(id));
+      if (Array.isArray(item.levelLocationMappings)) {
+        item.levelLocationMappings.forEach((m: any) => m?.locationId && allLocationIds.add(m.locationId));
       }
-      
-      // Multiple location IDs (vertical racks)
-      if (item.locationIds && Array.isArray(item.locationIds)) {
-        item.locationIds.forEach((id: any) => allLocationIds.add(id));
-      }
-      
-      // Compartment contents
-      if (item.compartmentContents) {
-        Object.values(item.compartmentContents).forEach((compartment: any) => {
-          if (compartment.locationId) {
-            allLocationIds.add(compartment.locationId);
+      if (item.sku) allSkus.add(item.sku);
+      if (item.primarySku) allSkus.add(item.primarySku);
+
+      if (item.compartmentContents && typeof item.compartmentContents === 'object') {
+        Object.values(item.compartmentContents).forEach((c: any) => {
+          if (!c) return;
+          if (c.locationId) allLocationIds.add(c.locationId);
+          if (Array.isArray(c.locationIds)) c.locationIds.forEach((id: any) => id && allLocationIds.add(id));
+          if (Array.isArray(c.levelLocationMappings)) {
+            c.levelLocationMappings.forEach((m: any) => m?.locationId && allLocationIds.add(m.locationId));
           }
-          if (compartment.locationIds && Array.isArray(compartment.locationIds)) {
-            compartment.locationIds.forEach((id: any) => allLocationIds.add(id));
-          }
-          if (compartment.sku) {
-            allSkus.add(compartment.sku);
-          }
+          if (c.sku) allSkus.add(c.sku);
+          if (c.primarySku) allSkus.add(c.primarySku);
         });
-      }
-      
-      // SKU information
-      if (item.sku) {
-        allSkus.add(item.sku);
       }
     });
 
-    
-    // Calculate capacity and utilization for each location tag
-    const locationTagData: Array<{
-      locationId: string;
-      sku?: string;
-      capacity: number;
-      usedCapacity: number;
-      utilizationPercentage: number;
-    }> = [];
-    
-    // Extract location tags and their SKUs
-    const locationMap = new Map<string, { sku?: string; items: any[] }>();
-    
-    items.forEach((item: any) => {
-      // Single location ID
-      if (item.locationId) {
-        if (!locationMap.has(item.locationId)) {
-          locationMap.set(item.locationId, { items: [] });
-        }
-        locationMap.get(item.locationId)!.items.push(item);
-        if (item.sku) {
-          locationMap.get(item.locationId)!.sku = item.sku;
-        }
+    // ── Per-location-tag capacity (group items by their primary location tag) ──
+    // Each item with a locationTag (or locationId used as tag) gets its own row.
+    // For items without a tag we aggregate them under a synthetic key.
+    const tagMap = new Map<string, { sku?: string; maxCapacity: number; usedCapacity: number }>();
+
+    const addToTag = (tag: string, sku: string | undefined, max: number, used: number) => {
+      if (!tag) return;
+      const existing = tagMap.get(tag);
+      if (existing) {
+        existing.maxCapacity += max;
+        existing.usedCapacity += used;
+        if (sku && !existing.sku) existing.sku = sku;
+      } else {
+        tagMap.set(tag, { sku, maxCapacity: max, usedCapacity: used });
       }
-      
-      // Multiple location IDs (vertical racks)
-      if (item.locationIds && Array.isArray(item.locationIds)) {
+    };
+
+    items.forEach((item: any) => {
+      const { maxCapacity, usedCapacity } = deriveItemCapacity(item);
+      // Prefer explicit locationTag, fall back to locationId, then a generic label
+      const tag: string =
+        (item.locationTag || item.locationCode || item.locationId || item.primaryLocationId || '').toString().trim();
+      const sku: string | undefined = (item.sku || item.primarySku || undefined);
+
+      if (tag) {
+        addToTag(tag, sku, maxCapacity, usedCapacity);
+      } else if (Array.isArray(item.locationIds) && item.locationIds.length > 0) {
+        // Distribute capacity evenly across each locationId
+        const perTag = Math.max(1, item.locationIds.length);
+        const maxPer = Math.ceil(maxCapacity / perTag);
+        const usedPer = Math.ceil(usedCapacity / perTag);
         item.locationIds.forEach((id: any) => {
-          if (!locationMap.has(id)) {
-            locationMap.set(id, { items: [] });
-          }
-          locationMap.get(id)!.items.push(item);
-          if (item.compartmentContents && item.compartmentContents[id]) {
-            const compartment = item.compartmentContents[id];
-            if (compartment.sku) {
-              locationMap.get(id)!.sku = compartment.sku;
-            }
-          }
+          if (id) addToTag(String(id), sku, maxPer, usedPer);
         });
-      }
-      
-      // Compartment contents
-      if (item.compartmentContents) {
-        Object.entries(item.compartmentContents).forEach(([key, compartment]: [string, any]) => {
-          if (compartment.locationId) {
-            if (!locationMap.has(compartment.locationId)) {
-              locationMap.set(compartment.locationId, { items: [] });
-            }
-            locationMap.get(compartment.locationId)!.items.push(compartment);
-            if (compartment.sku) {
-              locationMap.get(compartment.locationId)!.sku = compartment.sku;
-            }
-          }
-        });
+      } else {
+        // No tag at all — skip from per-location view but still count in totals
       }
     });
-    
-    // Calculate utilization for each location
-    locationMap.forEach((data, locationId) => {
-      const capacity = data.items.length * 100; // 100 units per item
-      const usedCapacity = Math.floor(capacity * (0.3 + Math.random() * 0.7)); // Random utilization between 30-100%
-      const utilizationPercentage = Math.round((usedCapacity / capacity) * 100);
-      
-      locationTagData.push({
+
+    const locationTagData = Array.from(tagMap.entries()).map(([locationId, data]) => {
+      const cap = Math.max(1, data.maxCapacity);
+      const used = Math.min(cap, data.usedCapacity);
+      return {
         locationId,
         sku: data.sku,
-        capacity,
-        usedCapacity,
-        utilizationPercentage
-      });
+        capacity: cap,
+        usedCapacity: used,
+        utilizationPercentage: Math.round((used / cap) * 100),
+      };
     });
-    
-    // Sort by utilization percentage (highest first)
+
     locationTagData.sort((a, b) => b.utilizationPercentage - a.utilizationPercentage);
 
-    // Calculate shelf statistics
-    const totalShelves = items.length || 0;
-    const fullShelves = Math.floor(totalShelves * 0.35) || 0; // 35% full shelves
-    const emptyShelves = Math.floor(totalShelves * 0.57) || 0; // 57% empty shelves
-    const newlyAdded = Math.floor(totalShelves * 0.08) || 0; // 8% newly added
-    const locationTagUsage = 56; // Fixed percentage as specified
+    // ── Overall capacity totals ────────────────────────────────────────────
+    let totalMax = 0;
+    let totalUsed = 0;
+    items.forEach((item: any) => {
+      const { maxCapacity, usedCapacity } = deriveItemCapacity(item);
+      totalMax += maxCapacity;
+      totalUsed += usedCapacity;
+    });
 
-    // Status counts (simplified - would use real status data)
-    // Removed - Status Summary section not needed
+    // ── Shelf / slot statistics ────────────────────────────────────────────
+    // Count rack-type items as "shelves"; each compartment is one shelf slot.
+    let totalShelves = 0;
+    let fullShelves = 0;
+    let emptyShelves = 0;
+    let newlyAdded = 0;
+
+    items.forEach((item: any) => {
+      if (RACK_TYPES.has(item.type)) {
+        const width = Number(item.width) || GRID_SIZE;
+        const height = Number(item.height) || GRID_SIZE;
+        const cols = Math.max(1, Math.round(width / GRID_SIZE));
+        const rows = Math.max(1, Math.round(height / GRID_SIZE));
+        const compartments = cols * rows;
+        totalShelves += compartments;
+
+        const contents = item.compartmentContents || {};
+        const occupiedKeys = Object.keys(contents).filter(k => {
+          const c = contents[k];
+          return c && (c.sku || c.locationId || (Array.isArray(c.locationIds) && c.locationIds.length > 0));
+        });
+        fullShelves += occupiedKeys.length;
+        emptyShelves += Math.max(0, compartments - occupiedKeys.length);
+
+        // "Newly added" = compartments that have a sku but no locationId yet (just placed)
+        const newKeys = Object.keys(contents).filter(k => {
+          const c = contents[k];
+          return c && c.sku && !c.locationId;
+        });
+        newlyAdded += newKeys.length;
+      } else {
+        // Non-rack items count as 1 shelf slot each
+        totalShelves += 1;
+        const { usedCapacity } = deriveItemCapacity(item);
+        if (usedCapacity > 0) fullShelves += 1;
+        else emptyShelves += 1;
+      }
+    });
+
+    // ── Slot fill rate: filled compartment slots / total compartment slots ────
+    const slotFillRate = totalMax > 0
+      ? Math.round(Math.min(totalUsed, totalMax) / totalMax * 100)
+      : 0;
+
+    // ── Location tag utilization: components with a locationTagId / total components ────
+    const taggedComponents = items.filter((item: any) =>
+      item.locationTagId != null && String(item.locationTagId).trim() !== ''
+    ).length;
+    const locationTagUtilization = items.length > 0
+      ? Math.round((taggedComponents / items.length) * 100)
+      : 0;
 
     return {
       totalLocations: allLocationIds.size,
@@ -160,11 +236,15 @@ const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutDat
       totalAssets: items.length,
       totalComponents: items.length,
       locationTagData,
-      totalShelves: totalShelves || 0,
-      fullShelves: fullShelves || 0,
-      emptyShelves: emptyShelves || 0,
-      newlyAdded: newlyAdded || 0,
-      locationTagUsage: locationTagUsage || 0
+      totalShelves,
+      fullShelves,
+      emptyShelves,
+      newlyAdded,
+      slotFillRate,
+      locationTagUtilization,
+      taggedComponents,
+      totalMax,
+      totalUsed,
     };
   }, [layoutData]);
 
@@ -342,17 +422,17 @@ const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutDat
           )}
         </div>
 
-        {/* Per Shelf Utilization Section */}
+        {/* Slot & Tag Utilization Section */}
         <div style={sectionStyle}>
           <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <BarChart3 size={16} />
-            Per Shelf Utilization
+            Slot &amp; Tag Utilization
           </h4>
-          
-          {/* Location Tag Usage with Ring Widget */}
+
+          {/* Location Tag Utilization Ring */}
           <div style={{ marginBottom: '1rem', textAlign: 'center' }}>
             <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
-              Location Tag Usage
+              Location Tag Utilization
             </div>
             <div style={{ position: 'relative', display: 'inline-block', width: '120px', height: '120px' }}>
               {/* Ring Widget SVG */}
@@ -375,7 +455,7 @@ const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutDat
                   stroke="#f59e0b"
                   strokeWidth="12"
                   strokeDasharray={`${2 * Math.PI * 50}`}
-                  strokeDashoffset={`${2 * Math.PI * 50 * (1 - (overviewData.locationTagUsage || 0) / 100)}`}
+                  strokeDashoffset={`${2 * Math.PI * 50 * (1 - (overviewData.locationTagUtilization || 0) / 100)}`}
                   style={{ transition: 'stroke-dashoffset 0.5s ease' }}
                 />
               </svg>
@@ -389,11 +469,28 @@ const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutDat
                 fontWeight: 'bold',
                 color: '#f59e0b'
               }}>
-                {overviewData.locationTagUsage}%
+                {overviewData.locationTagUtilization}%
               </div>
             </div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.5rem' }}>
-              of location/storage space is currently being used
+              {overviewData.taggedComponents ?? 0} of {overviewData.totalComponents ?? 0} components tagged
+            </div>
+          </div>
+
+          {/* Slot Fill Rate bar */}
+          <div style={{ marginTop: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.25rem' }}>
+              <span style={{ color: '#94a3b8' }}>Slot Fill Rate</span>
+              <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{overviewData.slotFillRate ?? 0}% ({overviewData.totalUsed ?? 0}/{overviewData.totalMax ?? 0} slots)</span>
+            </div>
+            <div style={{ width: '100%', height: '6px', backgroundColor: 'hsl(215.3 25.1% 32.6%)', borderRadius: '3px' }}>
+              <div style={{
+                width: `${overviewData.slotFillRate ?? 0}%`,
+                height: '100%',
+                backgroundColor: (overviewData.slotFillRate ?? 0) > 80 ? '#22c55e' : (overviewData.slotFillRate ?? 0) > 50 ? '#f59e0b' : '#ef4444',
+                borderRadius: '3px',
+                transition: 'width 0.3s ease'
+              }} />
             </div>
           </div>
 

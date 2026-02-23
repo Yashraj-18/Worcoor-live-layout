@@ -1789,10 +1789,15 @@ const FullscreenMap = () => {
             {showInfoPanel && selectedItem && (
               <LocationDetailsPanel
                 selectedItem={selectedItem}
+                unitId={
+                  savedLayouts.find(l => l.id === selectedUnitForDemo)?.orgUnit?.id ??
+                  savedLayouts.find(l => l.id === selectedUnitForDemo)?.unitId ??
+                  selectedUnitForDemo
+                }
                 onClose={() => setShowInfoPanel(false)}
                 isEmbedded={true}
               />
-            )}
+            )} 
 
             {/* Show Warehouse Overview Panel by default (no component selected) */}
             {!showInfoPanel && (

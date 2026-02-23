@@ -60,6 +60,7 @@
     "react-hook-form": "latest",
     "react-resizable-panels": "^2.1.7",
     "recharts": "latest",
+    "socket.io-client": "^4.8.3",
     "sonner": "^1.7.1",
     "styled-components": "^6.1.19",
     "tailwind-merge": "^2.5.5",

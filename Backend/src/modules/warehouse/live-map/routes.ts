@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 
 import { LiveMapRepository } from './repository.js';
 import { LiveMapService } from './service.js';
+import { LiveMapStatsService } from './stats-service.js';
 
 type UnitParams = { unitId: string };
 type SearchQuery = { q: string };
@@ -114,6 +115,7 @@ export async function unitSearchRoutes(app: FastifyInstance) {
 export async function liveMapRoutes(app: FastifyInstance) {
   const repository = new LiveMapRepository();
   const service = new LiveMapService(repository);
+  const statsService = new LiveMapStatsService(repository);
 
   // GET /api/units/:unitId/live-map - Get live map data
   app.get<{ Params: UnitParams }>('/', {
@@ -128,6 +130,31 @@ export async function liveMapRoutes(app: FastifyInstance) {
       },
     },
     handler: (request, reply) => service.getLiveMap(request, reply),
+  });
+
+  // GET /api/units/:unitId/live-map/stats - Get summary statistics
+  app.get<{ Params: UnitParams }>('/stats', {
+    preHandler: [app.authenticate],
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            unitId: { type: 'string' },
+            totalLocationTags: { type: 'number' },
+            totalSkus: { type: 'number' },
+            totalComponents: { type: 'number' },
+            totalAssets: { type: 'number' },
+            timestamp: { type: 'string' },
+          },
+        },
+        404: {
+          type: 'object',
+          properties: { error: { type: 'string' } },
+        },
+      },
+    },
+    handler: (request, reply) => statsService.getUnitStats(request, reply),
   });
 
   // GET /api/units/:unitId/live-map/search?q=query - Search within unit

@@ -1992,7 +1992,9 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                           layoutData={{
                             items: currentLayout?.layoutData?.items || [],
                             name: currentLayout?.name
-                          }} 
+                          }}
+                          unitId={currentLayout?.unitId}
+                          layoutId={currentLayout?.id}
                         />
                       </div>
                     );

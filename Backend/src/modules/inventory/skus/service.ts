@@ -8,6 +8,8 @@ import {
   emitLocationUpdated,
   emitInventoryChanged,
 } from '../../../realtime/handlers/sku-events.js';
+import { LiveMapRepository } from '../../warehouse/live-map/repository.js';
+import { LiveMapWebSocketService } from '../../warehouse/live-map/websocket-service.js';
 
 type SkuParams = { skuId: string };
 
@@ -129,6 +131,33 @@ export class SkusService {
     }
   }
 
+  // ── Helper: broadcast SKU statistics update via WebSocket ──
+  private async broadcastSkuStats(
+    request: FastifyRequest,
+    locationTagId: string,
+    organizationId: string,
+  ) {
+    try {
+      const tag = await this.locationTagsRepository.findById(locationTagId, organizationId);
+      if (!tag || !tag.unitId) return;
+
+      const liveMapRepository = new LiveMapRepository();
+      const wsService = new LiveMapWebSocketService(liveMapRepository, request.server);
+      
+      // Get unit's layouts to find the first layout ID
+      const unitData = await liveMapRepository.getUnitWithLayouts(tag.unitId, organizationId);
+      if (!unitData || !unitData.layouts.length) return;
+      
+      // Use the first layout ID (units typically have one primary layout)
+      const layoutId = unitData.layouts[0].id;
+      
+      await wsService.broadcastLocationTagStats(tag.unitId, organizationId, layoutId);
+    } catch (err) {
+      // Non-critical: log but don't fail the request
+      console.error('Failed to broadcast SKU stats:', err);
+    }
+  }
+
   async list(
     request: FastifyRequest<{ Querystring: SkuQueryInput }>,
     reply: FastifyReply,
@@ -194,6 +223,7 @@ export class SkusService {
     // Emit socket events so View Live panel updates in real-time
     if (sku.locationTagId) {
       await this.emitLocationEvents(request, sku.locationTagId, orgId);
+      await this.broadcastSkuStats(request, sku.locationTagId, orgId);
     }
 
     reply.code(201).send(this.serializeSku(sku));
@@ -257,12 +287,14 @@ export class SkusService {
     // Emit socket events so View Live panel updates in real-time
     if (updated?.locationTagId) {
       await this.emitLocationEvents(request, updated.locationTagId, orgId);
+      await this.broadcastSkuStats(request, updated.locationTagId, orgId);
     }
     if (
       existing.locationTagId &&
       existing.locationTagId !== updated?.locationTagId
     ) {
       await this.emitLocationEvents(request, existing.locationTagId, orgId);
+      await this.broadcastSkuStats(request, existing.locationTagId, orgId);
     }
 
     if (!updated) {
@@ -286,6 +318,7 @@ export class SkusService {
     // Emit socket events so View Live panel updates in real-time
     if (existing?.locationTagId) {
       await this.emitLocationEvents(request, existing.locationTagId, orgId);
+      await this.broadcastSkuStats(request, existing.locationTagId, orgId);
     }
 
     reply.code(204).send();
@@ -327,8 +360,10 @@ export class SkusService {
 
     // Emit for both old and new location
     await this.emitLocationEvents(request, request.body.toLocationTagId, orgId);
+    await this.broadcastSkuStats(request, request.body.toLocationTagId, orgId);
     if (sku.locationTagId && sku.locationTagId !== request.body.toLocationTagId) {
       await this.emitLocationEvents(request, sku.locationTagId, orgId);
+      await this.broadcastSkuStats(request, sku.locationTagId, orgId);
     }
 
     reply.send(this.serializeSku(updated));

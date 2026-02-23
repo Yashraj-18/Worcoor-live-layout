@@ -9,6 +9,8 @@ import type {
   UpdateComponentInput,
   UpdateLocationTagInput,
 } from './schemas.js';
+import { LiveMapRepository } from '../live-map/repository.js';
+import { LiveMapWebSocketService } from '../live-map/websocket-service.js';
 
 type LayoutParams = { layoutId: string };
 type ComponentParams = { componentId: string };
@@ -101,6 +103,15 @@ export class ComponentsService {
       layoutId,
     });
 
+    // Broadcast WebSocket update for real-time statistics
+    try {
+      const liveMapRepository = new LiveMapRepository();
+      const wsService = new LiveMapWebSocketService(liveMapRepository, request.server);
+      await wsService.onComponentCreated(layout.unitId, orgId, layoutId);
+    } catch (err) {
+      console.error('Failed to broadcast component creation:', err);
+    }
+
     reply.code(201).send(component);
   }
 
@@ -132,6 +143,21 @@ export class ComponentsService {
       updateData.locationTagName = locationTagName;
     }
     const updated = await this.repository.update(componentId, orgId, updateData);
+
+    // Broadcast WebSocket update if location tag changed
+    if (request.body.locationTagId !== undefined) {
+      try {
+        const layout = await this.assertLayoutAccess(existing.layoutId, orgId);
+        if (layout) {
+          const liveMapRepository = new LiveMapRepository();
+          const wsService = new LiveMapWebSocketService(liveMapRepository, request.server);
+          await wsService.onLocationTagChanged(layout.unitId, orgId, existing.layoutId);
+        }
+      } catch (err) {
+        console.error('Failed to broadcast component update:', err);
+      }
+    }
+
     reply.send(updated);
   }
 
@@ -141,10 +167,26 @@ export class ComponentsService {
   ) {
     const { componentId } = request.params;
     const orgId = request.user.organizationId;
+    const existing = await this.repository.findById(componentId, orgId);
+    
     const deleted = await this.repository.delete(componentId, orgId);
 
     if (!deleted) {
       return reply.code(404).send({ error: 'Component not found' });
+    }
+
+    // Broadcast WebSocket update for real-time statistics
+    if (existing) {
+      try {
+        const layout = await this.assertLayoutAccess(existing.layoutId, orgId);
+        if (layout) {
+          const liveMapRepository = new LiveMapRepository();
+          const wsService = new LiveMapWebSocketService(liveMapRepository, request.server);
+          await wsService.onComponentDeleted(layout.unitId, orgId, existing.layoutId);
+        }
+      } catch (err) {
+        console.error('Failed to broadcast component deletion:', err);
+      }
     }
 
     reply.code(204).send();
@@ -180,6 +222,18 @@ export class ComponentsService {
       locationTagId: request.body.locationTagId ?? null,
       locationTagName: resolvedTagName,
     });
+
+    // Broadcast WebSocket update for location tag change
+    try {
+      const layout = await this.assertLayoutAccess(component.layoutId, orgId);
+      if (layout) {
+        const liveMapRepository = new LiveMapRepository();
+        const wsService = new LiveMapWebSocketService(liveMapRepository, request.server);
+        await wsService.onLocationTagChanged(layout.unitId, orgId, component.layoutId);
+      }
+    } catch (err) {
+      console.error('Failed to broadcast location tag update:', err);
+    }
 
     reply.send(updated);
   }

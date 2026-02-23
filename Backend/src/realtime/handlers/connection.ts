@@ -1,6 +1,6 @@
 import type { Socket } from 'socket.io';
 
-import { getUnitRoom, getOrganizationRoom } from '../rooms.js';
+import { getUnitRoom, getOrganizationRoom, getLayoutRoom } from '../rooms.js';
 
 export interface AuthenticatedSocket extends Socket {
   userId: string;
@@ -22,6 +22,30 @@ export function handleConnection(socket: AuthenticatedSocket) {
     if (socket.currentUnit === unit_id) {
       socket.currentUnit = undefined;
     }
+  });
+
+  socket.on('join:unit', async ({ unitId }: { unitId: string }) => {
+    socket.join(getUnitRoom(unitId));
+    socket.currentUnit = unitId;
+    console.log(`User ${socket.userId} joined unit room: ${unitId}`);
+  });
+
+  socket.on('leave:unit', ({ unitId }: { unitId: string }) => {
+    socket.leave(getUnitRoom(unitId));
+    if (socket.currentUnit === unitId) {
+      socket.currentUnit = undefined;
+    }
+    console.log(`User ${socket.userId} left unit room: ${unitId}`);
+  });
+
+  socket.on('join:layout', async ({ layoutId }: { layoutId: string }) => {
+    socket.join(getLayoutRoom(layoutId));
+    console.log(`User ${socket.userId} joined layout room: ${layoutId}`);
+  });
+
+  socket.on('leave:layout', ({ layoutId }: { layoutId: string }) => {
+    socket.leave(getLayoutRoom(layoutId));
+    console.log(`User ${socket.userId} left layout room: ${layoutId}`);
   });
 
   socket.on('join-organization', ({ organization_id }: { organization_id: string }) => {

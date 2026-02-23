@@ -16,4 +16,5 @@ export function registerSocketHandlers(io: SocketIOServer) {
 export * from './sku-events.js';
 export * from './component-events.js';
 export * from './actions.js';
+export * from './location-tag-events.js';
 export type { AuthenticatedSocket } from './connection.js';

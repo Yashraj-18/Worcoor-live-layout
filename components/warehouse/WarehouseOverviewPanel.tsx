@@ -1,8 +1,9 @@
 // @ts-nocheck
 'use client';
 
-import React, { useMemo } from 'react';
-import { TrendingUp, Package, BarChart3 } from 'lucide-react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { TrendingUp, Package, BarChart3, Wifi, WifiOff } from 'lucide-react';
+import { useWarehouseSocket } from '../../hooks/useWarehouseSocket';
 
 /**
  * WarehouseOverviewPanel - Displays overall warehouse metrics when no component is selected
@@ -11,6 +12,12 @@ import { TrendingUp, Package, BarChart3 } from 'lucide-react';
 interface WarehouseLayoutData {
   items: any[];
   name?: string;
+}
+
+interface WarehouseOverviewPanelProps {
+  layoutData: WarehouseLayoutData;
+  unitId?: string;
+  layoutId?: string;
 }
 
 // Mirror of GRID_SIZE used in layoutComponentSummary
@@ -69,7 +76,73 @@ const deriveItemCapacity = (item: any): { maxCapacity: number; usedCapacity: num
   return { maxCapacity, usedCapacity };
 };
 
-const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutData }) => {
+const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverviewPanelProps) => {
+  // Real-time stats from API
+  const [apiStats, setApiStats] = useState<{
+    totalLocations: number;
+    totalSkus: number;
+    totalComponents: number;
+    totalAssets: number;
+  } | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+
+  // Fetch stats from API
+  const fetchStats = useCallback(async () => {
+    if (!unitId) return;
+    
+    setIsLoadingStats(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/units/${unitId}/live-map/stats`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const stats = await response.json();
+        setApiStats({
+          totalLocations: stats.totalLocationTags,
+          totalSkus: stats.totalSkus,
+          totalComponents: stats.totalComponents,
+          totalAssets: stats.totalAssets,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  }, [unitId]);
+
+  // Fetch stats on mount and when unitId changes
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  // WebSocket connection for real-time updates
+  const { isConnected } = useWarehouseSocket({
+    unitId: unitId || '',
+    layoutId,
+    onLocationTagStatsUpdate: (stats) => {
+      console.log('Received real-time location tag stats:', stats);
+      setApiStats({
+        totalLocations: stats.totalLocationTags,
+        totalSkus: stats.totalSkus,
+        totalComponents: stats.totalComponents,
+        totalAssets: stats.totalAssets,
+      });
+    },
+    onComponentCreated: () => {
+      console.log('Component created - refetching stats');
+      fetchStats();
+    },
+    onComponentDeleted: () => {
+      console.log('Component deleted - refetching stats');
+      fetchStats();
+    },
+  });
   // Calculate overview data from layout items
   const overviewData = useMemo(() => {
     const empty = {
@@ -99,8 +172,17 @@ const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutDat
       if (Array.isArray(item.levelLocationMappings)) {
         item.levelLocationMappings.forEach((m: any) => m?.locationId && allLocationIds.add(m.locationId));
       }
+      
+      // Extract SKUs from item properties (legacy format)
       if (item.sku) allSkus.add(item.sku);
       if (item.primarySku) allSkus.add(item.primarySku);
+      
+      // Extract SKUs from locationTag.skus[] (backend API format)
+      if (item.locationTag && Array.isArray(item.locationTag.skus)) {
+        item.locationTag.skus.forEach((sku: any) => {
+          if (sku.skuName) allSkus.add(sku.skuName);
+        });
+      }
 
       if (item.compartmentContents && typeof item.compartmentContents === 'object') {
         Object.values(item.compartmentContents).forEach((c: any) => {
@@ -248,6 +330,20 @@ const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutDat
     };
   }, [layoutData]);
 
+  // Merge API stats with calculated stats (API takes precedence for counts)
+  const displayStats = useMemo(() => {
+    if (apiStats && unitId) {
+      return {
+        ...overviewData,
+        totalLocations: apiStats.totalLocations,
+        totalSkus: apiStats.totalSkus,
+        totalAssets: apiStats.totalAssets,
+        totalComponents: apiStats.totalComponents,
+      };
+    }
+    return overviewData;
+  }, [overviewData, apiStats, unitId]);
+
   // Same styling as LocationDetailsPanel
   const panelStyle: React.CSSProperties = {
     width: '100%',
@@ -310,9 +406,21 @@ const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutDat
           <div style={{ fontSize: '1.1rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <TrendingUp size={20} />
             Warehouse Overview
+            {unitId && (
+              <span style={{ fontSize: '0.75rem', marginLeft: '0.5rem' }}>
+                {isConnected ? (
+                  <Wifi size={14} color="#22c55e" title="Live updates active" />
+                ) : (
+                  <WifiOff size={14} color="#ef4444" title="Disconnected" />
+                )}
+              </span>
+            )}
           </div>
           <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>
             {layoutData?.name || 'Warehouse Layout'} - Overall Metrics
+            {unitId && isConnected && (
+              <span style={{ color: '#22c55e', marginLeft: '0.5rem' }}>● Live</span>
+            )}
           </div>
         </div>
       </div>
@@ -327,19 +435,39 @@ const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutDat
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <div>
               <div style={labelStyle}>Total Locations</div>
-              <div style={valueStyle}>{overviewData.totalLocations}</div>
+              <div style={valueStyle}>
+                {displayStats.totalLocations}
+                {apiStats && unitId && (
+                  <span style={{ fontSize: '0.7rem', color: '#22c55e', marginLeft: '0.25rem' }}>●</span>
+                )}
+              </div>
             </div>
             <div>
               <div style={labelStyle}>Total SKUs</div>
-              <div style={valueStyle}>{overviewData.totalSkus}</div>
+              <div style={valueStyle}>
+                {displayStats.totalSkus}
+                {apiStats && unitId && (
+                  <span style={{ fontSize: '0.7rem', color: '#22c55e', marginLeft: '0.25rem' }}>●</span>
+                )}
+              </div>
             </div>
             <div>
               <div style={labelStyle}>Total Assets</div>
-              <div style={valueStyle}>{overviewData.totalAssets}</div>
+              <div style={valueStyle}>
+                {displayStats.totalAssets}
+                {apiStats && unitId && (
+                  <span style={{ fontSize: '0.7rem', color: '#22c55e', marginLeft: '0.25rem' }}>●</span>
+                )}
+              </div>
             </div>
             <div>
               <div style={labelStyle}>Components</div>
-              <div style={valueStyle}>{overviewData.totalComponents}</div>
+              <div style={valueStyle}>
+                {displayStats.totalComponents}
+                {apiStats && unitId && (
+                  <span style={{ fontSize: '0.7rem', color: '#22c55e', marginLeft: '0.25rem' }}>●</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -351,9 +479,9 @@ const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutDat
             Capacity & Utilization by Location
           </h4>
           
-          {overviewData.locationTagData && overviewData.locationTagData.length > 0 ? (
+          {displayStats.locationTagData && displayStats.locationTagData.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto' }}>
-              {overviewData.locationTagData.map((location, index) => (
+              {displayStats.locationTagData.map((location, index) => (
                 <div key={index} style={{
                   padding: '0.75rem',
                   background: 'linear-gradient(135deg, hsl(215.3 25.1% 18.55%), hsl(215.3 25.1% 15.1%))',
@@ -455,7 +583,7 @@ const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutDat
                   stroke="#f59e0b"
                   strokeWidth="12"
                   strokeDasharray={`${2 * Math.PI * 50}`}
-                  strokeDashoffset={`${2 * Math.PI * 50 * (1 - (overviewData.locationTagUtilization || 0) / 100)}`}
+                  strokeDashoffset={`${2 * Math.PI * 50 * (1 - (displayStats.locationTagUtilization || 0) / 100)}`}
                   style={{ transition: 'stroke-dashoffset 0.5s ease' }}
                 />
               </svg>
@@ -469,11 +597,11 @@ const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutDat
                 fontWeight: 'bold',
                 color: '#f59e0b'
               }}>
-                {overviewData.locationTagUtilization}%
+                {displayStats.locationTagUtilization}%
               </div>
             </div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.5rem' }}>
-              {overviewData.taggedComponents ?? 0} of {overviewData.totalComponents ?? 0} components tagged
+              {displayStats.taggedComponents ?? 0} of {displayStats.totalComponents ?? 0} components tagged
             </div>
           </div>
 
@@ -481,13 +609,13 @@ const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutDat
           <div style={{ marginTop: '0.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.25rem' }}>
               <span style={{ color: '#94a3b8' }}>Slot Fill Rate</span>
-              <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{overviewData.slotFillRate ?? 0}% ({overviewData.totalUsed ?? 0}/{overviewData.totalMax ?? 0} slots)</span>
+              <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{displayStats.slotFillRate ?? 0}% ({displayStats.totalUsed ?? 0}/{displayStats.totalMax ?? 0} slots)</span>
             </div>
             <div style={{ width: '100%', height: '6px', backgroundColor: 'hsl(215.3 25.1% 32.6%)', borderRadius: '3px' }}>
               <div style={{
-                width: `${overviewData.slotFillRate ?? 0}%`,
+                width: `${displayStats.slotFillRate ?? 0}%`,
                 height: '100%',
-                backgroundColor: (overviewData.slotFillRate ?? 0) > 80 ? '#22c55e' : (overviewData.slotFillRate ?? 0) > 50 ? '#f59e0b' : '#ef4444',
+                backgroundColor: (displayStats.slotFillRate ?? 0) > 80 ? '#22c55e' : (displayStats.slotFillRate ?? 0) > 50 ? '#f59e0b' : '#ef4444',
                 borderRadius: '3px',
                 transition: 'width 0.3s ease'
               }} />
@@ -502,19 +630,19 @@ const WarehouseOverviewPanel = ({ layoutData }: { layoutData: WarehouseLayoutDat
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.8rem' }}>
                 <span style={{ color: '#94a3b8' }}>Total Shelves</span>
-                <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{overviewData.totalShelves}</span>
+                <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{displayStats.totalShelves}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.8rem' }}>
                 <span style={{ color: '#94a3b8' }}>Empty Shelves</span>
-                <span style={{ color: '#ef4444', fontWeight: '600' }}>{overviewData.emptyShelves}</span>
+                <span style={{ color: '#ef4444', fontWeight: '600' }}>{displayStats.emptyShelves}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.8rem' }}>
                 <span style={{ color: '#94a3b8' }}>Full Shelves</span>
-                <span style={{ color: '#22c55e', fontWeight: '600' }}>{overviewData.fullShelves}</span>
+                <span style={{ color: '#22c55e', fontWeight: '600' }}>{displayStats.fullShelves}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.8rem' }}>
                 <span style={{ color: '#94a3b8' }}>Newly Added</span>
-                <span style={{ color: '#3b82f6', fontWeight: '600' }}>{overviewData.newlyAdded}</span>
+                <span style={{ color: '#3b82f6', fontWeight: '600' }}>{displayStats.newlyAdded}</span>
               </div>
             </div>
           </div>

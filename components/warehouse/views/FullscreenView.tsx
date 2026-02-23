@@ -5,7 +5,9 @@ import { inferVerticalRackLevelCount } from '../../lib/warehouse/utils/verticalR
 import summarizeStorageComponents from '../../lib/warehouse/utils/layoutComponentSummary';
 import locationDataService from '../services/locationDataService';
 import LocationDetailsPanel from './LocationDetailsPanel';
+import WarehouseOverviewPanel from '../WarehouseOverviewPanel';
 import layoutComponentsMock from '../data/layoutComponentsMock.json';
+import { useWarehouseSocket } from '../../hooks/useWarehouseSocket';
 
 const renderDemoLayout = (demoData) => (
   <svg width="100%" height="100%" viewBox="0 0 700 320" className="fullscreen-warehouse-svg">
@@ -115,6 +117,7 @@ const FullscreenMap = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [operationalData, setOperationalData] = useState({});
   const [showInfoPanel, setShowInfoPanel] = useState(false);
+  const [showOverviewPanel, setShowOverviewPanel] = useState(true);
   const [searchResults, setSearchResults] = useState([]);
   const [highlightedItems, setHighlightedItems] = useState([]);
   const [filteredKeys, setFilteredKeys] = useState([]);
@@ -128,6 +131,26 @@ const FullscreenMap = () => {
   const [availableSkus, setAvailableSkus] = useState([]);
   const [availableAssets, setAvailableAssets] = useState([]);
   const [dropdownSearchActive, setDropdownSearchActive] = useState(false);
+  
+  // Extract unitId and layoutId from mapData for WebSocket
+  const unitId = mapData?.unitId;
+  const layoutId = mapData?.layoutData?.id || mapData?.layoutId;
+
+  // WebSocket connection for real-time updates
+  const { isConnected } = useWarehouseSocket({
+    unitId: unitId || '',
+    layoutId,
+    onLocationTagStatsUpdate: (stats) => {
+      console.log('FullscreenView - Received real-time stats:', stats);
+      // Stats will be handled by WarehouseOverviewPanel component
+    },
+    onComponentCreated: (data) => {
+      console.log('FullscreenView - Component created:', data);
+    },
+    onComponentDeleted: (data) => {
+      console.log('FullscreenView - Component deleted:', data);
+    },
+  });
 
   const storageSummaries = useMemo(() => {
     if (!mapData) {

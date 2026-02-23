@@ -482,6 +482,11 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     return warehouseUnits.find(unit => unit.id === selectedUnitForDemo) || null;
   }, [selectedUnitForDemo, warehouseUnits]);
 
+  const resolvedUnitId = React.useMemo(() => {
+    const layout = savedLayouts.find(l => l.id === selectedUnitForDemo);
+    return layout?.orgUnit?.id ?? layout?.unitId ?? selectedUnitForDemo;
+  }, [savedLayouts, selectedUnitForDemo]);
+
   const dashboardItems = useMemo(() => {
     return selectedOrgUnitForDashboard?.layoutData?.items || [];
   }, [selectedOrgUnitForDashboard]);
@@ -1934,6 +1939,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                         <div className="demo-map-info location-details-container">
                           <LocationDetailsPanel
                             selectedItem={selectedItem}
+                            unitId={resolvedUnitId}
                             onClose={() => {
                               setShowLocationDetails(false);
                               setSelectedItem(null);

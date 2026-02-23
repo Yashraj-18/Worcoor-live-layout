@@ -4,6 +4,10 @@ import { LocationTagsRepository } from '../../warehouse/location-tags/repository
 import { SkusRepository } from './repository.js';
 import { SkuMovementsRepository } from '../sku-movements/repository.js';
 import type { CreateSkuInput, MoveSkuInput, SkuQueryInput, UpdateSkuInput } from './schemas.js';
+import {
+  emitLocationUpdated,
+  emitInventoryChanged,
+} from '../../../realtime/handlers/sku-events.js';
 
 type SkuParams = { skuId: string };
 
@@ -91,6 +95,40 @@ export class SkusService {
     }
   }
 
+  // ── Helper: emit location + inventory socket events after any SKU change ──
+  private async emitLocationEvents(
+    request: FastifyRequest,
+    locationTagId: string,
+    organizationId: string,
+  ) {
+    try {
+      const tag = await this.locationTagsRepository.findById(locationTagId, organizationId);
+      console.log('🔌 emitLocationEvents - tag:', tag?.id, 'unitId:', tag?.unitId);
+      if (!tag || !tag.unitId) return;
+
+      const currentItems = await this.locationTagsRepository.getUsage(locationTagId, organizationId);
+      const utilizationPercentage = tag.capacity > 0
+        ? (currentItems / tag.capacity) * 100
+        : 0;
+
+      const io = request.server.io;
+
+      emitLocationUpdated(io, tag.unitId, {
+        location_tag_id: locationTagId,
+        current_items: currentItems,
+        utilization_percentage: utilizationPercentage,
+      });
+
+      emitInventoryChanged(io, tag.unitId, {
+        unit_id: tag.unitId,
+        utilization_percentage: utilizationPercentage,
+      });
+    } catch (err) {
+      // Non-critical: log but don't fail the request
+      console.error('Failed to emit location socket events:', err);
+    }
+  }
+
   async list(
     request: FastifyRequest<{ Querystring: SkuQueryInput }>,
     reply: FastifyReply,
@@ -153,6 +191,11 @@ export class SkusService {
       organizationId: orgId,
     });
 
+    // Emit socket events so View Live panel updates in real-time
+    if (sku.locationTagId) {
+      await this.emitLocationEvents(request, sku.locationTagId, orgId);
+    }
+
     reply.code(201).send(this.serializeSku(sku));
   }
 
@@ -211,6 +254,20 @@ export class SkusService {
           : existing.skuId ?? null,
     });
 
+    // Emit socket events so View Live panel updates in real-time
+    if (updated?.locationTagId) {
+      await this.emitLocationEvents(request, updated.locationTagId, orgId);
+    }
+    if (
+      existing.locationTagId &&
+      existing.locationTagId !== updated?.locationTagId
+    ) {
+      await this.emitLocationEvents(request, existing.locationTagId, orgId);
+    }
+
+    if (!updated) {
+      return reply.code(404).send({ error: 'SKU not found' });
+    }
     reply.send(this.serializeSku(updated));
   }
 
@@ -218,10 +275,19 @@ export class SkusService {
     request: FastifyRequest<{ Params: SkuParams }>,
     reply: FastifyReply,
   ) {
-    const deleted = await this.repository.delete(request.params.skuId, request.user.organizationId);
+    const orgId = request.user.organizationId;
+    const existing = await this.repository.findById(request.params.skuId, orgId);
+
+    const deleted = await this.repository.delete(request.params.skuId, orgId);
     if (!deleted) {
       return reply.code(404).send({ error: 'SKU not found' });
     }
+
+    // Emit socket events so View Live panel updates in real-time
+    if (existing?.locationTagId) {
+      await this.emitLocationEvents(request, existing.locationTagId, orgId);
+    }
+
     reply.code(204).send();
   }
 
@@ -258,6 +324,12 @@ export class SkusService {
       organizationId: orgId,
       movedByUserId: request.user.userId,
     });
+
+    // Emit for both old and new location
+    await this.emitLocationEvents(request, request.body.toLocationTagId, orgId);
+    if (sku.locationTagId && sku.locationTagId !== request.body.toLocationTagId) {
+      await this.emitLocationEvents(request, sku.locationTagId, orgId);
+    }
 
     reply.send(this.serializeSku(updated));
   }

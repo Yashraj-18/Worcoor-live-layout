@@ -1,453 +1,238 @@
 // @ts-nocheck
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import locationDataService from '@/lib/warehouse/services/locationDataService';
-import { MapPin, Package, Building, TrendingUp, X, Archive, Factory, ShieldCheck, UsersRound, Coffee, Loader2, PackageOpen } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { MapPin, Package, Archive, X, Loader2, PackageOpen } from 'lucide-react';
+import { locationTagService } from '@/src/services/locationTags';
+import type { LocationTag } from '@/src/services/locationTags';
+import { skuService } from '@/src/services/skus';
+import type { Sku } from '@/src/services/skus';
+import { useLocationSocket } from '@/hooks/useLocationSocket';
 
-// Type definitions
-interface LocationMapping {
-  locationId?: string;
-  locId?: string;
-  levelId?: string;
-  level?: string;
-}
-
-interface CompartmentInfo {
-  levelId?: string;
-  locationId?: string;
-  row?: number;
-  col?: number;
-}
-
-interface CompartmentData {
-  locationId?: string;
-  uniqueId?: string;
-  levelLocationMappings?: LocationMapping[];
-  locationIds?: string[];
-  levelIds?: string[];
-  [key: string]: any;
-}
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface SelectedItem {
   name?: string;
   label?: string;
-  locationId?: string;
   type?: string;
-  selectedCompartment?: CompartmentData;
-  selectedCompartmentId?: string;
-  selectedCompartmentRow?: number;
-  selectedCompartmentCol?: number;
-  compartmentContents?: Record<string, CompartmentData>;
-  levelLocationMappings?: LocationMapping[];
-  locationIds?: string[];
-  levelIds?: string[];
-  locationData?: {
-    location_id?: string;
-  };
-  properties?: {
-    locationId?: string;
-  };
-  data?: {
-    locationId?: string;
-  };
-  [key: string]: any;
-}
-
-interface LocationData {
-  location_id: string;
-  sku_instance_id?: string;
-  sku_name?: string;
-  sku_category?: string;
-  parent_resource?: string;
-  sku_unit?: string;
-  available_quantity?: number;
-  sku_procured_date?: string;
-  sku_expiry_date?: string;
-  created_at?: string;
-  location_tag_name?: string;
-  location?: string;
-  capacity?: number;
-  location_created_at?: string;
-  unit_id?: string;
-  asset_id?: string;
-  asset_name?: string;
-  asset_type?: string;
-  asset_created_at?: string;
-  compartmentInfo?: CompartmentInfo;
-  [key: string]: any;
+  locationTagId?: string;  // real DB UUID  ← primary key we use
+  locationId?: string;     // display label only (e.g. "RACK-A-004")
+  [key: string]: unknown;
 }
 
 interface LocationDetailsPanelProps {
   selectedItem: SelectedItem;
+  unitId: string | null | undefined;  // pass selectedUnitForDemo from WarehouseMapView
   onClose: () => void;
   isEmbedded?: boolean;
 }
 
-/**
- * LocationDetailsPanel - Displays detailed information about a selected warehouse component
- * Fetches data from layoutComponentsMock.json based on the component's locationId
- */
-const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({ selectedItem, onClose, isEmbedded = false }) => {
-  const [locationDataList, setLocationDataList] = useState<LocationData[]>([]);
-  const [loading, setLoading] = useState(false);
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+const fmt = (dateStr?: string | null) =>
+  dateStr
+    ? new Date(dateStr).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    : 'N/A';
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
+  selectedItem,
+  unitId,
+  onClose,
+  isEmbedded = false,
+}) => {
+  const locationTagId = selectedItem?.locationTagId ?? null;
+
+  const [locationTag, setLocationTag] = useState<LocationTag | null>(null);
+  const [skus, setSkus]               = useState<Sku[]>([]);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState<string | null>(null);
+
+  // Live values pushed by WebSocket (override REST snapshot when received)
+  const [liveCurrentItems, setLiveCurrentItems]     = useState<number | null>(null);
+  const [liveUtilizationPct, setLiveUtilizationPct] = useState<number | null>(null);
+
+  // ── Initial data fetch via REST ───────────────────────────────────────────
 
   useEffect(() => {
-    if (!selectedItem) {
-      setLocationDataList([]);
+    if (!locationTagId || !unitId) {
+      setLocationTag(null);
+      setSkus([]);
+      setLiveCurrentItems(null);
+      setLiveUtilizationPct(null);
       return;
     }
 
-    setLoading(true);
-    
-    // Debug: Log the entire selectedItem structure
-    console.log('=== LocationDetailsPanel - Full selectedItem ===');
-    console.log('selectedItem:', JSON.stringify(selectedItem, null, 2));
-    console.log('Has compartmentContents:', !!selectedItem.compartmentContents);
-    console.log('Has levelLocationMappings:', !!selectedItem.levelLocationMappings);
-    console.log('Has locationIds:', !!selectedItem.locationIds);
-    console.log('Has levelIds:', !!selectedItem.levelIds);
-    if (selectedItem.compartmentContents) {
-      const compartments = Object.values(selectedItem.compartmentContents);
-      console.log('Number of compartments:', compartments.length);
-      console.log('First compartment:', JSON.stringify(compartments[0], null, 2));
-    }
-    console.log('=======================================');
-    
-    // Check if a specific compartment was clicked
-    if (selectedItem.selectedCompartment) {
-      console.log('LocationDetailsPanel - Specific compartment clicked:', {
-        compartmentId: selectedItem.selectedCompartmentId,
-        row: selectedItem.selectedCompartmentRow,
-        col: selectedItem.selectedCompartmentCol,
-        compartmentData: selectedItem.selectedCompartment
-      });
-      
-      const compartment = selectedItem.selectedCompartment as CompartmentData;
-      const allLocationData: LocationData[] = [];
-      
-      // Check if this compartment has multiple levels (levelLocationMappings)
-      if (compartment.levelLocationMappings && Array.isArray(compartment.levelLocationMappings)) {
-        console.log('LocationDetailsPanel - Compartment has multiple levels:', compartment.levelLocationMappings.length);
-        compartment.levelLocationMappings.forEach((mapping: LocationMapping, idx: number) => {
-          const locationId = mapping.locationId || mapping.locId;
-          const levelId = mapping.levelId || mapping.level;
-          console.log(`LocationDetailsPanel - Level ${idx}:`, { levelId, locationId, mapping });
-          if (locationId) {
-            const data = locationDataService.getLocationById(locationId);
-            console.log(`LocationDetailsPanel - Fetched data for ${locationId}:`, data);
-            if (data) {
-              allLocationData.push({ 
-                ...data, 
-                compartmentInfo: { 
-                  levelId, 
-                  locationId,
-                  row: idx + 1,
-                  col: 1
-                } 
-              });
-            }
-          }
-        });
-        setLocationDataList(allLocationData);
-      }
-      // Check if compartment has locationIds array (alternative format)
-      else if (compartment.locationIds && Array.isArray(compartment.locationIds)) {
-        console.log('LocationDetailsPanel - Compartment has locationIds array:', compartment.locationIds.length);
-        compartment.locationIds.forEach((locationId: string, idx: number) => {
-          const levelId = compartment.levelIds && compartment.levelIds[idx] ? compartment.levelIds[idx] : `L${idx + 1}`;
-          console.log(`LocationDetailsPanel - Level ${idx}:`, { levelId, locationId });
-          if (locationId) {
-            const data = locationDataService.getLocationById(locationId);
-            console.log(`LocationDetailsPanel - Fetched data for ${locationId}:`, data);
-            if (data) {
-              allLocationData.push({ 
-                ...data, 
-                compartmentInfo: { 
-                  levelId, 
-                  locationId,
-                  row: idx + 1,
-                  col: 1
-                } 
-              });
-            }
-          }
-        });
-        setLocationDataList(allLocationData);
-      }
-      // Single location in compartment
-      else {
-        const locationId = compartment.locationId || compartment.uniqueId;
-        if (locationId) {
-          const data = locationDataService.getLocationById(locationId);
-          setLocationDataList(data ? [{ ...data, compartmentInfo: compartment }] : []);
-        } else {
-          setLocationDataList([]);
-        }
-      }
-    }
-    // For storage racks with compartments or level mappings - show ALL locations
-    else if (selectedItem.compartmentContents || selectedItem.levelLocationMappings || selectedItem.levelIds || selectedItem.locationIds) {
-      const allLocationData: LocationData[] = [];
-      
-      // Check for compartmentContents first (could contain levelLocationMappings for vertical racks)
-      if (selectedItem.compartmentContents) {
-        const compartments = Object.values(selectedItem.compartmentContents);
-        console.log('LocationDetailsPanel - Checking compartmentContents:', compartments.length);
-        
-        // Check if any compartment has levelLocationMappings (vertical rack)
-        const firstCompartment = compartments[0];
-        if (firstCompartment && firstCompartment.levelLocationMappings && Array.isArray(firstCompartment.levelLocationMappings)) {
-          console.log('LocationDetailsPanel - Vertical rack with levelLocationMappings in compartment:', firstCompartment.levelLocationMappings.length);
-          firstCompartment.levelLocationMappings.forEach((mapping: LocationMapping, idx: number) => {
-            const locationId = mapping.locationId || mapping.locId;
-            const levelId = mapping.levelId || mapping.level;
-            console.log(`LocationDetailsPanel - Level ${idx}:`, { levelId, locationId, mapping });
-            if (locationId) {
-              const data = locationDataService.getLocationById(locationId);
-              console.log(`LocationDetailsPanel - Fetched data for ${locationId}:`, data);
-              if (data) {
-                allLocationData.push({ 
-                  ...data, 
-                  compartmentInfo: { 
-                    levelId, 
-                    locationId,
-                    row: idx + 1,
-                    col: 1
-                  } 
-                });
-              }
-            }
-          });
-        }
-        // Check if compartment has locationIds array (alternative vertical rack format)
-        else if (firstCompartment && firstCompartment.locationIds && Array.isArray(firstCompartment.locationIds)) {
-          console.log('LocationDetailsPanel - Vertical rack with locationIds in compartment:', firstCompartment.locationIds.length);
-          firstCompartment.locationIds.forEach((locationId: string, idx: number) => {
-            const levelId = firstCompartment.levelIds && firstCompartment.levelIds[idx] ? firstCompartment.levelIds[idx] : `L${idx + 1}`;
-            console.log(`LocationDetailsPanel - Level ${idx}:`, { levelId, locationId });
-            if (locationId) {
-              const data = locationDataService.getLocationById(locationId);
-              console.log(`LocationDetailsPanel - Fetched data for ${locationId}:`, data);
-              if (data) {
-                allLocationData.push({ 
-                  ...data, 
-                  compartmentInfo: { 
-                    levelId, 
-                    locationId,
-                    row: idx + 1,
-                    col: 1
-                  } 
-                });
-              }
-            }
-          });
-        }
-        // Regular compartments (horizontal racks or single location per compartment)
-        else {
-          console.log('LocationDetailsPanel - Regular compartments (horizontal rack)');
-          compartments.forEach((compartment: CompartmentData, idx: number) => {
-            const locationId = compartment.locationId || compartment.uniqueId;
-            console.log(`LocationDetailsPanel - Compartment ${idx}:`, { locationId, compartment });
-            if (locationId) {
-              const data = locationDataService.getLocationById(locationId);
-              console.log(`LocationDetailsPanel - Fetched data for ${locationId}:`, data);
-              if (data) {
-                allLocationData.push({ ...data, compartmentInfo: compartment });
-              }
-            }
-          });
-        }
-      }
-      // Check for levelLocationMappings at item level (direct on item)
-      else if (selectedItem.levelLocationMappings && Array.isArray(selectedItem.levelLocationMappings)) {
-        console.log('LocationDetailsPanel - Vertical rack with levelLocationMappings on item:', selectedItem.levelLocationMappings.length);
-        selectedItem.levelLocationMappings.forEach((mapping: LocationMapping, idx: number) => {
-          const locationId = mapping.locationId || mapping.locId;
-          const levelId = mapping.levelId || mapping.level;
-          console.log(`LocationDetailsPanel - Level ${idx}:`, { levelId, locationId, mapping });
-          if (locationId) {
-            const data = locationDataService.getLocationById(locationId);
-            console.log(`LocationDetailsPanel - Fetched data for ${locationId}:`, data);
-            if (data) {
-              allLocationData.push({ 
-                ...data, 
-                compartmentInfo: { 
-                  levelId, 
-                  locationId,
-                  row: idx + 1,
-                  col: 1
-                } 
-              });
-            }
-          }
-        });
-      }
-      // Check for levelIds/locationIds arrays at item level
-      else if (selectedItem.locationIds && Array.isArray(selectedItem.locationIds)) {
-        console.log('LocationDetailsPanel - Vertical rack with locationIds array on item:', selectedItem.locationIds.length);
-        selectedItem.locationIds.forEach((locationId: string, idx: number) => {
-          const levelId = selectedItem.levelIds && selectedItem.levelIds[idx] ? selectedItem.levelIds[idx] : `L${idx + 1}`;
-          console.log(`LocationDetailsPanel - Level ${idx}:`, { levelId, locationId });
-          if (locationId) {
-            const data = locationDataService.getLocationById(locationId);
-            console.log(`LocationDetailsPanel - Fetched data for ${locationId}:`, data);
-            if (data) {
-              allLocationData.push({ 
-                ...data, 
-                compartmentInfo: { 
-                  levelId, 
-                  locationId,
-                  row: idx + 1,
-                  col: 1
-                } 
-              });
-            }
-          }
-        });
-      }
-      
-      console.log('LocationDetailsPanel - Total location data items:', allLocationData.length);
-      setLocationDataList(allLocationData);
-    }
-    // For single items (Storage Unit, Spare Unit)
-    else {
-      const locationId = selectedItem.locationId || 
-                         selectedItem.locationData?.location_id ||
-                         selectedItem.properties?.locationId ||
-                         selectedItem.data?.locationId;
-      
-      if (locationId) {
-        const data = locationDataService.getLocationById(locationId);
-        setLocationDataList(data ? [data] : []);
-      } else {
-        setLocationDataList([]);
-      }
-    }
+    let cancelled = false;
 
-    console.log('LocationDetailsPanel - Selected Item:', selectedItem);
-    
-    setLoading(false);
-  }, [selectedItem]);
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      setLiveCurrentItems(null);
+      setLiveUtilizationPct(null);
 
-  if (!selectedItem) return null;
+      try {
+        // Fetch location tags list + SKUs for this location in parallel
+        const [allTags, skuResponse] = await Promise.all([
+          locationTagService.listByUnit(unitId),
+          skuService.list({ locationTagId, limit: 100 }),
+        ]);
 
-  const panelStyle: React.CSSProperties = isEmbedded ? {
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    backgroundColor: 'hsl(218.4 36.23% 13.53%)',
-    borderRadius: 'var(--radius-lg)',
-    overflow: 'hidden',
-    background: 'linear-gradient(135deg, hsl(218.4 36.23% 13.53%), hsl(217.5 54.33% 5.85%))'
-  } : {
-    position: 'fixed' as const,
-    top: '80px',
-    right: '20px',
-    width: '380px',
-    maxHeight: '85vh',
-    backgroundColor: 'hsl(218.4 36.23% 13.53%)',
-    border: '1px solid hsl(215.3 25.1% 26.1%)',
-    borderRadius: 'var(--radius-2xl)',
-    boxShadow: '0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-    zIndex: 1000,
-    overflow: 'hidden',
-    backdropFilter: 'blur(20px)',
-    background: 'linear-gradient(135deg, hsl(218.4 36.23% 13.53%), hsl(217.5 54.33% 5.85%))'
-  };
+        if (cancelled) return;
+
+        const tag = allTags.find((t) => t.id === locationTagId) ?? null;
+        setLocationTag(tag);
+        setSkus(skuResponse.items);
+
+        if (!tag) {
+          console.warn('LocationDetailsPanel: tag not found for id:', locationTagId);
+        }
+      } catch (err) {
+        if (!cancelled) setError((err as Error).message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchData();
+    return () => {
+      cancelled = true;
+    };
+  }, [locationTagId, unitId]);
+
+  // ── WebSocket: live updates ───────────────────────────────────────────────
+
+  const refreshSkus = useCallback(async () => {
+    if (!locationTagId) return;
+    try {
+      const skuResponse = await skuService.list({ locationTagId, limit: 100 });
+      setSkus(skuResponse.items);
+    } catch (err) {
+      console.error('Failed to refresh SKUs:', err);
+    }
+  }, [locationTagId]);
+
+  const handleLocationUpdated = useCallback((data) => {
+    console.log('🔄 location:updated', data);
+    setLiveCurrentItems(data.current_items);
+    setLiveUtilizationPct(data.utilization_percentage);
+    refreshSkus(); // re-fetch SKU list so quantities update too
+  }, [refreshSkus]);
+
+  const handleInventoryChanged = useCallback((data) => {
+    console.log('🔄 inventory:changed', data);
+    setLiveCurrentItems(data.current_items);
+    setLiveUtilizationPct(data.utilization_percentage);
+    refreshSkus(); // re-fetch SKU list so quantities update too
+  }, [refreshSkus]);
+
+  useLocationSocket({
+    unitId,
+    locationTagId,
+    onLocationUpdated: handleLocationUpdated,
+    onInventoryChanged: handleInventoryChanged,
+  });
+
+  // ── Derived display values (socket overrides REST snapshot) ───────────────
+
+  const displayCurrentItems   = liveCurrentItems   ?? locationTag?.currentItems          ?? 0;
+  const displayUtilizationPct = liveUtilizationPct ?? locationTag?.utilizationPercentage ?? 0;
+  const isLive                = liveCurrentItems !== null;
+
+  // ── Styles ────────────────────────────────────────────────────────────────
+
+  const panelStyle: React.CSSProperties = isEmbedded
+    ? {
+        width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
+        backgroundColor: 'hsl(218.4 36.23% 13.53%)', borderRadius: 'var(--radius-lg)',
+        overflow: 'hidden',
+        background: 'linear-gradient(135deg, hsl(218.4 36.23% 13.53%), hsl(217.5 54.33% 5.85%))',
+      }
+    : {
+        position: 'fixed', top: '80px', right: '20px', width: '380px', maxHeight: '85vh',
+        backgroundColor: 'hsl(218.4 36.23% 13.53%)', border: '1px solid hsl(215.3 25.1% 26.1%)',
+        borderRadius: 'var(--radius-2xl)',
+        boxShadow: '0 10px 40px -10px rgba(0,0,0,.15), 0 20px 25px -5px rgba(0,0,0,.1)',
+        zIndex: 1000, overflow: 'hidden', backdropFilter: 'blur(20px)',
+        background: 'linear-gradient(135deg, hsl(218.4 36.23% 13.53%), hsl(217.5 54.33% 5.85%))',
+      };
 
   const headerStyle: React.CSSProperties = {
     background: 'linear-gradient(135deg, hsl(222.2 47% 11%) 0%, hsl(222.2 32.6% 18.55%) 100%)',
-    color: 'white',
-    padding: 'var(--spacing-5)',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    position: 'relative' as const,
-    overflow: 'hidden',
-    flexShrink: 0
+    color: 'white', padding: 'var(--spacing-5)',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    position: 'relative', overflow: 'hidden', flexShrink: 0,
   };
 
-  const contentStyle = isEmbedded ? {
-    padding: '1rem',
-    overflow: 'auto',
-    flex: 1,
-    minHeight: 0
-  } : {
-    padding: '1rem',
-    maxHeight: 'calc(80vh - 80px)',
-    overflow: 'auto'
-  };
+  const contentStyle: React.CSSProperties = isEmbedded
+    ? { padding: '1rem', overflow: 'auto', flex: 1, minHeight: 0 }
+    : { padding: '1rem', maxHeight: 'calc(80vh - 80px)', overflow: 'auto' };
 
-  const sectionStyle = {
-    marginBottom: '1.25rem',
-    padding: '0.75rem',
+  const sectionStyle: React.CSSProperties = {
+    marginBottom: '1.25rem', padding: '0.75rem',
     background: 'linear-gradient(135deg, hsl(215.3 25.1% 26.1%), hsl(215.3 25.1% 18.55%))',
-    borderRadius: 'var(--radius-lg)',
-    border: '1px solid hsl(215.3 25.1% 32.6%)'
+    borderRadius: 'var(--radius-lg)', border: '1px solid hsl(215.3 25.1% 32.6%)',
   };
 
-  const labelStyle = {
-    fontSize: '0.75rem',
-    color: '#94a3b8',
-    fontWeight: '500',
-    marginBottom: '0.25rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px'
+  const labelStyle: React.CSSProperties = {
+    fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500,
+    marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.5px',
   };
 
-  const valueStyle = {
-    fontSize: '0.95rem',
-    color: '#e2e8f0',
-    fontWeight: '600',
-    marginBottom: '0.5rem'
+  const valueStyle: React.CSSProperties = {
+    fontSize: '0.95rem', color: '#e2e8f0', fontWeight: 600, marginBottom: '0.5rem',
   };
 
-  const getComponentDisplayName = () => {
-    return selectedItem.name || 
-           selectedItem.label || 
-           selectedItem.locationId || 
-           selectedItem.type || 
-           'Component';
-  };
+  const displayName =
+    selectedItem?.name || selectedItem?.label || selectedItem?.locationId || selectedItem?.type || 'Component';
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  if (!selectedItem) return null;
 
   return (
     <div style={panelStyle} className="animate-slide-up">
+
+      {/* ── Header ── */}
       <div style={headerStyle}>
         <div>
           <div style={{ fontSize: '1.1rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <MapPin size={20} />
             Location Details
+            {isLive && (
+              <span style={{
+                fontSize: '0.65rem', background: '#22c55e', color: 'white',
+                padding: '2px 6px', borderRadius: '999px', fontWeight: 600, marginLeft: 4,
+              }}>
+                LIVE
+              </span>
+            )}
           </div>
-          <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>
-            {getComponentDisplayName()}
-          </div>
+          <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>{displayName}</div>
         </div>
         <button
           onClick={onClose}
           style={{
-            background: 'rgba(255,255,255,0.2)',
-            border: 'none',
-            borderRadius: '50%',
-            width: '28px',
-            height: '28px',
-            color: 'white',
-            cursor: 'pointer',
-            fontSize: '16px',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
+            background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%',
+            width: 28, height: 28, color: 'white', cursor: 'pointer', fontSize: 16,
+            transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.3)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
         >
           <X size={16} />
         </button>
       </div>
 
+      {/* ── Body ── */}
       <div style={contentStyle}>
+
+        {/* Loading */}
         {loading && (
           <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
             <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
@@ -457,44 +242,183 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({ selectedIte
           </div>
         )}
 
-        {!loading && locationDataList.length === 0 && (
+        {/* Error */}
+        {!loading && error && (
+          <div style={{ textAlign: 'center', padding: '2rem', color: '#f87171' }}>
+            <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Failed to load data</div>
+            <div style={{ fontSize: '0.85rem' }}>{error}</div>
+          </div>
+        )}
+
+        {/* No locationTagId on the component */}
+        {!loading && !error && !locationTagId && (
           <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
             <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
               <PackageOpen size={32} />
             </div>
-            <div style={{ fontWeight: '600', marginBottom: '0.5rem' }}>No Data Available</div>
-            <div style={{ fontSize: '0.85rem' }}>
-              {selectedItem.locationId 
-                ? `No data found for Location ID: ${selectedItem.locationId}`
-                : 'This component does not have a Location ID assigned'}
-            </div>
+            <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>No Location Tag Assigned</div>
+            <div style={{ fontSize: '0.85rem' }}>This component has no location tag linked to it.</div>
           </div>
         )}
 
-        {!loading && locationDataList.length > 0 && (
+        {/* locationTagId present but not found in unit's tags */}
+        {!loading && !error && locationTagId && !locationTag && (
+          <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
+              <PackageOpen size={32} />
+            </div>
+            <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Tag Not Found</div>
+            <div style={{ fontSize: '0.85rem', wordBreak: 'break-all' }}>ID: {locationTagId}</div>
+          </div>
+        )}
+
+        {/* ── Real data ── */}
+        {!loading && !error && locationTag && (
           <>
-            {locationDataList.map((locationData, index) => (
-              <div key={locationData.location_id || index} style={{ marginBottom: index < locationDataList.length - 1 ? '1.5rem' : '0', paddingBottom: index < locationDataList.length - 1 ? '1.5rem' : '0', borderBottom: index < locationDataList.length - 1 ? '2px solid #e0e0e0' : 'none' }}>
-                {locationDataList.length > 1 && (
-                  <div style={{ 
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '8px',
-                    marginBottom: '1rem',
-                    fontWeight: 'bold',
-                    fontSize: '0.9rem'
+
+            {/* Location Tag Section */}
+            <div style={sectionStyle}>
+              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <MapPin size={16} /> Location Tag Information
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+
+                <div>
+                  <div style={labelStyle}>ID</div>
+                  <div style={{ ...valueStyle, fontSize: '0.72rem', wordBreak: 'break-all' }}>{locationTag.id}</div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Organization ID</div>
+                  <div style={{ ...valueStyle, fontSize: '0.72rem', wordBreak: 'break-all' }}>{locationTag.organizationId}</div>
+                </div>
+
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <div style={labelStyle}>Location Tag Name</div>
+                  <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{locationTag.locationTagName}</div>
+                </div>
+
+                <div>
+                  <div style={labelStyle}>Capacity</div>
+                  <div style={valueStyle}>{locationTag.capacity}</div>
+                </div>
+                <div>
+                  <div style={labelStyle}>
+                    Current Items {isLive && <span style={{ color: '#22c55e' }}>●</span>}
+                  </div>
+                  <div style={{ ...valueStyle, color: isLive ? '#22c55e' : '#e2e8f0' }}>
+                    {displayCurrentItems}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={labelStyle}>
+                    Utilization {isLive && <span style={{ color: '#22c55e' }}>●</span>}
+                  </div>
+                  <div style={{
+                    ...valueStyle,
+                    color: displayUtilizationPct > 90 ? '#ef4444'
+                         : displayUtilizationPct > 70 ? '#f59e0b'
+                         : '#22c55e',
                   }}>
-                    {locationData.compartmentInfo?.levelId 
-                      ? `${locationData.compartmentInfo.levelId}: ${locationData.location_id}`
-                      : locationData.compartmentInfo 
-                      ? `Level ${locationData.compartmentInfo.row || index + 1} - Position ${locationData.compartmentInfo.col || index + 1}` 
-                      : `Item ${index + 1}`}
+                    {displayUtilizationPct.toFixed(1)}%
+                  </div>
+                </div>
+
+                {locationTag.length && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <div style={labelStyle}>Dimensions (L × B × H)</div>
+                    <div style={valueStyle}>
+                      {locationTag.length} × {locationTag.breadth} × {locationTag.height} {locationTag.unitOfMeasurement}
+                    </div>
                   </div>
                 )}
-                {renderLocationData(locationData, sectionStyle, labelStyle, valueStyle)}
+
+                <div>
+                  <div style={labelStyle}>Unit ID</div>
+                  <div style={{ ...valueStyle, fontSize: '0.72rem', wordBreak: 'break-all' }}>{locationTag.unitId}</div>
+                </div>
+                <div>
+                  <div style={labelStyle}>Created At</div>
+                  <div style={valueStyle}>{fmt(locationTag.createdAt)}</div>
+                </div>
+
               </div>
-            ))}
+            </div>
+
+            {/* SKU Section */}
+            <div style={sectionStyle}>
+              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Package size={16} /> SKU Information
+                <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>
+                  {skus.length} SKU{skus.length !== 1 ? 's' : ''}
+                </span>
+              </h4>
+
+              {skus.length === 0 ? (
+                <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
+                  No SKUs assigned to this location
+                </div>
+              ) : (
+                skus.map((sku, idx) => (
+                  <div
+                    key={sku.id}
+                    style={{
+                      marginBottom: idx < skus.length - 1 ? '1rem' : 0,
+                      paddingBottom: idx < skus.length - 1 ? '1rem' : 0,
+                      borderBottom: idx < skus.length - 1 ? '1px solid hsl(215.3 25.1% 32.6%)' : 'none',
+                    }}
+                  >
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <div style={labelStyle}>SKU Name</div>
+                        <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{sku.skuName}</div>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Category</div>
+                        <div style={valueStyle}>{sku.skuCategory}</div>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Unit</div>
+                        <div style={valueStyle}>{sku.skuUnit}</div>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Quantity</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: sku.quantity > 0 ? '#22c55e' : '#ef4444' }}>
+                          {sku.quantity}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Effective Date</div>
+                        <div style={valueStyle}>{fmt(sku.effectiveDate)}</div>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Expiry Date</div>
+                        <div style={valueStyle}>{fmt(sku.expiryDate)}</div>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Created At</div>
+                        <div style={valueStyle}>{fmt(sku.createdAt)}</div>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Location Tag ID</div>
+                        <div style={{ ...valueStyle, fontSize: '0.72rem', wordBreak: 'break-all' }}>{sku.locationTagId ?? 'N/A'}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Asset Section */}
+            <div style={sectionStyle}>
+              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Archive size={16} /> Asset Information
+              </h4>
+              <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
+                Asset data not linked to this location tag
+              </div>
+            </div>
+
           </>
         )}
       </div>
@@ -502,215 +426,4 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({ selectedIte
   );
 };
 
-const renderLocationData = (locationData: LocationData, sectionStyle: React.CSSProperties, labelStyle: React.CSSProperties, valueStyle: React.CSSProperties) => {
-  return (
-          <>
-            {/* SKU Information */}
-            <div style={sectionStyle}>
-              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Package size={16} />
-                SKU Information
-              </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div>
-                  <div style={labelStyle}>ID</div>
-                  <div style={valueStyle}>{locationData.sku_instance_id || 'N/A'}</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Organization Id</div>
-                  <div style={valueStyle}>ORG-001</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Sku Name</div>
-                  <div style={{
-                    ...valueStyle,
-                    fontSize: '1rem',
-                    color: '#60a5fa',
-                    gridColumn: '1 / -1'
-                  }}>
-                    {locationData.sku_name || 'N/A'}
-                  </div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Sku Category</div>
-                  <div style={valueStyle}>{locationData.sku_category || locationData.parent_resource || 'N/A'}</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Sku Unit</div>
-                  <div style={valueStyle}>{locationData.sku_unit || 'Pieces'}</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Quantity</div>
-                  <div style={{
-                    fontSize: '1.1rem',
-                    fontWeight: 'bold',
-                    color: (locationData.available_quantity || 0) > 0 ? '#22c55e' : '#ef4444'
-                  }}>
-                    {locationData.available_quantity || 0}
-                  </div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Effective Date</div>
-                  <div style={valueStyle}>
-                    {locationData.sku_procured_date 
-                      ? new Date(locationData.sku_procured_date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })
-                      : 'N/A'}
-                  </div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Expiry Date</div>
-                  <div style={valueStyle}>
-                    {locationData.sku_expiry_date 
-                      ? new Date(locationData.sku_expiry_date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })
-                      : 'N/A'}
-                  </div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Location Tag Id</div>
-                  <div style={valueStyle}>{locationData.location_id || 'N/A'}</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Created At</div>
-                  <div style={valueStyle}>
-                    {locationData.created_at 
-                      ? new Date(locationData.created_at).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })
-                      : locationData.sku_procured_date
-                      ? new Date(locationData.sku_procured_date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })
-                      : 'N/A'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Location Tag Information */}
-            <div style={sectionStyle}>
-              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <MapPin size={16} />
-                Location Tag Information
-              </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div>
-                  <div style={labelStyle}>Id</div>
-                  <div style={valueStyle}>{locationData.location_id || 'N/A'}</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Organization Id</div>
-                  <div style={valueStyle}>ORG-001</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Location Tag Name</div>
-                  <div style={{
-                    ...valueStyle,
-                    fontSize: '1rem',
-                    color: '#60a5fa',
-                    gridColumn: '1 / -1'
-                  }}>
-                    {locationData.location_tag_name || locationData.location || 'N/A'}
-                  </div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Capacity</div>
-                  <div style={valueStyle}>{locationData.capacity || locationData.available_quantity || 0}</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Created At</div>
-                  <div style={valueStyle}>
-                    {locationData.location_created_at 
-                      ? new Date(locationData.location_created_at).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })
-                      : locationData.sku_procured_date
-                      ? new Date(locationData.sku_procured_date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })
-                      : 'N/A'}
-                  </div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Unit Id</div>
-                  <div style={valueStyle}>{locationData.unit_id || 'U1'}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Asset Information */}
-            <div style={sectionStyle}>
-              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Archive size={16} />
-                Asset Information
-              </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div>
-                  <div style={labelStyle}>Id</div>
-                  <div style={valueStyle}>{locationData.asset_id || locationData.sku_instance_id || 'N/A'}</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Organization Id</div>
-                  <div style={valueStyle}>ORG-001</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Asset Name</div>
-                  <div style={{
-                    ...valueStyle,
-                    fontSize: '1rem',
-                    color: '#60a5fa',
-                    gridColumn: '1 / -1'
-                  }}>
-                    {locationData.asset_name || locationData.sku_name || 'N/A'}
-                  </div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Asset Type</div>
-                  <div style={valueStyle}>{locationData.asset_type || locationData.parent_resource || 'N/A'}</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Location Tag Id</div>
-                  <div style={valueStyle}>{locationData.location_id || 'N/A'}</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Created At</div>
-                  <div style={valueStyle}>
-                    {locationData.asset_created_at 
-                      ? new Date(locationData.asset_created_at).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })
-                      : locationData.sku_procured_date
-                      ? new Date(locationData.sku_procured_date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })
-                      : 'N/A'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </>
-  );
-};
-
 export default LocationDetailsPanel;
-

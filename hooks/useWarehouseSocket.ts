@@ -40,11 +40,34 @@ export function useWarehouseSocket(options: UseWarehouseSocketOptions) {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Store callbacks in refs so they never trigger socket reconnection
+  const callbackRefs = useRef({
+    onLocationTagStatsUpdate,
+    onLocationTagCreated,
+    onLocationTagDeleted,
+    onLocationTagUpdated,
+    onComponentCreated,
+    onComponentDeleted,
+    onComponentUpdated,
+  });
+
+  // Keep callback refs up to date on every render without reconnecting
   useEffect(() => {
-    // Get the backend URL from environment or default to localhost
+    callbackRefs.current = {
+      onLocationTagStatsUpdate,
+      onLocationTagCreated,
+      onLocationTagDeleted,
+      onLocationTagUpdated,
+      onComponentCreated,
+      onComponentDeleted,
+      onComponentUpdated,
+    };
+  });
+
+  // Socket connection — only re-runs if unitId or layoutId actually changes
+  useEffect(() => {
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-    // Create socket connection with credentials (cookies)
     const socket = io(backendUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
@@ -52,21 +75,12 @@ export function useWarehouseSocket(options: UseWarehouseSocketOptions) {
 
     socketRef.current = socket;
 
-    // Connection event handlers
     socket.on('connect', () => {
       console.log('WebSocket connected');
       setIsConnected(true);
       setError(null);
-
-      // Join the unit room to receive updates for this specific unit
-      if (unitId) {
-        socket.emit('join:unit', { unitId });
-      }
-
-      // Join the layout room if layoutId is provided
-      if (layoutId) {
-        socket.emit('join:layout', { layoutId });
-      }
+      if (unitId) socket.emit('join:unit', { unitId });
+      if (layoutId) socket.emit('join:layout', { layoutId });
     });
 
     socket.on('disconnect', () => {
@@ -80,61 +94,40 @@ export function useWarehouseSocket(options: UseWarehouseSocketOptions) {
       setIsConnected(false);
     });
 
-    // Location tag statistics updates
-    if (onLocationTagStatsUpdate) {
-      socket.on('locationTag:statsUpdated', (data: LocationTagStatsPayload) => {
-        console.log('Location tag stats updated:', data);
-        onLocationTagStatsUpdate(data);
-      });
-    }
+    socket.on('locationTag:statsUpdated', (data: LocationTagStatsPayload) => {
+      callbackRefs.current.onLocationTagStatsUpdate?.(data);
+    });
 
-    // Location tag events
-    if (onLocationTagCreated) {
-      socket.on('locationTag:created', onLocationTagCreated);
-    }
+    socket.on('locationTag:created', (data: any) => {
+      callbackRefs.current.onLocationTagCreated?.(data);
+    });
 
-    if (onLocationTagDeleted) {
-      socket.on('locationTag:deleted', onLocationTagDeleted);
-    }
+    socket.on('locationTag:deleted', (data: any) => {
+      callbackRefs.current.onLocationTagDeleted?.(data);
+    });
 
-    if (onLocationTagUpdated) {
-      socket.on('locationTag:updated', onLocationTagUpdated);
-    }
+    socket.on('locationTag:updated', (data: any) => {
+      callbackRefs.current.onLocationTagUpdated?.(data);
+    });
 
-    // Component events
-    if (onComponentCreated) {
-      socket.on('component:created', onComponentCreated);
-    }
+    socket.on('component:created', (data: any) => {
+      callbackRefs.current.onComponentCreated?.(data);
+    });
 
-    if (onComponentDeleted) {
-      socket.on('component:deleted', onComponentDeleted);
-    }
+    socket.on('component:deleted', (data: any) => {
+      callbackRefs.current.onComponentDeleted?.(data);
+    });
 
-    if (onComponentUpdated) {
-      socket.on('component:updated', onComponentUpdated);
-    }
+    socket.on('component:updated', (data: any) => {
+      callbackRefs.current.onComponentUpdated?.(data);
+    });
 
-    // Cleanup on unmount
     return () => {
-      if (unitId) {
-        socket.emit('leave:unit', { unitId });
-      }
-      if (layoutId) {
-        socket.emit('leave:layout', { layoutId });
-      }
+      if (unitId) socket.emit('leave:unit', { unitId });
+      if (layoutId) socket.emit('leave:layout', { layoutId });
       socket.disconnect();
     };
-  }, [
-    unitId,
-    layoutId,
-    onLocationTagStatsUpdate,
-    onLocationTagCreated,
-    onLocationTagDeleted,
-    onLocationTagUpdated,
-    onComponentCreated,
-    onComponentDeleted,
-    onComponentUpdated,
-  ]);
+  }, [unitId, layoutId]); // ← Only these two — callbacks never cause reconnection
 
   return {
     socket: socketRef.current,

@@ -544,7 +544,9 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           const hasLocationTags = Boolean(compartmentData?.locationId || compartmentData?.uniqueId || compartmentData?.primaryLocationId || (compartmentData?.locationIds && compartmentData.locationIds.length > 0));
           const hasSkusAssigned = Boolean(compartmentData?.sku || compartmentData?.skuId || compartmentData?.primarySku);
           const capacityStatus = determineCapacityStatus(hasLocationTags, hasSkusAssigned);
-          const borderStyle = getStorageComponentBorder(hasLocationTags, capacityStatus);
+          const borderStyle = isReadOnly
+            ? getStorageComponentBorder(hasLocationTags, capacityStatus)
+            : '1px solid #000000';
           
           // Extract color and width from border string (e.g., "2px solid #000000")
           const borderMatch = borderStyle.match(/(\d+)px\s+solid\s+(#[0-9A-Fa-f]{6})/);
@@ -944,7 +946,9 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            border: getStorageComponentBorder(hasLocationTagsForUnit, storageUnitCapacityStatus),
+            border: isReadOnly
+              ? getStorageComponentBorder(hasLocationTagsForUnit, storageUnitCapacityStatus)
+              : '1px solid #000000',
             borderRadius: STORAGE_COMPONENT_BORDER_CONFIG.borderRadius,
             backgroundColor: 'transparent',
             color: '#111827',

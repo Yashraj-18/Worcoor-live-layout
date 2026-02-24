@@ -6,11 +6,11 @@
  * (storage units and storage racks) fetch their status colors and border configurations.
  * 
  * Current Implementation: All variants use 'transparent' with status-based borders
- * Status-based borders represent capacity from backend:
- * - Green: Full capacity
- * - Orange: Partially used
- * - Red: Empty
- * - Black: No data (default)
+ * Status-based borders represent location tag and SKU assignment status:
+ * - Green: Location tags attached to component AND SKUs assigned to those location tags
+ * - Orange: Partially used (currently commented out/not in use)
+ * - Red: Location tags attached to component BUT no SKUs assigned
+ * - Black: No location tags attached (default in layout editor)
  * 
  * Applies to:
  * - Storage Unit variants (8 types)
@@ -41,16 +41,16 @@ export interface StorageComponentBorderConfig {
 }
 
 /**
- * Status-based border colors for capacity representation
+ * Status-based border colors for location tag and SKU assignment representation
  */
 export interface CapacityBorderColors {
-  /** Green - Full capacity */
+  /** Green - Location tags attached AND SKUs assigned */
   full: string;
-  /** Orange - Partially used */
+  /** Orange - Partially used (not currently in use) */
   partial: string;
-  /** Red - Empty */
+  /** Red - Location tags attached BUT no SKUs assigned */
   empty: string;
-  /** Gray - Unknown/No data */
+  /** Black - No location tags attached (default) */
   unknown: string;
 }
 
@@ -76,13 +76,17 @@ export const STORAGE_COMPONENT_STATUS_COLORS: Record<string, string> = {
 
 /**
  * Capacity-based border colors
- * Colors represent storage capacity status from backend
+ * Colors represent location tag and SKU assignment status:
+ * - full (Green): Location tags attached AND SKUs assigned to those location tags
+ * - partial (Orange): Currently not in use (commented out)
+ * - empty (Red): Location tags attached BUT no SKUs assigned
+ * - unknown (Black): No location tags attached (default in layout editor)
  */
 export const CAPACITY_BORDER_COLORS: CapacityBorderColors = {
-  full: '#4CAF50',      // Green - Full capacity
-  partial: '#FF9800',   // Orange - Partially used
-  empty: '#F44336',     // Red - Empty
-  unknown: '#000000',   // Black - Unknown/No data from backend (default)
+  full: '#4CAF50',      // Green - Location tags attached + SKUs assigned
+  partial: '#FF9800',   // Orange - Partially used (not currently in use)
+  empty: '#F44336',     // Red - Location tags attached but no SKUs assigned
+  unknown: '#000000',   // Black - No location tags attached (default)
 };
 
 /**
@@ -151,4 +155,30 @@ export const getStorageComponentBorderConfig = (): StorageComponentBorderConfig 
  */
 export const getAllStorageComponentStatusColors = (): Record<string, string> => {
   return { ...STORAGE_COMPONENT_STATUS_COLORS };
+};
+
+/**
+ * Determine capacity status based on location tags and SKU assignments
+ * @param hasLocationTags - Whether location tags are attached to the component
+ * @param hasSkusAssigned - Whether SKUs are assigned to those location tags
+ * @returns CapacityStatus based on the new logic
+ */
+export const determineCapacityStatus = (
+  hasLocationTags: boolean,
+  hasSkusAssigned: boolean
+): CapacityStatus => {
+  // No location tags attached - default state in layout editor
+  if (!hasLocationTags) {
+    return 'unknown';
+  }
+  
+  // Location tags attached AND SKUs assigned - fully configured
+  if (hasSkusAssigned) {
+    return 'full';
+  }
+  
+  // Location tags attached BUT no SKUs assigned - needs SKU assignment
+  return 'empty';
+  
+  // Note: 'partial' status is currently not in use (commented out)
 };

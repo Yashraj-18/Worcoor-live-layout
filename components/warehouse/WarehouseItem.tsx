@@ -9,7 +9,7 @@ import { getComponentColor } from '@/lib/warehouse/utils/componentColors';
 import { renderShapeComponent } from '@/lib/warehouse/utils/shapeRenderer';
 import { getContextualLabel } from '@/lib/warehouse/utils/componentLabeling';
 import { inferVerticalRackLevelCount } from '@/lib/warehouse/utils/verticalRackUtils';
-import { getStorageComponentBorder, STORAGE_COMPONENT_BORDER_CONFIG } from '@/lib/warehouse/config/componentStatusColor';
+import { getStorageComponentBorder, STORAGE_COMPONENT_BORDER_CONFIG, determineCapacityStatus } from '@/lib/warehouse/config/componentStatusColor';
 import HoverInfoTooltip from './HoverInfoTooltip';
 import ResizeHandle from './ResizeHandle';
 
@@ -540,9 +540,11 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           const y = row * (cellHeight + gap);
 
           // Use status-based border colors for storage racks
-          const hasLocationData = Boolean(compartmentData);
-          const capacityStatus = compartmentData?.capacityStatus; // Will come from backend
-          const borderStyle = getStorageComponentBorder(hasLocationData, capacityStatus);
+          // Determine capacity status based on location tags and SKU assignments
+          const hasLocationTags = Boolean(compartmentData?.locationId || compartmentData?.uniqueId || compartmentData?.primaryLocationId || (compartmentData?.locationIds && compartmentData.locationIds.length > 0));
+          const hasSkusAssigned = Boolean(compartmentData?.sku || compartmentData?.skuId || compartmentData?.primarySku);
+          const capacityStatus = determineCapacityStatus(hasLocationTags, hasSkusAssigned);
+          const borderStyle = getStorageComponentBorder(hasLocationTags, capacityStatus);
           
           // Extract color and width from border string (e.g., "2px solid #000000")
           const borderMatch = borderStyle.match(/(\d+)px\s+solid\s+(#[0-9A-Fa-f]{6})/);
@@ -849,6 +851,22 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
     ? `${resolvedLocationId} +${locationIdCount - 1}` 
     : resolvedLocationId;
   
+  // Calculate capacity status for storage units based on location tags and SKU assignments
+  const hasLocationTagsForUnit = Boolean(
+    item?.locationId || 
+    item?.locationData?.primaryLocationId || 
+    item?.inventoryData?.locationId || 
+    item?.inventoryData?.uniqueId ||
+    (item?.locationData?.locationIds && item.locationData.locationIds.length > 0)
+  );
+  const hasSkusAssignedForUnit = Boolean(
+    item?.sku || 
+    item?.skuId || 
+    item?.inventoryData?.sku || 
+    item?.inventoryData?.skuId
+  );
+  const storageUnitCapacityStatus = determineCapacityStatus(hasLocationTagsForUnit, hasSkusAssignedForUnit);
+  
   // Simple fallback color
   const statusColor = '#ddd';
 
@@ -926,7 +944,7 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            border: getStorageComponentBorder(hasResolvedLocation),
+            border: getStorageComponentBorder(hasLocationTagsForUnit, storageUnitCapacityStatus),
             borderRadius: STORAGE_COMPONENT_BORDER_CONFIG.borderRadius,
             backgroundColor: 'transparent',
             color: '#111827',

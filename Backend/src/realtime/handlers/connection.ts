@@ -1,6 +1,7 @@
 import type { Socket } from 'socket.io';
 
 import { getUnitRoom, getOrganizationRoom, getLayoutRoom } from '../rooms.js';
+import { requireUnitAccess } from '../guards.js';
 
 export interface AuthenticatedSocket extends Socket {
   userId: string;
@@ -12,12 +13,17 @@ export interface AuthenticatedSocket extends Socket {
 export function handleConnection(socket: AuthenticatedSocket) {
   console.log(`User ${socket.userId} connected`);
 
-  socket.on('join-unit', async ({ unit_id }: { unit_id: string }) => {
+  socket.on('join-unit', requireUnitAccess(async (socket, { unit_id }) => {
     socket.join(getUnitRoom(unit_id));
     socket.currentUnit = unit_id;
-  });
+  }));
 
   socket.on('leave-unit', ({ unit_id }: { unit_id: string }) => {
+    if (!unit_id || typeof unit_id !== 'string') {
+      socket.emit('error', { message: 'Invalid unit_id' });
+      return;
+    }
+
     socket.leave(getUnitRoom(unit_id));
     if (socket.currentUnit === unit_id) {
       socket.currentUnit = undefined;

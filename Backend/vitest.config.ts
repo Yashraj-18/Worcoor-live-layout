@@ -7,5 +7,6 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     reporters: process.env.CI ? ['junit', 'default'] : ['default'],
     outputFile: process.env.CI ? 'reports/vitest-junit.xml' : undefined,
+    css: false,
   },
 });

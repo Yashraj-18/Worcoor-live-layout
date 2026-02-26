@@ -29,6 +29,9 @@ declare module '@fastify/jwt' {
 export async function registerAuth(app: FastifyInstance, env: AppEnv) {
   await app.register(fastifyJwt, {
     secret: env.JWT_SECRET,
+    sign: {
+      expiresIn: '24h',
+    },
     cookie: {
       cookieName: 'token',
       signed: false,

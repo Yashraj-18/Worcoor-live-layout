@@ -341,11 +341,6 @@ export default function BulkUploadPage() {
     })
   }
 
-  // Load displayed data whenever uploadType or selected org unit changes
-  useEffect(() => {
-    void loadDisplayedData()
-  }, [uploadType, selectedOrgUnitId])
-
   // Reset operation confirmation when org unit or operation changes
   useEffect(() => {
     setIsOperationConfirmed(false)
@@ -386,7 +381,7 @@ export default function BulkUploadPage() {
     void loadOrgUnits()
   }, [loadOrgUnits])
 
-  const loadDisplayedData = async () => {
+  const loadDisplayedData = useCallback(async () => {
     if (!selectedOrgUnitId) {
       setDisplayedData([])
       updateRecordCache(uploadType, [])
@@ -426,7 +421,12 @@ export default function BulkUploadPage() {
     } finally {
       setIsLoadingData(false)
     }
-  }
+  }, [uploadType, selectedOrgUnitId, loadLocationTagsForUnit, cacheLocationTags, getOrgUnitCodeByInternalId, toast])
+
+  // Load displayed data whenever uploadType or selected org unit changes
+  useEffect(() => {
+    void loadDisplayedData()
+  }, [loadDisplayedData])
 
   const validateDataType = (value: any, type: string, fieldName: string): { valid: boolean; error?: string } => {
     if (value === null || value === undefined || value === '') {
@@ -1432,7 +1432,7 @@ export default function BulkUploadPage() {
                 onClick={() => {
                   // Confirm operation - could trigger validation or proceed to next step
                   if (!selectedOrgUnitId) {
-                    alert('Please select an organizational unit first.')
+                    toast({ title: 'No warehouse selected', description: 'Please select an organizational unit first.', variant: 'destructive' })
                     return
                   }
                   if (!isOperationConfirmed) {
@@ -1801,7 +1801,7 @@ export default function BulkUploadPage() {
                     size="sm"
                     className="border-green-300 text-green-700 hover:bg-green-100"
                   >
-                    <Link href={`/reference-data/${uploadType}`}>
+                    <Link href={`/dashboard/reference-data/${uploadType === 'skus' ? 'skus' : uploadType === 'assets' ? 'asset-management' : 'location-tags'}`}>
                       View Imported Data
                     </Link>
                   </Button>

@@ -1,0 +1,111 @@
+unit_name,location_tag_name,capacity,description
+Central Distribution Center,RACK-A-001,100,Aisle A Section 1 - Electronics
+Central Distribution Center,RACK-A-002,100,Aisle A Section 2 - Small Appliances
+Central Distribution Center,RACK-A-003,100,Aisle A Section 3 - Kitchen Items
+Central Distribution Center,RACK-B-001,150,Aisle B Section 1 - Sporting Goods
+Central Distribution Center,RACK-B-002,150,Aisle B Section 2 - Outdoor Equipment
+Central Distribution Center,RACK-C-001,200,Aisle C Section 1 - Bulk Storage
+Central Distribution Center,RACK-C-002,200,Aisle C Section 2 - Overstock
+Central Distribution Center,RACK-D-001,80,Aisle D Section 1 - High-Value Items
+Central Distribution Center,PALLET-01,50,Floor Pallet Position 1
+Central Distribution Center,PALLET-02,50,Floor Pallet Position 2
+East Coast Warehouse,ZONE-A-R01,120,Zone A Rack 1 - Apparel
+East Coast Warehouse,ZONE-A-R02,120,Zone A Rack 2 - Footwear
+East Coast Warehouse,ZONE-A-R03,120,Zone A Rack 3 - Accessories
+East Coast Warehouse,ZONE-B-R01,100,Zone B Rack 1 - Home Goods
+East Coast Warehouse,ZONE-B-R02,100,Zone B Rack 2 - Furniture
+East Coast Warehouse,ZONE-C-R01,150,Zone C Rack 1 - Garden Supplies
+East Coast Warehouse,ZONE-C-R02,150,Zone C Rack 2 - Tools
+East Coast Warehouse,MEZZANINE-01,60,Mezzanine Storage 1
+East Coast Warehouse,MEZZANINE-02,60,Mezzanine Storage 2
+East Coast Warehouse,DOCK-DOOR-01,30,Receiving Door 1
+West Coast Fulfillment,BIN-AA-001,40,Bin Location AA-001 - Small Parts
+West Coast Fulfillment,BIN-AA-002,40,Bin Location AA-002 - Fasteners
+West Coast Fulfillment,BIN-AB-001,40,Bin Location AB-001 - Electrical
+West Coast Fulfillment,BIN-AB-002,40,Bin Location AB-002 - Plumbing
+West Coast Fulfillment,SHELF-01-A,80,Shelf 1 Level A - Books
+West Coast Fulfillment,SHELF-01-B,80,Shelf 1 Level B - Media
+West Coast Fulfillment,SHELF-02-A,80,Shelf 2 Level A - Toys
+West Coast Fulfillment,SHELF-02-B,80,Shelf 2 Level B - Games
+West Coast Fulfillment,BULK-AREA-01,300,Bulk Storage Area 1
+West Coast Fulfillment,BULK-AREA-02,300,Bulk Storage Area 2
+Midwest Storage Facility,ROW-1-BAY-A,100,Row 1 Bay A - Automotive
+Midwest Storage Facility,ROW-1-BAY-B,100,Row 1 Bay B - Hardware
+Midwest Storage Facility,ROW-2-BAY-A,100,Row 2 Bay A - Paint Supplies
+Midwest Storage Facility,ROW-2-BAY-B,100,Row 2 Bay B - Building Materials
+Midwest Storage Facility,ROW-3-BAY-A,120,Row 3 Bay A - Seasonal Items
+Midwest Storage Facility,ROW-3-BAY-B,120,Row 3 Bay B - Holiday Decor
+Midwest Storage Facility,HAZMAT-01,50,Hazmat Storage Zone 1
+Midwest Storage Facility,HAZMAT-02,50,Hazmat Storage Zone 2
+Southern Distribution Hub,PICK-FACE-A1,90,Pick Face Aisle 1 - Beverages
+Southern Distribution Hub,PICK-FACE-A2,90,Pick Face Aisle 2 - Snacks
+Southern Distribution Hub,PICK-FACE-B1,90,Pick Face Aisle 3 - Canned Goods
+Southern Distribution Hub,PICK-FACE-B2,90,Pick Face Aisle 4 - Dry Goods
+Southern Distribution Hub,RESERVE-R01,200,Reserve Storage Rack 1
+Southern Distribution Hub,RESERVE-R02,200,Reserve Storage Rack 2
+Southern Distribution Hub,RESERVE-R03,200,Reserve Storage Rack 3
+Southern Distribution Hub,STAGING-01,100,Staging Area 1
+Southern Distribution Hub,STAGING-02,100,Staging Area 2
+Texas Logistics Center,AUTO-RACK-01,150,Automotive Parts Rack 1
+Texas Logistics Center,AUTO-RACK-02,150,Automotive Parts Rack 2
+Texas Logistics Center,AUTO-RACK-03,150,Automotive Parts Rack 3
+Texas Logistics Center,ELEC-SHELF-01,70,Electronics Shelf 1
+Texas Logistics Center,ELEC-SHELF-02,70,Electronics Shelf 2
+Texas Logistics Center,ELEC-SHELF-03,70,Electronics Shelf 3
+Texas Logistics Center,APPLIANCE-01,80,Appliance Storage 1
+Texas Logistics Center,APPLIANCE-02,80,Appliance Storage 2
+Florida Regional Warehouse,COLD-RACK-01,100,Cold Storage Rack 1
+Florida Regional Warehouse,COLD-RACK-02,100,Cold Storage Rack 2
+Florida Regional Warehouse,COLD-RACK-03,100,Cold Storage Rack 3
+Florida Regional Warehouse,DRY-RACK-01,120,Dry Storage Rack 1
+Florida Regional Warehouse,DRY-RACK-02,120,Dry Storage Rack 2
+Florida Regional Warehouse,DRY-RACK-03,120,Dry Storage Rack 3
+Pacific Northwest Depot,LUMBER-01,250,Lumber Storage Bay 1
+Pacific Northwest Depot,LUMBER-02,250,Lumber Storage Bay 2
+Pacific Northwest Depot,HARDWARE-R1,100,Hardware Rack 1
+Pacific Northwest Depot,HARDWARE-R2,100,Hardware Rack 2
+Pacific Northwest Depot,OUTDOOR-YARD-A,500,Outdoor Storage Area A
+Pacific Northwest Depot,OUTDOOR-YARD-B,500,Outdoor Storage Area B
+Mountain Region Storage,INDOOR-A1,130,Indoor Storage Aisle 1
+Mountain Region Storage,INDOOR-A2,130,Indoor Storage Aisle 2
+Mountain Region Storage,INDOOR-B1,130,Indoor Storage Aisle 3
+Mountain Region Storage,INDOOR-B2,130,Indoor Storage Aisle 4
+Mountain Region Storage,OUTDOOR-Z1,400,Outdoor Zone 1
+Mountain Region Storage,OUTDOOR-Z2,400,Outdoor Zone 2
+New England Distribution,RECV-STAGE-01,80,Receiving Stage 1
+New England Distribution,RECV-STAGE-02,80,Receiving Stage 2
+New England Distribution,PICK-ZONE-A,110,Pick Zone A
+New England Distribution,PICK-ZONE-B,110,Pick Zone B
+New England Distribution,PICK-ZONE-C,110,Pick Zone C
+New England Distribution,PACK-STATION-1,50,Packing Station 1
+New England Distribution,PACK-STATION-2,50,Packing Station 2
+Manufacturing Plant A,RAW-MAT-R01,180,Raw Materials Rack 1
+Manufacturing Plant A,RAW-MAT-R02,180,Raw Materials Rack 2
+Manufacturing Plant A,RAW-MAT-R03,180,Raw Materials Rack 3
+Manufacturing Plant A,WIP-AREA-01,150,Work in Progress Area 1
+Manufacturing Plant A,WIP-AREA-02,150,Work in Progress Area 2
+Manufacturing Plant A,FG-RACK-01,200,Finished Goods Rack 1
+Manufacturing Plant A,FG-RACK-02,200,Finished Goods Rack 2
+Manufacturing Plant B,COMP-SHELF-01,90,Component Shelf 1
+Manufacturing Plant B,COMP-SHELF-02,90,Component Shelf 2
+Manufacturing Plant B,COMP-SHELF-03,90,Component Shelf 3
+Manufacturing Plant B,ASSEMBLY-01,100,Assembly Line Storage 1
+Manufacturing Plant B,ASSEMBLY-02,100,Assembly Line Storage 2
+Cold Storage Facility,FREEZER-R01,120,Freezer Rack 1
+Cold Storage Facility,FREEZER-R02,120,Freezer Rack 2
+Cold Storage Facility,FREEZER-R03,120,Freezer Rack 3
+Cold Storage Facility,COOLER-R01,140,Cooler Rack 1
+Cold Storage Facility,COOLER-R02,140,Cooler Rack 2
+Cold Storage Facility,COOLER-R03,140,Cooler Rack 3
+Cold Storage Facility,DRY-AREA-01,100,Dry Storage Area 1
+Returns Processing Center,INTAKE-BIN-01,60,Intake Bin 1
+Returns Processing Center,INTAKE-BIN-02,60,Intake Bin 2
+Returns Processing Center,REFURB-AREA-01,80,Refurbishment Area 1
+Returns Processing Center,REFURB-AREA-02,80,Refurbishment Area 2
+Returns Processing Center,LIQUIDATION-01,150,Liquidation Storage 1
+Cross-Dock Terminal,INBOUND-D01,100,Inbound Door 1
+Cross-Dock Terminal,INBOUND-D02,100,Inbound Door 2
+Cross-Dock Terminal,OUTBOUND-D01,100,Outbound Door 1
+Cross-Dock Terminal,OUTBOUND-D02,100,Outbound Door 2
+Cross-Dock Terminal,STAGE-LANE-01,80,Staging Lane 1
+Cross-Dock Terminal,STAGE-LANE-02,80,Staging Lane 2

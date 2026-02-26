@@ -1,0 +1,101 @@
+asset_id,asset_name,asset_type,location_tag_name
+FORK-001,Toyota Forklift 5000lb,forklift,PALLET-01
+FORK-002,Crown Forklift 4000lb,forklift,PALLET-02
+FORK-003,Hyster Forklift 6000lb,forklift,DOCK-DOOR-01
+FORK-004,Yale Forklift 5500lb,forklift,BULK-AREA-01
+FORK-005,Raymond Reach Truck,forklift,RESERVE-R01
+FORK-006,Caterpillar Forklift,forklift,STAGING-01
+FORK-007,Mitsubishi Forklift,forklift,RECV-STAGE-01
+FORK-008,Komatsu Forklift,forklift,INBOUND-D01
+PALLET-001,Electric Pallet Jack,pallet_jack,RACK-A-001
+PALLET-002,Manual Pallet Jack,pallet_jack,RACK-B-001
+PALLET-003,Electric Pallet Jack,pallet_jack,ZONE-A-R01
+PALLET-004,Manual Pallet Jack,pallet_jack,ZONE-B-R01
+PALLET-005,Electric Pallet Jack,pallet_jack,BIN-AA-001
+PALLET-006,Manual Pallet Jack,pallet_jack,ROW-1-BAY-A
+PALLET-007,Electric Pallet Jack,pallet_jack,PICK-FACE-A1
+PALLET-008,Manual Pallet Jack,pallet_jack,AUTO-RACK-01
+PALLET-009,Electric Pallet Jack,pallet_jack,COLD-RACK-01
+PALLET-010,Manual Pallet Jack,pallet_jack,LUMBER-01
+SCAN-001,Zebra Barcode Scanner,scanner,RACK-A-001
+SCAN-002,Honeywell Scanner,scanner,RACK-A-002
+SCAN-003,Datalogic Scanner,scanner,ZONE-A-R01
+SCAN-004,Zebra Mobile Computer,scanner,ZONE-A-R02
+SCAN-005,Honeywell Handheld,scanner,BIN-AA-001
+SCAN-006,Datalogic Mobile Scanner,scanner,SHELF-01-A
+SCAN-007,Zebra Wearable Scanner,scanner,ROW-1-BAY-A
+SCAN-008,Honeywell Ring Scanner,scanner,PICK-FACE-A1
+SCAN-009,Datalogic Handheld,scanner,AUTO-RACK-01
+SCAN-010,Zebra TC52 Mobile,scanner,ELEC-SHELF-01
+SCAN-011,Honeywell CT40,scanner,COLD-RACK-01
+SCAN-012,Datalogic Memor 10,scanner,LUMBER-01
+SCAN-013,Zebra MC3300,scanner,INDOOR-A1
+SCAN-014,Honeywell EDA52,scanner,RECV-STAGE-01
+SCAN-015,Datalogic Skorpio X5,scanner,COMP-SHELF-01
+CART-001,Platform Cart 1000lb,pallet_jack,RACK-C-001
+CART-002,Utility Cart 4-Shelf,pallet_jack,MEZZANINE-01
+CART-003,Order Picking Cart,pallet_jack,SHELF-02-A
+CART-004,Platform Cart 1500lb,pallet_jack,ROW-2-BAY-A
+CART-005,Utility Cart 3-Shelf,pallet_jack,PICK-FACE-B1
+SCALE-001,Floor Scale 5000lb,scanner,DOCK-DOOR-01
+SCALE-002,Bench Scale 500lb,scanner,RECV-STAGE-01
+SCALE-003,Pallet Scale 10000lb,scanner,INBOUND-D01
+SCALE-004,Counting Scale,scanner,COMP-SHELF-01
+WRAP-001,Stretch Wrap Machine,pallet_jack,STAGING-01
+WRAP-002,Pallet Wrapper Auto,pallet_jack,PACK-STATION-1
+WRAP-003,Hand Stretch Wrapper,pallet_jack,OUTBOUND-D01
+LABEL-001,Zebra Label Printer,scanner,PACK-STATION-1
+LABEL-002,Zebra Label Printer,scanner,PACK-STATION-2
+LABEL-003,Zebra Label Printer,scanner,RECV-STAGE-01
+LABEL-004,Zebra Label Printer,scanner,RECV-STAGE-02
+DOCK-001,Dock Leveler Hydraulic,forklift,DOCK-DOOR-01
+DOCK-002,Dock Leveler Mechanical,forklift,INBOUND-D01
+DOCK-003,Dock Leveler Hydraulic,forklift,OUTBOUND-D01
+LIFT-001,Scissor Lift 20ft,forklift,MEZZANINE-01
+LIFT-002,Boom Lift 30ft,forklift,OUTDOOR-YARD-A
+LIFT-003,Personnel Lift 15ft,forklift,INDOOR-A1
+CONV-001,Conveyor Belt 50ft,pallet_jack,STAGE-LANE-01
+CONV-002,Roller Conveyor 30ft,pallet_jack,STAGE-LANE-02
+CONV-003,Belt Conveyor 40ft,pallet_jack,ASSEMBLY-01
+SORT-001,Automated Sorter,scanner,STAGE-LANE-01
+SORT-002,Manual Sort Station,scanner,INTAKE-BIN-01
+PACK-001,Packing Table Workstation,pallet_jack,PACK-STATION-1
+PACK-002,Packing Table Workstation,pallet_jack,PACK-STATION-2
+SHIP-001,Shipping Computer Station,scanner,OUTBOUND-D01
+SHIP-002,Shipping Computer Station,scanner,OUTBOUND-D02
+RACK-001,Mobile Rack System,pallet_jack,RESERVE-R01
+RACK-002,Mobile Rack System,pallet_jack,RESERVE-R02
+BIN-001,Plastic Storage Bins 50pk,pallet_jack,BIN-AA-001
+BIN-002,Metal Storage Bins 30pk,pallet_jack,BIN-AB-001
+LADDER-001,Rolling Ladder 10ft,forklift,SHELF-01-A
+LADDER-002,Step Ladder 8ft,forklift,SHELF-02-A
+LADDER-003,Extension Ladder 16ft,forklift,OUTDOOR-YARD-A
+TOOL-001,Cordless Tool Set,scanner,REFURB-AREA-01
+TOOL-002,Hand Tool Cart,pallet_jack,REFURB-AREA-02
+CLEAN-001,Floor Scrubber Machine,forklift,BULK-AREA-01
+CLEAN-002,Sweeper Ride-On,forklift,OUTDOOR-YARD-A
+CLEAN-003,Pressure Washer,forklift,OUTDOOR-YARD-B
+SAFE-001,Fireproof Safe,scanner,RACK-D-001
+SAFE-002,Security Cage 10x10,pallet_jack,HAZMAT-01
+FAN-001,Industrial Fan 36inch,forklift,WIP-AREA-01
+FAN-002,Ceiling Fan Industrial,forklift,ASSEMBLY-01
+HEAT-001,Space Heater Industrial,forklift,OUTDOOR-YARD-A
+COOL-001,Portable AC Unit,forklift,FREEZER-R01
+LIGHT-001,LED High Bay Light,forklift,BULK-AREA-01
+LIGHT-002,LED Shop Light,forklift,COMP-SHELF-01
+RADIO-001,Two-Way Radio Set,scanner,RECV-STAGE-01
+RADIO-002,Two-Way Radio Set,scanner,PACK-STATION-1
+RADIO-003,Two-Way Radio Set,scanner,INBOUND-D01
+COMP-001,Desktop Computer Workstation,scanner,RECV-STAGE-01
+COMP-002,Desktop Computer Workstation,scanner,PACK-STATION-1
+COMP-003,Laptop Mobile Workstation,scanner,REFURB-AREA-01
+PRINT-001,Laser Printer Office,scanner,RECV-STAGE-01
+PRINT-002,Inkjet Printer,scanner,PACK-STATION-1
+DESK-001,Standing Desk Workstation,pallet_jack,RECV-STAGE-01
+DESK-002,L-Shape Desk,pallet_jack,PACK-STATION-1
+CHAIR-001,Ergonomic Office Chair,pallet_jack,RECV-STAGE-01
+CHAIR-002,Task Chair,pallet_jack,PACK-STATION-1
+FILE-001,Filing Cabinet 4-Drawer,pallet_jack,RECV-STAGE-01
+BOARD-001,Whiteboard 6x4ft,pallet_jack,RECV-STAGE-01
+CLOCK-001,Time Clock Biometric,scanner,RECV-STAGE-01
+CLOCK-002,Time Clock Punch Card,scanner,ASSEMBLY-01

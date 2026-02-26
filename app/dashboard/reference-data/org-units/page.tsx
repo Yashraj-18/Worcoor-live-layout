@@ -1,6 +1,6 @@
 "use client"
 
-import { Building2, Plus, Search, Filter, MoreVertical, Pencil, Trash2, ChevronDown } from "lucide-react"
+import { Building2, Plus, Search, Edit, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,12 +13,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { useEffect, useState } from "react"
 import {
@@ -168,12 +162,11 @@ export default function OrgUnitsPage() {
     try {
       const created = await orgUnitService.create(normalizePayload(data))
       setOrgUnits((prev) => [...prev, created])
-      setIsAddDialogOpen(false)
-      form.reset()
       toast({
         title: "Organizational unit created",
         description: `${created.unitName} has been added successfully.${created.area ? ` Area: ${created.area}` : ''}`,
       })
+      setIsAddDialogOpen(false)
     } catch (error: any) {
       if (error?.response?.status === 409) {
         form.setError("unitId", { type: "manual", message: error.response.data.error })
@@ -193,14 +186,11 @@ export default function OrgUnitsPage() {
     try {
       const updated = await orgUnitService.update(editingUnit.id, normalizePayload(data))
       setOrgUnits((prev) => prev.map((unit) => (unit.id === updated.id ? updated : unit)))
-      setIsEditDialogOpen(false)
-      setEditingUnit(null)
-      form.reset()
-
       toast({
         title: "Organizational unit updated",
         description: `${updated.unitName} has been updated successfully.${updated.area ? ` Area: ${updated.area}` : ''}`,
       })
+      setIsEditDialogOpen(false)
     } catch (error: any) {
       if (error?.response?.status === 409) {
         form.setError("unitId", { type: "manual", message: error.response.data.error })
@@ -362,15 +352,14 @@ export default function OrgUnitsPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <span
-                          className={`h-2 w-2 rounded-full ${
-                            unit.status === "LIVE"
+                          className={`h-2 w-2 rounded-full ${unit.status === "LIVE"
                               ? "bg-green-500"
                               : unit.status === "OFFLINE"
                                 ? "bg-gray-400"
                                 : unit.status === "MAINTENANCE"
                                   ? "bg-amber-500"
                                   : "bg-blue-500"
-                          }`}
+                            }`}
                         />
                         <span>{unit.status}</span>
                       </div>
@@ -385,27 +374,25 @@ export default function OrgUnitsPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">Actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEditClick(unit)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={() => handleDeleteClick(unit)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditClick(unit)}
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteClick(unit)}
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -423,24 +410,18 @@ export default function OrgUnitsPage() {
         </CardContent>
       </Card>
 
-      {/* Add/Edit Dialog */}
-      <Dialog open={isAddDialogOpen || isEditDialogOpen} onOpenChange={(open) => {
+      {/* Add Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+        setIsAddDialogOpen(open)
         if (!open) {
-          setIsAddDialogOpen(false)
-          setIsEditDialogOpen(false)
-          setEditingUnit(null)
           form.reset()
         }
       }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>
-              {editingUnit ? "Edit Organizational Unit" : "Add New Organizational Unit"}
-            </DialogTitle>
+            <DialogTitle>Add New Organizational Unit</DialogTitle>
             <DialogDescription>
-              {editingUnit
-                ? "Make changes to the organizational unit details below."
-                : "Fill in the details below to create a new organizational unit."}
+              Fill in the details below to create a new organizational unit.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -479,7 +460,7 @@ export default function OrgUnitsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Unit Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select unit type" />
@@ -502,7 +483,7 @@ export default function OrgUnitsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select status" />
@@ -560,17 +541,159 @@ export default function OrgUnitsPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => {
-                    setIsAddDialogOpen(false)
-                    setIsEditDialogOpen(false)
-                    setEditingUnit(null)
-                    form.reset()
-                  }}
+                  onClick={() => setIsAddDialogOpen(false)}
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Saving..." : editingUnit ? "Update Unit" : "Create Unit"}
+                  {isSubmitting ? "Creating..." : "Create Unit"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        setIsEditDialogOpen(open)
+        if (!open) {
+          setEditingUnit(null)
+          form.reset()
+        }
+      }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Organizational Unit</DialogTitle>
+            <DialogDescription>
+              Make changes to the organizational unit details below.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="unitId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unit ID</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter unit ID" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="unitName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unit Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter unit name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="unitType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unit Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select unit type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="warehouse">warehouse</SelectItem>
+                        <SelectItem value="office">office</SelectItem>
+                        <SelectItem value="production">production</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="LIVE">LIVE</SelectItem>
+                        <SelectItem value="OFFLINE">OFFLINE</SelectItem>
+                        <SelectItem value="MAINTENANCE">MAINTENANCE</SelectItem>
+                        <SelectItem value="PLANNING">PLANNING</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Enter unit description"
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="area"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Area (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., 200 sq meters, 500 sq feet"
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditDialogOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Updating..." : "Update Unit"}
                 </Button>
               </DialogFooter>
             </form>

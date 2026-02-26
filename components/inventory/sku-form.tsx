@@ -62,7 +62,7 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags, is
   const handleSubmit = (data: SkuFormValues) => {
     // Since we're using z.coerce in the schema, the values should already be properly typed
     onSubmit(data)
-    form.reset()
+    // Don't reset here - let parent handle dialog close and reset
   }
 
   return (

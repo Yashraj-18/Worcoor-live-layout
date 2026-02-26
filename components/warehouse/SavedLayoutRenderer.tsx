@@ -365,6 +365,7 @@ const SavedLayoutRenderer = ({
                     isHighlighted={highlightedKeySet.has(itemKey)}
                     highlightedCompartments={highlightedCompartmentsMap[itemKey] || null}
                     locationTagsMap={locationTagsMap}
+                    hideNonMatchingCompartments={hasActiveFilters}
                   />
                 </div>
               );

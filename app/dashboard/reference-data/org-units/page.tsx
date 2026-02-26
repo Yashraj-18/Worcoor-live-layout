@@ -151,10 +151,10 @@ export default function OrgUnitsPage() {
   // Filter units based on search and filters
   const filteredUnits = orgUnits.filter((unit) => {
     const search = searchTerm.toLowerCase()
+    const unitId = (unit.unitId ?? "").toLowerCase()
     const unitName = unit.unitName.toLowerCase()
-    const unitDescription = (unit.description ?? "").toLowerCase()
 
-    const matchesSearch = unitName.includes(search) || unitDescription.includes(search)
+    const matchesSearch = unitId.includes(search) || unitName.includes(search)
 
     const matchesType = filterType === "all" || unit.unitType === filterType
     const matchesStatus = filterStatus === "all" || unit.status === filterStatus
@@ -175,8 +175,11 @@ export default function OrgUnitsPage() {
         description: `${created.unitName} has been added successfully.${created.area ? ` Area: ${created.area}` : ''}`,
       })
     } catch (error: any) {
-      const message = error?.response?.data?.error || "Failed to create organizational unit."
-      toast({ title: "Error", description: message, variant: "destructive" })
+      if (error?.response?.status === 409) {
+        form.setError("unitId", { type: "manual", message: error.response.data.error })
+      } else {
+        toast({ title: "Error", description: error?.response?.data?.error || "Failed to create organizational unit.", variant: "destructive" })
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -199,8 +202,11 @@ export default function OrgUnitsPage() {
         description: `${updated.unitName} has been updated successfully.${updated.area ? ` Area: ${updated.area}` : ''}`,
       })
     } catch (error: any) {
-      const message = error?.response?.data?.error || "Failed to update organizational unit."
-      toast({ title: "Error", description: message, variant: "destructive" })
+      if (error?.response?.status === 409) {
+        form.setError("unitId", { type: "manual", message: error.response.data.error })
+      } else {
+        toast({ title: "Error", description: error?.response?.data?.error || "Failed to update organizational unit.", variant: "destructive" })
+      }
     } finally {
       setIsSubmitting(false)
     }

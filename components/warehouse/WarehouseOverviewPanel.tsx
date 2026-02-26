@@ -134,7 +134,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
           totalAssets: stats.totalAssets,
         });
       }
-      
+
       setLocationTags(tags);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
@@ -396,14 +396,6 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
       ? Math.round(Math.min(totalUsed, totalMax) / totalMax * 100)
       : 0;
 
-    // ── Location tag utilization: components with a locationTagId / total components ────
-    const taggedComponents = items.filter((item: any) =>
-      item.locationTagId != null && String(item.locationTagId).trim() !== ''
-    ).length;
-    const locationTagUtilization = items.length > 0
-      ? Math.round((taggedComponents / items.length) * 100)
-      : 0;
-
     return {
       totalLocations: uniqueLocationTags.size,
       totalSkus: allSkus.size,
@@ -414,8 +406,6 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
       emptyShelves,
       newlyAdded,
       slotFillRate,
-      locationTagUtilization,
-      taggedComponents,
       totalMax,
       totalUsed,
     };
@@ -649,7 +639,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
                   stroke="#f59e0b"
                   strokeWidth="12"
                   strokeDasharray={`${2 * Math.PI * 50}`}
-                  strokeDashoffset={`${2 * Math.PI * 50 * (1 - (displayStats.locationTagUtilization || 0) / 100)}`}
+                  strokeDashoffset={`${2 * Math.PI * 50 * (1 - (locationTags.length > 0 ? locationTags.filter(t => t.currentItems > 0).length / locationTags.length : 0))}`}
                   style={{ transition: 'stroke-dashoffset 0.5s ease' }}
                 />
               </svg>
@@ -663,11 +653,11 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
                 fontWeight: 'bold',
                 color: '#f59e0b'
               }}>
-                {displayStats.locationTagUtilization}%
+                {locationTags.length > 0 ? Math.round((locationTags.filter(t => t.currentItems > 0).length / locationTags.length) * 100) : 0}%
               </div>
             </div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.5rem' }}>
-              {displayStats.taggedComponents ?? 0} of {displayStats.totalComponents ?? 0} components tagged
+              {locationTags.filter(t => t.currentItems > 0).length} of {locationTags.length} tags in use
             </div>
           </div>
 

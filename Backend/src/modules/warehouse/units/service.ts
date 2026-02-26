@@ -24,9 +24,18 @@ export class UnitsService {
 
   async create(request: FastifyRequest<{ Body: CreateUnitInput }>, reply: FastifyReply) {
     const payload = request.body;
+
+    if (payload.unitId) {
+      const existing = await this.repository.findByUnitId(payload.unitId, request.user.organizationId);
+      if (existing) {
+        return reply.code(409).send({ error: `A unit with ID "${payload.unitId}" already exists.` });
+      }
+    }
+
     const unit = await this.repository.create({
       ...payload,
       description: payload.description ?? null,
+      area: payload.area ?? null,
       organizationId: request.user.organizationId,
     });
 
@@ -38,6 +47,14 @@ export class UnitsService {
     reply: FastifyReply,
   ) {
     const { unitId } = request.params;
+
+    if (request.body.unitId) {
+      const existing = await this.repository.findByUnitId(request.body.unitId, request.user.organizationId);
+      if (existing && existing.id !== unitId) {
+        return reply.code(409).send({ error: `A unit with ID "${request.body.unitId}" already exists.` });
+      }
+    }
+
     const updated = await this.repository.update(unitId, request.user.organizationId, request.body);
 
     if (!updated) {

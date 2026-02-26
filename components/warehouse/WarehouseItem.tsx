@@ -99,7 +99,8 @@ const WarehouseItem = ({
   stackMode, 
   isReadOnly,
   isHighlighted = false,
-  highlightedCompartments
+  highlightedCompartments,
+  locationTagsMap = {}
 }: any) => {
   const [hoverTooltip, setHoverTooltip] = useState<any>(null);
   const [hoveredCompartment, setHoveredCompartment] = useState<any>(null);
@@ -542,7 +543,22 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           // Use status-based border colors for storage racks
           // Determine capacity status based on location tags and SKU assignments
           const hasLocationTags = Boolean(compartmentData?.locationId || compartmentData?.uniqueId || compartmentData?.primaryLocationId || (compartmentData?.locationIds && compartmentData.locationIds.length > 0));
-          const hasSkusAssigned = Boolean(compartmentData?.sku || compartmentData?.skuId || compartmentData?.primarySku);
+          
+          // Check if SKUs are assigned to the location tag (from database)
+          // Look up the specific location tag for this compartment
+          const compartmentLocationId = compartmentData?.locationId || compartmentData?.primaryLocationId;
+          const compartmentLocationTag = compartmentLocationId ? locationTagsMap[compartmentLocationId] : null;
+          
+          const hasSkusAssigned = Boolean(
+            compartmentData?.sku || 
+            compartmentData?.skuId || 
+            compartmentData?.primarySku ||
+            (compartmentLocationTag && compartmentLocationTag.currentItems > 0) ||
+            (compartmentLocationTag && Array.isArray(compartmentLocationTag.skus) && compartmentLocationTag.skus.length > 0) ||
+            (item.locationTag && item.locationTag.currentItems > 0) ||
+            (item.locationTag && Array.isArray(item.locationTag.skus) && item.locationTag.skus.length > 0)
+          );
+          
           const capacityStatus = determineCapacityStatus(hasLocationTags, hasSkusAssigned);
           const borderStyle = isReadOnly
             ? getStorageComponentBorder(hasLocationTags, capacityStatus)

@@ -48,7 +48,8 @@ const SavedLayoutRenderer = ({
   stageBorderRadius = '12px',
   showMetadata = true,
   zoomLevel = 1,
-  onItemClick = null
+  onItemClick = null,
+  locationTagsMap = {}
 }: {
   items: any[];
   metadata?: any;
@@ -69,6 +70,7 @@ const SavedLayoutRenderer = ({
   showMetadata?: boolean;
   zoomLevel?: number;
   onItemClick?: ((item: any, index: number) => void) | null;
+  locationTagsMap?: Record<string, any>;
 }) => {
   const containerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -338,6 +340,7 @@ const SavedLayoutRenderer = ({
                     showLabels={showLabels}
                     isHighlighted={highlightedKeySet.has(itemKey)}
                     highlightedCompartments={highlightedCompartmentsMap[itemKey] || null}
+                    locationTagsMap={locationTagsMap}
                   />
                 </div>
               );

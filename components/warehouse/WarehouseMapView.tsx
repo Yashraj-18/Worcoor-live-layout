@@ -123,6 +123,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   const [availableLocationTags, setAvailableLocationTags] = useState<string[]>([]);
   const [availableSkus, setAvailableSkus] = useState<string[]>([]);
   const [availableAssets, setAvailableAssets] = useState<string[]>([]);
+  const [locationTagsData, setLocationTagsData] = useState<any[]>([]);
   const [selectedLocationTag, setSelectedLocationTag] = useState<string>('');
   const [selectedSku, setSelectedSku] = useState<string>('');
   const [selectedAsset, setSelectedAsset] = useState<string>('');
@@ -339,6 +340,9 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         if (name) tagSet.add(name);
       });
       setAvailableLocationTags(Array.from(tagSet));
+      
+      // Store full location tag objects for compartment border color logic
+      setLocationTagsData(tags || []);
 
       // SKUs: deduplicated skuName from backend
       const skuSet = new Set<string>();
@@ -544,6 +548,18 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   const customLayoutUnits = savedLayoutUnits;
   
   const warehouseUnits = [...defaultUnits, ...customLayoutUnits];
+
+  // Create location tags map for compartment border color logic
+  const locationTagsMap = useMemo(() => {
+    const map: Record<string, any> = {};
+    locationTagsData.forEach((tag: any) => {
+      const name = tag.locationTagName || tag.name;
+      if (name) {
+        map[name] = tag;
+      }
+    });
+    return map;
+  }, [locationTagsData]);
 
   const { layoutItemsForSummary, storageSummaries } = useMemo(() => {
     const result: {
@@ -1665,6 +1681,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                           stageBorder="none"
                           stageShadow="none"
                           stageBorderRadius="0px"
+                          locationTagsMap={locationTagsMap}
                           onItemClick={(item: WarehouseItem, index: number) => {
                             console.log('WarehouseMapView - Item clicked:', item);
                             console.log('WarehouseMapView - Item index:', index);

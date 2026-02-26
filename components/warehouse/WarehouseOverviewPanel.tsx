@@ -4,6 +4,7 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { TrendingUp, Package, BarChart3, Wifi, WifiOff } from 'lucide-react';
 import { useWarehouseSocket } from '../../hooks/useWarehouseSocket';
+import { locationTagService, type LocationTag } from '@/src/services/locationTags';
 
 /**
  * WarehouseOverviewPanel - Displays overall warehouse metrics when no component is selected
@@ -43,14 +44,32 @@ const deriveItemCapacity = (item: any): { maxCapacity: number; usedCapacity: num
     if (item.compartmentContents && typeof item.compartmentContents === 'object') {
       Object.values(item.compartmentContents).forEach((content: any) => {
         if (!content) return;
+        
+        // Check if compartment is occupied by any of these indicators
+        const hasContent = 
+          content.sku || 
+          content.primarySku ||
+          content.locationId || 
+          content.primaryLocationId ||
+          content.uniqueId ||
+          (Array.isArray(content.locationIds) && content.locationIds.length > 0) ||
+          (Array.isArray(content.levelLocationMappings) && content.levelLocationMappings.length > 0) ||
+          (Array.isArray(content.levelIds) && content.levelIds.length > 0);
+        
+        if (!hasContent) return;
+        
+        // Calculate quantity based on available data
         let qty = 1;
         if (typeof content.quantity === 'number' && content.quantity > 0) {
           qty = content.quantity;
-        } else if (Array.isArray(content.locationIds)) {
-          qty = Math.max(1, content.locationIds.length);
-        } else if (Array.isArray(content.levelLocationMappings)) {
-          qty = Math.max(1, content.levelLocationMappings.length);
+        } else if (Array.isArray(content.locationIds) && content.locationIds.length > 0) {
+          qty = content.locationIds.length;
+        } else if (Array.isArray(content.levelLocationMappings) && content.levelLocationMappings.length > 0) {
+          qty = content.levelLocationMappings.length;
+        } else if (Array.isArray(content.levelIds) && content.levelIds.length > 0) {
+          qty = content.levelIds.length;
         }
+        
         usedCapacity += qty;
       });
     }
@@ -69,7 +88,7 @@ const deriveItemCapacity = (item: any): { maxCapacity: number; usedCapacity: num
   }
 
   if (!usedCapacity) {
-    const hasId = (item.locationId || item.primaryLocationId || item.sku || '').toString().trim();
+    const hasId = (item.locationId || item.primaryLocationId || item.sku || item.locationTagId || '').toString().trim();
     if (hasId) usedCapacity = 1;
   }
 
@@ -85,23 +104,29 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
     totalAssets: number;
   } | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
+  
+  // Location tags with volumetric data
+  const [locationTags, setLocationTags] = useState<LocationTag[]>([]);
 
-  // Fetch stats from API
+  // Fetch stats and location tags from API
   const fetchStats = useCallback(async () => {
     if (!unitId) return;
     
     setIsLoadingStats(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/units/${unitId}/live-map/stats`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const [statsResponse, tags] = await Promise.all([
+        fetch(`${apiUrl}/api/units/${unitId}/live-map/stats`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }),
+        locationTagService.listByUnit(unitId).catch(() => [] as LocationTag[])
+      ]);
       
-      if (response.ok) {
-        const stats = await response.json();
+      if (statsResponse.ok) {
+        const stats = await statsResponse.json();
         setApiStats({
           totalLocations: stats.totalLocationTags,
           totalSkus: stats.totalSkus,
@@ -109,6 +134,8 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
           totalAssets: stats.totalAssets,
         });
       }
+      
+      setLocationTags(tags);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     } finally {
@@ -148,104 +175,169 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
     const empty = {
       totalLocations: 0,
       totalSkus: 0,
-      totalAssets: 0,
       totalComponents: 0,
       locationTagData: [] as any[],
       totalShelves: 0,
       fullShelves: 0,
       emptyShelves: 0,
       newlyAdded: 0,
-      locationTagUsage: 0,
+      slotFillRate: 0,
+      locationTagUtilization: 0,
+      taggedComponents: 0,
+      totalMax: 0,
+      totalUsed: 0,
     };
 
     if (!layoutData?.items?.length) return empty;
 
     const items = layoutData.items;
-    const allLocationIds = new Set<string>();
+    const uniqueLocationTags = new Set<string>();
     const allSkus = new Set<string>();
 
-    // ── Collect all location IDs and SKUs ──────────────────────────────────
+    // ── Collect unique location tags and SKUs ──────────────────────────────────
     items.forEach((item: any) => {
-      if (item.locationId) allLocationIds.add(item.locationId);
-      if (item.primaryLocationId) allLocationIds.add(item.primaryLocationId);
-      if (Array.isArray(item.locationIds)) item.locationIds.forEach((id: any) => id && allLocationIds.add(id));
-      if (Array.isArray(item.levelLocationMappings)) {
-        item.levelLocationMappings.forEach((m: any) => m?.locationId && allLocationIds.add(m.locationId));
-      }
-      
-      // Extract SKUs from item properties (legacy format)
+      // Collect SKUs from item properties
       if (item.sku) allSkus.add(item.sku);
       if (item.primarySku) allSkus.add(item.primarySku);
       
-      // Extract SKUs from locationTag.skus[] (backend API format)
+      // Collect SKUs from locationTag.skus[]
       if (item.locationTag && Array.isArray(item.locationTag.skus)) {
         item.locationTag.skus.forEach((sku: any) => {
           if (sku.skuName) allSkus.add(sku.skuName);
         });
       }
 
+      // Collect location tags and SKUs from compartment contents
       if (item.compartmentContents && typeof item.compartmentContents === 'object') {
         Object.values(item.compartmentContents).forEach((c: any) => {
           if (!c) return;
-          if (c.locationId) allLocationIds.add(c.locationId);
-          if (Array.isArray(c.locationIds)) c.locationIds.forEach((id: any) => id && allLocationIds.add(id));
-          if (Array.isArray(c.levelLocationMappings)) {
-            c.levelLocationMappings.forEach((m: any) => m?.locationId && allLocationIds.add(m.locationId));
+          
+          // Collect location tags from compartments
+          const compartmentLocationTag = c.locationId || c.primaryLocationId;
+          if (compartmentLocationTag) {
+            uniqueLocationTags.add(String(compartmentLocationTag).trim());
           }
+          
+          // Collect SKUs from compartments
           if (c.sku) allSkus.add(c.sku);
           if (c.primarySku) allSkus.add(c.primarySku);
         });
       }
     });
 
-    // ── Per-location-tag capacity (group items by their primary location tag) ──
-    // Each item with a locationTag (or locationId used as tag) gets its own row.
-    // For items without a tag we aggregate them under a synthetic key.
-    const tagMap = new Map<string, { sku?: string; maxCapacity: number; usedCapacity: number }>();
+    // ── Per-location-tag volumetric capacity (L × B × H from database) ──
+    // Each item with a locationTag gets mapped to its volumetric dimensions from the location tags table.
+    const tagMap = new Map<string, { 
+      locationTagName: string;
+      length: number | null; 
+      breadth: number | null; 
+      height: number | null; 
+      unitOfMeasurement: string | null;
+      capacity: number;
+      usedCapacity: number;
+      hasSku: boolean;
+    }>();
 
-    const addToTag = (tag: string, sku: string | undefined, max: number, used: number) => {
+    const addToTag = (tag: string, tagData: LocationTag | undefined, used: number, hasSku: boolean) => {
       if (!tag) return;
       const existing = tagMap.get(tag);
       if (existing) {
-        existing.maxCapacity += max;
         existing.usedCapacity += used;
-        if (sku && !existing.sku) existing.sku = sku;
+        if (hasSku) existing.hasSku = true; // Set to true if any compartment has SKU
       } else {
-        tagMap.set(tag, { sku, maxCapacity: max, usedCapacity: used });
+        const length = tagData?.length ?? null;
+        const breadth = tagData?.breadth ?? null;
+        const height = tagData?.height ?? null;
+        const capacity = tagData?.capacity ?? 0;
+        const locationTagName = tagData?.locationTagName ?? tag;
+        
+        tagMap.set(tag, { 
+          locationTagName,
+          length,
+          breadth,
+          height,
+          unitOfMeasurement: tagData?.unitOfMeasurement ?? null,
+          capacity,
+          usedCapacity: used,
+          hasSku
+        });
       }
     };
 
     items.forEach((item: any) => {
-      const { maxCapacity, usedCapacity } = deriveItemCapacity(item);
-      // Prefer explicit locationTag, fall back to locationId, then a generic label
-      const tag: string =
-        (item.locationTag || item.locationCode || item.locationId || item.primaryLocationId || '').toString().trim();
-      const sku: string | undefined = (item.sku || item.primarySku || undefined);
-
-      if (tag) {
-        addToTag(tag, sku, maxCapacity, usedCapacity);
-      } else if (Array.isArray(item.locationIds) && item.locationIds.length > 0) {
-        // Distribute capacity evenly across each locationId
-        const perTag = Math.max(1, item.locationIds.length);
-        const maxPer = Math.ceil(maxCapacity / perTag);
-        const usedPer = Math.ceil(usedCapacity / perTag);
-        item.locationIds.forEach((id: any) => {
-          if (id) addToTag(String(id), sku, maxPer, usedPer);
+      // For items with compartmentContents, process each compartment separately
+      if (item.compartmentContents && typeof item.compartmentContents === 'object') {
+        Object.values(item.compartmentContents).forEach((content: any) => {
+          if (!content) return;
+          
+          // Check if compartment has content
+          const hasContent = 
+            content.sku || 
+            content.primarySku ||
+            content.locationId || 
+            content.primaryLocationId ||
+            content.uniqueId ||
+            (Array.isArray(content.locationIds) && content.locationIds.length > 0) ||
+            (Array.isArray(content.levelLocationMappings) && content.levelLocationMappings.length > 0);
+          
+          if (!hasContent) return;
+          
+          // Extract location tag from compartment content
+          const compartmentTagName: string = (content.locationId || content.primaryLocationId || '').toString().trim();
+          
+          if (compartmentTagName) {
+            // Find the corresponding location tag data from the database
+            const tagData = locationTags.find(t => 
+              t.locationTagName === compartmentTagName || 
+              t.id === compartmentTagName
+            );
+            
+            // Check if the location tag from database has SKUs (currentItems > 0 means SKUs are assigned)
+            const hasSku = tagData ? (tagData.currentItems > 0) : false;
+            
+            // Calculate quantity for this compartment
+            let qty = 1;
+            if (typeof content.quantity === 'number' && content.quantity > 0) {
+              qty = content.quantity;
+            } else if (Array.isArray(content.locationIds) && content.locationIds.length > 0) {
+              qty = content.locationIds.length;
+            } else if (Array.isArray(content.levelLocationMappings) && content.levelLocationMappings.length > 0) {
+              qty = content.levelLocationMappings.length;
+            }
+            
+            addToTag(compartmentTagName, tagData, qty, hasSku);
+          }
         });
       } else {
-        // No tag at all — skip from per-location view but still count in totals
+        // For non-compartmentalized items, process as before
+        const { usedCapacity } = deriveItemCapacity(item);
+        const tagName: string =
+          (item.locationTag?.locationTagName || item.locationTag?.name || item.locationTagId || item.locationCode || item.locationId || item.primaryLocationId || '').toString().trim();
+        
+        if (tagName) {
+          const tagData = locationTags.find(t => 
+            t.locationTagName === tagName || 
+            t.id === item.locationTagId
+          );
+          
+          // Check if the location tag from database has SKUs (currentItems > 0 means SKUs are assigned)
+          const hasSku = tagData ? (tagData.currentItems > 0) : false;
+          
+          addToTag(tagName, tagData, usedCapacity, hasSku);
+        }
       }
     });
 
     const locationTagData = Array.from(tagMap.entries()).map(([locationId, data]) => {
-      const cap = Math.max(1, data.maxCapacity);
-      const used = Math.min(cap, data.usedCapacity);
       return {
-        locationId,
-        sku: data.sku,
-        capacity: cap,
-        usedCapacity: used,
-        utilizationPercentage: Math.round((used / cap) * 100),
+        locationId: data.locationTagName,
+        length: data.length,
+        breadth: data.breadth,
+        height: data.height,
+        unitOfMeasurement: data.unitOfMeasurement,
+        capacity: data.capacity,
+        usedCapacity: data.usedCapacity,
+        utilizationPercentage: data.hasSku ? 100 : 0,
       };
     });
 
@@ -313,9 +405,8 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
       : 0;
 
     return {
-      totalLocations: allLocationIds.size,
+      totalLocations: uniqueLocationTags.size,
       totalSkus: allSkus.size,
-      totalAssets: items.length,
       totalComponents: items.length,
       locationTagData,
       totalShelves,
@@ -330,19 +421,8 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
     };
   }, [layoutData]);
 
-  // Merge API stats with calculated stats (API takes precedence for counts)
-  const displayStats = useMemo(() => {
-    if (apiStats && unitId) {
-      return {
-        ...overviewData,
-        totalLocations: apiStats.totalLocations,
-        totalSkus: apiStats.totalSkus,
-        totalAssets: apiStats.totalAssets,
-        totalComponents: apiStats.totalComponents,
-      };
-    }
-    return overviewData;
-  }, [overviewData, apiStats, unitId]);
+  // Use calculated stats (API stats are shown separately with live indicator)
+  const displayStats = overviewData;
 
   // Same styling as LocationDetailsPanel
   const panelStyle: React.CSSProperties = {
@@ -434,49 +514,33 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
           </h4>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <div>
-              <div style={labelStyle}>Total Locations</div>
-              <div style={valueStyle}>
-                {displayStats.totalLocations}
-                {apiStats && unitId && (
-                  <span style={{ fontSize: '0.7rem', color: '#22c55e', marginLeft: '0.25rem' }}>●</span>
-                )}
-              </div>
+              <div style={labelStyle}>Location Tags Used</div>
+              <div style={valueStyle}>{displayStats.totalLocations}</div>
             </div>
             <div>
               <div style={labelStyle}>Total SKUs</div>
-              <div style={valueStyle}>
-                {displayStats.totalSkus}
-                {apiStats && unitId && (
-                  <span style={{ fontSize: '0.7rem', color: '#22c55e', marginLeft: '0.25rem' }}>●</span>
-                )}
-              </div>
+              <div style={valueStyle}>{displayStats.totalSkus}</div>
             </div>
             <div>
-              <div style={labelStyle}>Total Assets</div>
-              <div style={valueStyle}>
-                {displayStats.totalAssets}
-                {apiStats && unitId && (
-                  <span style={{ fontSize: '0.7rem', color: '#22c55e', marginLeft: '0.25rem' }}>●</span>
-                )}
-              </div>
+              <div style={labelStyle}>Total Components</div>
+              <div style={valueStyle}>{displayStats.totalComponents}</div>
             </div>
-            <div>
-              <div style={labelStyle}>Components</div>
-              <div style={valueStyle}>
-                {displayStats.totalComponents}
-                {apiStats && unitId && (
-                  <span style={{ fontSize: '0.7rem', color: '#22c55e', marginLeft: '0.25rem' }}>●</span>
-                )}
+            {apiStats && unitId && (
+              <div>
+                <div style={labelStyle}>Live Data</div>
+                <div style={valueStyle}>
+                  <span style={{ fontSize: '0.85rem', color: '#22c55e' }}>● Connected</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Capacity & Utilization Section */}
+        {/* Volumetric Space Utilization Section */}
         <div style={sectionStyle}>
           <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <TrendingUp size={16} />
-            Capacity & Utilization by Location
+            Volumetric Space Utilization
           </h4>
           
           {displayStats.locationTagData && displayStats.locationTagData.length > 0 ? (
@@ -494,9 +558,9 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
                       <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#e2e8f0' }}>
                         {location.locationId}
                       </div>
-                      {location.sku && (
+                      {(location.length !== null && location.breadth !== null && location.height !== null) && (
                         <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                          SKU: {location.sku}
+                          {location.length} × {location.breadth} × {location.height} {location.unitOfMeasurement || ''}
                         </div>
                       )}
                     </div>
@@ -533,7 +597,9 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.75rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#94a3b8' }}>Capacity:</span>
-                      <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{location.capacity}</span>
+                      <span style={{ color: '#e2e8f0', fontWeight: '600' }}>
+                        {location.capacity}
+                      </span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#94a3b8' }}>Used:</span>
@@ -623,7 +689,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
           </div>
 
           {/* Shelf Statistics */}
-          <div style={{ marginBottom: '1rem' }}>
+          <div style={{ marginTop: '1rem' }}>
             <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.5rem', fontWeight: '500' }}>
               Shelf Statistics
             </div>
@@ -647,6 +713,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );

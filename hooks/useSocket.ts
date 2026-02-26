@@ -8,7 +8,7 @@ const getSocket = (): Socket => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api/', '') ?? '';
     globalSocket = io(apiUrl, {
       withCredentials: true,
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       autoConnect: true,
     });
 

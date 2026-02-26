@@ -24,7 +24,12 @@ export function requireUnitAccess(
 
       await handler(socket, data);
     } catch (error) {
-      socket.emit('error', { message: 'Internal server error' });
+      console.error('requireUnitAccess error:', error);
+      try {
+        socket.emit('error', { message: 'Internal server error' });
+      } catch (emitError) {
+        console.error('Failed to emit error to socket:', emitError);
+      }
     }
   };
 }

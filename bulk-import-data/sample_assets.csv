@@ -1,0 +1,21 @@
+asset_id,asset_name,asset_type,location_tag_name,description
+FORK-001,Toyota 8FBN25 3-Wheel Electric Forklift,forklift,,5000 lb capacity electric forklift
+FORK-002,Crown FC 5200 Series Forklift,forklift,,6000 lb capacity sit-down counterbalanced
+FORK-003,Hyster H50FT LPG Forklift,forklift,,5000 lb propane counterbalanced forklift
+FORK-004,Raymond 8410 Reach Truck,forklift,,3500 lb narrow-aisle electric reach truck
+PJACK-001,Crown PE 4500 Electric Pallet Jack,pallet_jack,,4500 lb electric walkie pallet truck
+PJACK-002,Yale MPW050 Electric Pallet Jack,pallet_jack,,5000 lb walkie rider pallet truck
+PJACK-003,Uline Manual Pallet Jack 5500lb,pallet_jack,,5500 lb manual hydraulic pallet jack
+PJACK-004,Crown WP 3000 Walkie Pallet Truck,pallet_jack,,3000 lb electric walkie pallet truck
+SCAN-001,Zebra MC9300 Mobile Computer,scanner,,Rugged handheld barcode scanner with 4G
+SCAN-002,Honeywell CT47 Mobile Computer,scanner,,Android enterprise handheld scanner
+SCAN-003,Zebra DS3678 Cordless Scanner,scanner,,1D/2D presentation area imager
+SCAN-004,Datalogic PowerScan PM9600,scanner,,Industrial omnidirectional laser scanner
+SCAN-005,Zebra DS8178 Cordless Scanner,scanner,,General purpose handheld imager
+PRINTER-001,Zebra ZT411 Industrial Label Printer,label_printer,,4-inch industrial direct thermal printer
+PRINTER-002,Zebra ZD621 Desktop Label Printer,label_printer,,4-inch desktop thermal transfer printer
+CONVEYOR-001,Hytrol Model TA Belt Conveyor 20ft,conveyor,,20ft powered belt conveyor 24-inch wide
+CONVEYOR-002,Ashland Gravity Roller Conveyor 10ft,conveyor,,10ft gravity roller conveyor section
+SCALE-001,Mettler Toledo IND780 Floor Scale,weighing_scale,,5000 kg capacity stainless steel floor scale
+SCALE-002,Rice Lake Roughdeck Floor Scale,weighing_scale,,10000 lb low-profile floor scale
+DOCK-001,Rite-Hite Dok-Lok Vehicle Restraint,dock_equipment,,Automatic trailer restraint system

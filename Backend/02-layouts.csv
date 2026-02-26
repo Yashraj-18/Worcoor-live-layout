@@ -1,0 +1,39 @@
+unit_name,layout_name,description
+Central Distribution Center,Ground Floor,Main warehouse floor with receiving and shipping docks
+Central Distribution Center,Mezzanine Level,Upper level for small parts and office space
+Central Distribution Center,Basement Storage,Climate-controlled basement storage area
+East Coast Warehouse,Main Floor,Primary storage and picking area
+East Coast Warehouse,Upper Deck,Overflow storage and slow-moving inventory
+West Coast Fulfillment,Level 1,High-velocity picking and packing zone
+West Coast Fulfillment,Level 2,Bulk storage and reserve inventory
+West Coast Fulfillment,Receiving Dock,Inbound receiving and quality control area
+Midwest Storage Facility,Floor A,General merchandise storage
+Midwest Storage Facility,Floor B,Hazmat and special handling area
+Southern Distribution Hub,Zone 1,Fast-moving consumer goods
+Southern Distribution Hub,Zone 2,Seasonal and promotional items
+Southern Distribution Hub,Zone 3,Returns and damaged goods processing
+Texas Logistics Center,North Wing,Automotive parts and accessories
+Texas Logistics Center,South Wing,Electronics and appliances
+Texas Logistics Center,Central Bay,Cross-dock and staging area
+Florida Regional Warehouse,Main Warehouse,General storage and distribution
+Florida Regional Warehouse,Cold Storage,Refrigerated and frozen goods
+Pacific Northwest Depot,Warehouse Floor,Primary storage area
+Pacific Northwest Depot,Outdoor Yard,Large equipment and materials
+Mountain Region Storage,Indoor Storage,Climate-controlled inventory
+Mountain Region Storage,Outdoor Storage,Weather-resistant goods
+New England Distribution,First Floor,Receiving and put-away operations
+New England Distribution,Second Floor,Order picking and packing
+Manufacturing Plant A,Raw Materials,Incoming materials storage
+Manufacturing Plant A,Work in Progress,Production floor inventory
+Manufacturing Plant A,Finished Goods,Completed products ready for shipment
+Manufacturing Plant B,Component Storage,Parts and components warehouse
+Manufacturing Plant B,Assembly Floor,Active production area
+Cold Storage Facility,Freezer Zone,Sub-zero temperature storage
+Cold Storage Facility,Refrigerated Zone,Chilled products storage
+Cold Storage Facility,Dry Storage,Ambient temperature goods
+Returns Processing Center,Intake Area,Returns receiving and sorting
+Returns Processing Center,Refurbishment,Product repair and repackaging
+Returns Processing Center,Liquidation,Items for resale or disposal
+Cross-Dock Terminal,Inbound Dock,Receiving from suppliers
+Cross-Dock Terminal,Outbound Dock,Shipping to customers
+Cross-Dock Terminal,Staging Area,Temporary holding and sorting

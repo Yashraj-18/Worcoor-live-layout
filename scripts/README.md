@@ -1,4 +1,6 @@
-# Multi-Tenant Test Suite
+# Scripts
+
+## Multi-Tenant Test Suite
 
 Automated regression tests validating multi-tenant isolation for the WorCoor platform.
 

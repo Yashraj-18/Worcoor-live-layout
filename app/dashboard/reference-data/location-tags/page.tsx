@@ -1,6 +1,6 @@
 "use client"
 
-import { Tag, Plus, Search, MoreVertical, Pencil, Trash2, Loader2 } from "lucide-react"
+import { Tag, Plus, Search, Edit, Trash2, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,12 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   Dialog,
@@ -246,12 +240,11 @@ export default function LocationTagsPage() {
     try {
       const created = await locationTagService.create(mapFormValuesToPayload(data))
       setLocationTags((prev) => [...prev, created])
-      handleDialogClose()
-
       toast({
         title: "Location tag created",
         description: `${created.locationTagName} has been added successfully.`,
       })
+      setIsAddDialogOpen(false)
     } catch (error) {
       console.error("Error creating location tag:", error)
       setErrorMessage("Failed to create location tag.")
@@ -269,14 +262,12 @@ export default function LocationTagsPage() {
         editingTag.id,
         mapFormValuesToPayload(data),
       )
-
       setLocationTags((prev) => prev.map((tag) => (tag.id === updated.id ? updated : tag)))
-      handleDialogClose()
-
       toast({
         title: "Location tag updated",
         description: `${updated.locationTagName} has been updated successfully.`,
       })
+      setIsEditDialogOpen(false)
     } catch (error) {
       console.error("Error updating location tag:", error)
       setErrorMessage("Failed to update location tag.")
@@ -297,9 +288,22 @@ export default function LocationTagsPage() {
         description: `${deleteTag.locationTagName} has been deleted successfully.`,
         variant: "destructive",
       })
-    } catch (error) {
-      console.error("Error deleting location tag:", error)
-      setErrorMessage("Failed to delete location tag.")
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.details || error?.response?.data?.error || "Failed to delete location tag."
+      const statusCode = error?.response?.status
+
+      console.log("Delete failed:", {
+        status: statusCode,
+        error: error?.response?.data?.error,
+        details: error?.response?.data?.details,
+        message: errorMessage
+      })
+
+      toast({
+        title: "Cannot delete location tag",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setDeleteTag(null)
     }
@@ -418,41 +422,38 @@ export default function LocationTagsPage() {
                   <TableRow key={`${tag.locationTagName}-${tag.unitId || 'no-unit'}-${idx}`}>
                     <TableCell className="font-medium text-foreground">{tag.locationTagName}</TableCell>
                     <TableCell className="text-foreground">
-                      {tag.length && tag.breadth && tag.height && tag.unitOfMeasurement 
+                      {tag.length && tag.breadth && tag.height && tag.unitOfMeasurement
                         ? `${tag.length}×${tag.breadth}×${tag.height} ${tag.unitOfMeasurement}`
                         : "Not specified"
                       }
                     </TableCell>
                     <TableCell className="text-foreground font-medium">
-                      {tag.capacity && tag.unitOfMeasurement 
+                      {tag.capacity && tag.unitOfMeasurement
                         ? `${tag.capacity.toFixed(3)} cubic ${tag.unitOfMeasurement}`
                         : "Not specified"
                       }
                     </TableCell>
                     <TableCell className="text-foreground">{tag.currentItems}</TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted">
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">Actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEditClick(tag)} className="cursor-pointer" key="edit">
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-red-600 cursor-pointer hover:bg-red-50"
-                            onClick={() => handleDeleteClick(tag)}
-                            key="delete"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditClick(tag)}
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteClick(tag)}
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -471,11 +472,18 @@ export default function LocationTagsPage() {
       </Card>
 
       {/* Add/Edit Dialog */}
-      <Dialog open={isAddDialogOpen || isEditDialogOpen} onOpenChange={(open) => {
-        if (!open) {
-          handleDialogClose()
-        }
-      }}>
+      <Dialog
+        open={isAddDialogOpen || isEditDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsAddDialogOpen(false)
+            setIsEditDialogOpen(false)
+            setEditingTag(null)
+            form.reset()
+            resetDimensionInputs()
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>
@@ -527,10 +535,10 @@ export default function LocationTagsPage() {
                   <FormItem>
                     <FormLabel className="text-foreground font-medium">Location Tag</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Enter location tag" 
+                      <Input
+                        placeholder="Enter location tag"
                         className="text-foreground placeholder:text-muted-foreground border-border focus:border-primary"
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -544,7 +552,7 @@ export default function LocationTagsPage() {
                   <span className="text-sm font-medium text-foreground">Capacity (Optional)</span>
                   <span className="text-xs text-muted-foreground">L × B × H = Capacity</span>
                 </div>
-                
+
                 <div className="grid grid-cols-4 gap-4">
                   {dimensionFieldNames.map((fieldName) => (
                     <FormField
@@ -580,7 +588,7 @@ export default function LocationTagsPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Unit</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger className="text-foreground border-border focus:border-primary">
                               <SelectValue placeholder="Select unit" />
@@ -610,9 +618,9 @@ export default function LocationTagsPage() {
                         const height = form.watch("height") || 0;
                         const unit = form.watch("unitOfMeasurement");
                         const capacity = parseFloat((length * breadth * height).toFixed(3));
-                        return capacity > 0 && unit 
-                          ? `${capacity.toFixed(3)} cubic ${unit}` 
-                          : capacity > 0 
+                        return capacity > 0 && unit
+                          ? `${capacity.toFixed(3)} cubic ${unit}`
+                          : capacity > 0
                             ? `${capacity.toFixed(3)} cubic units`
                             : "Enter all dimensions and unit";
                       })()}
@@ -630,7 +638,7 @@ export default function LocationTagsPage() {
                   <div>
                     <Label className="text-sm font-medium text-foreground">Capacity</Label>
                     <p className="text-sm text-foreground font-medium mt-1">
-                      {editingTag.capacity && editingTag.unitOfMeasurement 
+                      {editingTag.capacity && editingTag.unitOfMeasurement
                         ? `${editingTag.capacity.toFixed(3)} cubic ${editingTag.unitOfMeasurement}`
                         : "Not specified"
                       }
@@ -646,9 +654,8 @@ export default function LocationTagsPage() {
                   onClick={() => {
                     setIsAddDialogOpen(false)
                     setIsEditDialogOpen(false)
-                    setEditingTag(null)
-                    form.reset()
                   }}
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </Button>

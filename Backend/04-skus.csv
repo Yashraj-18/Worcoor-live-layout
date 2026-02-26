@@ -1,0 +1,100 @@
+sku_code,sku_name,sku_category,sku_unit,quantity,effective_date,expiry_date,location_tag_name
+SKU-ELEC-001,Samsung 55 4K Smart TV,finished_good,pieces,45,2026-01-15,2027-01-15,RACK-A-001
+SKU-ELEC-002,LG 65 OLED TV,finished_good,pieces,28,2026-01-15,2027-01-15,RACK-A-001
+SKU-ELEC-003,Sony Wireless Headphones,finished_good,pieces,150,2026-01-20,2027-01-20,RACK-A-002
+SKU-ELEC-004,Apple AirPods Pro,finished_good,pieces,200,2026-01-20,2027-01-20,RACK-A-002
+SKU-ELEC-005,Ninja Air Fryer,finished_good,pieces,85,2026-01-22,2027-01-22,RACK-A-003
+SKU-ELEC-006,KitchenAid Stand Mixer,finished_good,pieces,62,2026-01-22,2027-01-22,RACK-A-003
+SKU-SPORT-001,Wilson Basketball,finished_good,pieces,120,2026-01-25,2027-01-25,RACK-B-001
+SKU-SPORT-002,Nike Running Shoes,finished_good,pieces,180,2026-01-25,2027-01-25,RACK-B-001
+SKU-SPORT-003,Adidas Soccer Ball,finished_good,pieces,95,2026-01-25,2027-01-25,RACK-B-001
+SKU-OUTDOOR-001,Coleman Camping Tent,finished_good,pieces,55,2026-01-28,2027-01-28,RACK-B-002
+SKU-OUTDOOR-002,Yeti Cooler 45qt,finished_good,pieces,40,2026-01-28,2027-01-28,RACK-B-002
+SKU-OUTDOOR-003,Weber Gas Grill,finished_good,pieces,32,2026-01-28,2027-01-28,RACK-B-002
+SKU-APRL-001,Levis 501 Jeans,finished_good,pieces,250,2026-02-01,2027-02-01,ZONE-A-R01
+SKU-APRL-002,Nike T-Shirt,finished_good,pieces,400,2026-02-01,2027-02-01,ZONE-A-R01
+SKU-APRL-003,North Face Jacket,finished_good,pieces,110,2026-02-01,2027-02-01,ZONE-A-R01
+SKU-FOOT-001,Adidas Ultraboost,finished_good,pieces,160,2026-02-03,2027-02-03,ZONE-A-R02
+SKU-FOOT-002,New Balance 990,finished_good,pieces,140,2026-02-03,2027-02-03,ZONE-A-R02
+SKU-FOOT-003,Converse Chuck Taylor,finished_good,pieces,220,2026-02-03,2027-02-03,ZONE-A-R02
+SKU-HOME-001,Dyson Vacuum V15,finished_good,pieces,75,2026-02-05,2027-02-05,ZONE-B-R01
+SKU-HOME-002,iRobot Roomba,finished_good,pieces,68,2026-02-05,2027-02-05,ZONE-B-R01
+SKU-HOME-003,Cuisinart Coffee Maker,finished_good,pieces,95,2026-02-05,2027-02-05,ZONE-B-R01
+SKU-FURN-001,IKEA Office Chair,finished_good,pieces,50,2026-02-08,2027-02-08,ZONE-B-R02
+SKU-FURN-002,Standing Desk,finished_good,pieces,35,2026-02-08,2027-02-08,ZONE-B-R02
+SKU-FURN-003,Bookshelf 5-Tier,finished_good,pieces,60,2026-02-08,2027-02-08,ZONE-B-R02
+SKU-GARDEN-001,Scotts Lawn Fertilizer,finished_good,boxes,200,2026-02-10,2026-12-10,ZONE-C-R01
+SKU-GARDEN-002,Miracle-Gro Potting Soil,finished_good,boxes,180,2026-02-10,2027-02-10,ZONE-C-R01
+SKU-GARDEN-003,Garden Hose 50ft,finished_good,pieces,90,2026-02-10,2027-02-10,ZONE-C-R01
+SKU-TOOL-001,DeWalt Cordless Drill,finished_good,pieces,85,2026-02-12,2027-02-12,ZONE-C-R02
+SKU-TOOL-002,Milwaukee Impact Driver,finished_good,pieces,72,2026-02-12,2027-02-12,ZONE-C-R02
+SKU-TOOL-003,Craftsman Tool Set 200pc,finished_good,pieces,45,2026-02-12,2027-02-12,ZONE-C-R02
+SKU-BOOK-001,The Great Gatsby,finished_good,pieces,300,2026-02-15,2028-02-15,SHELF-01-A
+SKU-BOOK-002,1984 by George Orwell,finished_good,pieces,280,2026-02-15,2028-02-15,SHELF-01-A
+SKU-BOOK-003,Harry Potter Box Set,finished_good,pieces,150,2026-02-15,2028-02-15,SHELF-01-A
+SKU-MEDIA-001,PlayStation 5,finished_good,pieces,55,2026-02-18,2027-02-18,SHELF-01-B
+SKU-MEDIA-002,Xbox Series X,finished_good,pieces,48,2026-02-18,2027-02-18,SHELF-01-B
+SKU-MEDIA-003,Nintendo Switch OLED,finished_good,pieces,92,2026-02-18,2027-02-18,SHELF-01-B
+SKU-TOY-001,LEGO Star Wars Set,finished_good,pieces,120,2026-02-20,2027-02-20,SHELF-02-A
+SKU-TOY-002,Barbie Dreamhouse,finished_good,pieces,65,2026-02-20,2027-02-20,SHELF-02-A
+SKU-TOY-003,Hot Wheels Track Set,finished_good,pieces,110,2026-02-20,2027-02-20,SHELF-02-A
+SKU-GAME-001,Monopoly Board Game,finished_good,pieces,140,2026-02-22,2027-02-22,SHELF-02-B
+SKU-GAME-002,Settlers of Catan,finished_good,pieces,95,2026-02-22,2027-02-22,SHELF-02-B
+SKU-GAME-003,Chess Set Wooden,finished_good,pieces,80,2026-02-22,2027-02-22,SHELF-02-B
+SKU-AUTO-001,Mobil 1 Synthetic Oil 5W-30,raw_material,liters,500,2026-01-10,2027-01-10,AUTO-RACK-01
+SKU-AUTO-002,Bosch Spark Plugs,raw_material,pieces,800,2026-01-10,2028-01-10,AUTO-RACK-01
+SKU-AUTO-003,ACDelco Battery,finished_good,pieces,120,2026-01-12,2027-01-12,AUTO-RACK-02
+SKU-AUTO-004,Michelin Tire 225/65R17,finished_good,pieces,200,2026-01-12,2028-01-12,AUTO-RACK-02
+SKU-AUTO-005,Brake Pads Ceramic,raw_material,pieces,350,2026-01-15,2027-01-15,AUTO-RACK-03
+SKU-AUTO-006,Air Filter HEPA,raw_material,pieces,400,2026-01-15,2027-01-15,AUTO-RACK-03
+SKU-PAINT-001,Sherwin Williams Interior Paint White,raw_material,liters,300,2026-01-20,2027-01-20,ROW-2-BAY-A
+SKU-PAINT-002,Benjamin Moore Exterior Paint Gray,raw_material,liters,250,2026-01-20,2027-01-20,ROW-2-BAY-A
+SKU-PAINT-003,Paint Roller Set,finished_good,pieces,180,2026-01-22,2027-01-22,ROW-2-BAY-A
+SKU-BUILD-001,2x4 Lumber 8ft,raw_material,pieces,500,2026-01-25,2027-01-25,LUMBER-01
+SKU-BUILD-002,Plywood Sheet 4x8,raw_material,pieces,300,2026-01-25,2027-01-25,LUMBER-01
+SKU-BUILD-003,Drywall Sheet 4x8,raw_material,pieces,400,2026-01-28,2027-01-28,LUMBER-02
+SKU-BUILD-004,Concrete Mix 80lb,raw_material,boxes,250,2026-01-28,2027-01-28,ROW-2-BAY-B
+SKU-FOOD-001,Coca-Cola 12pk,finished_good,boxes,600,2026-02-01,2026-08-01,PICK-FACE-A1
+SKU-FOOD-002,Pepsi 12pk,finished_good,boxes,550,2026-02-01,2026-08-01,PICK-FACE-A1
+SKU-FOOD-003,Lays Potato Chips,finished_good,boxes,400,2026-02-03,2026-06-03,PICK-FACE-A2
+SKU-FOOD-004,Doritos Nacho Cheese,finished_good,boxes,380,2026-02-03,2026-06-03,PICK-FACE-A2
+SKU-FOOD-005,Campbells Tomato Soup,finished_good,boxes,500,2026-02-05,2027-02-05,PICK-FACE-B1
+SKU-FOOD-006,Progresso Chicken Noodle,finished_good,boxes,450,2026-02-05,2027-02-05,PICK-FACE-B1
+SKU-FOOD-007,Rice 20lb Bag,raw_material,boxes,300,2026-02-08,2027-02-08,PICK-FACE-B2
+SKU-FOOD-008,Pasta Spaghetti 1lb,raw_material,boxes,400,2026-02-08,2027-02-08,PICK-FACE-B2
+SKU-FROZEN-001,Ben & Jerrys Ice Cream,finished_good,boxes,200,2026-02-10,2026-08-10,FREEZER-R01
+SKU-FROZEN-002,Frozen Pizza DiGiorno,finished_good,boxes,250,2026-02-10,2026-08-10,FREEZER-R01
+SKU-FROZEN-003,Frozen Vegetables Mixed,raw_material,boxes,300,2026-02-12,2026-12-12,FREEZER-R02
+SKU-FROZEN-004,Chicken Breast Frozen,raw_material,kg,400,2026-02-12,2026-09-12,FREEZER-R03
+SKU-DAIRY-001,Milk Whole Gallon,finished_good,liters,180,2026-02-15,2026-03-15,COOLER-R01
+SKU-DAIRY-002,Cheese Cheddar Block,finished_good,kg,150,2026-02-15,2026-04-15,COOLER-R01
+SKU-DAIRY-003,Yogurt Greek 32oz,finished_good,pieces,200,2026-02-18,2026-03-18,COOLER-R02
+SKU-DAIRY-004,Butter Unsalted 1lb,finished_good,kg,120,2026-02-18,2026-05-18,COOLER-R02
+SKU-ELEC-007,Dell Laptop 15 inch,finished_good,pieces,80,2026-02-20,2027-02-20,ELEC-SHELF-01
+SKU-ELEC-008,HP Desktop Computer,finished_good,pieces,65,2026-02-20,2027-02-20,ELEC-SHELF-01
+SKU-ELEC-009,Logitech Wireless Mouse,finished_good,pieces,250,2026-02-22,2027-02-22,ELEC-SHELF-02
+SKU-ELEC-010,Mechanical Keyboard RGB,finished_good,pieces,180,2026-02-22,2027-02-22,ELEC-SHELF-02
+SKU-APPL-001,Samsung Refrigerator,finished_good,pieces,35,2026-02-25,2027-02-25,APPLIANCE-01
+SKU-APPL-002,LG Washing Machine,finished_good,pieces,42,2026-02-25,2027-02-25,APPLIANCE-01
+SKU-APPL-003,Whirlpool Dishwasher,finished_good,pieces,38,2026-02-25,2027-02-25,APPLIANCE-02
+SKU-APPL-004,GE Microwave Oven,finished_good,pieces,55,2026-02-25,2027-02-25,APPLIANCE-02
+SKU-HARD-001,Screws Assorted Box,raw_material,boxes,400,2026-01-18,2028-01-18,HARDWARE-R1
+SKU-HARD-002,Nails Assorted Box,raw_material,boxes,380,2026-01-18,2028-01-18,HARDWARE-R1
+SKU-HARD-003,Bolts and Nuts Set,raw_material,boxes,320,2026-01-20,2028-01-20,HARDWARE-R2
+SKU-HARD-004,Washers Assorted,raw_material,boxes,280,2026-01-20,2028-01-20,HARDWARE-R2
+SKU-COMP-001,Circuit Board PCB,raw_material,pieces,600,2026-01-22,2027-01-22,COMP-SHELF-01
+SKU-COMP-002,Resistor Kit 1000pc,raw_material,boxes,200,2026-01-22,2028-01-22,COMP-SHELF-01
+SKU-COMP-003,Capacitor Assortment,raw_material,boxes,180,2026-01-25,2028-01-25,COMP-SHELF-02
+SKU-COMP-004,LED Diode Pack,raw_material,boxes,250,2026-01-25,2028-01-25,COMP-SHELF-02
+SKU-COMP-005,Wire Spool 22AWG,raw_material,pieces,150,2026-01-28,2027-01-28,COMP-SHELF-03
+SKU-COMP-006,Solder Wire Lead-Free,raw_material,kg,100,2026-01-28,2027-01-28,COMP-SHELF-03
+SKU-RAW-001,Steel Sheet 4x8,raw_material,pieces,200,2026-02-01,2028-02-01,RAW-MAT-R01
+SKU-RAW-002,Aluminum Bar 1inch,raw_material,pieces,300,2026-02-01,2028-02-01,RAW-MAT-R01
+SKU-RAW-003,Copper Wire 12AWG,raw_material,kg,250,2026-02-03,2027-02-03,RAW-MAT-R02
+SKU-RAW-004,Plastic Pellets HDPE,raw_material,kg,500,2026-02-03,2027-02-03,RAW-MAT-R02
+SKU-RAW-005,Rubber Sheet 1/4inch,raw_material,pieces,180,2026-02-05,2027-02-05,RAW-MAT-R03
+SKU-RAW-006,Carbon Fiber Cloth,raw_material,pieces,120,2026-02-05,2027-02-05,RAW-MAT-R03
+SKU-FG-001,Widget Assembly Type A,finished_good,pieces,400,2026-02-08,2027-02-08,FG-RACK-01
+SKU-FG-002,Widget Assembly Type B,finished_good,pieces,380,2026-02-08,2027-02-08,FG-RACK-01
+SKU-FG-003,Gadget Complete Unit,finished_good,pieces,320,2026-02-10,2027-02-10,FG-RACK-02
+SKU-FG-004,Device Final Assembly,finished_good,pieces,280,2026-02-10,2027-02-10,FG-RACK-02

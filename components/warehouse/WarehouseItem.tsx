@@ -568,14 +568,9 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           const compartmentLocationId = compartmentData?.locationId || compartmentData?.primaryLocationId;
           const compartmentLocationTag = compartmentLocationId ? locationTagsMap[compartmentLocationId] : null;
           
+          // ONLY check backend location tag data - currentItems field indicates SKUs assigned
           const hasSkusAssigned = Boolean(
-            compartmentData?.sku || 
-            compartmentData?.skuId || 
-            compartmentData?.primarySku ||
-            (compartmentLocationTag && compartmentLocationTag.currentItems > 0) ||
-            (compartmentLocationTag && Array.isArray(compartmentLocationTag.skus) && compartmentLocationTag.skus.length > 0) ||
-            (item.locationTag && item.locationTag.currentItems > 0) ||
-            (item.locationTag && Array.isArray(item.locationTag.skus) && item.locationTag.skus.length > 0)
+            compartmentLocationTag && compartmentLocationTag.currentItems > 0
           );
           
           const capacityStatus = determineCapacityStatus(hasLocationTags, hasSkusAssigned);
@@ -897,11 +892,14 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
     item?.inventoryData?.uniqueId ||
     (item?.locationData?.locationIds && item.locationData.locationIds.length > 0)
   );
+  
+  // Look up the location tag from backend to check SKU assignment
+  const unitLocationId = item?.locationId || item?.locationData?.primaryLocationId || item?.inventoryData?.locationId || item?.inventoryData?.uniqueId;
+  const unitLocationTag = unitLocationId ? locationTagsMap[unitLocationId] : null;
+  
+  // ONLY check backend location tag data - currentItems field indicates SKUs assigned
   const hasSkusAssignedForUnit = Boolean(
-    item?.sku || 
-    item?.skuId || 
-    item?.inventoryData?.sku || 
-    item?.inventoryData?.skuId
+    unitLocationTag && unitLocationTag.currentItems > 0
   );
   const storageUnitCapacityStatus = determineCapacityStatus(hasLocationTagsForUnit, hasSkusAssignedForUnit);
   

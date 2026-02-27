@@ -19,9 +19,7 @@
     "allowSyntheticDefaultImports": true
   },
   "include": [
-    "src/**/*.ts",
-    "tests/**/*.ts",
-    "vitest.config.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",

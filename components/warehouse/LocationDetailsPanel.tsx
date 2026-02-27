@@ -232,6 +232,54 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
       {/* ── Body ── */}
       <div style={contentStyle}>
 
+        {/* Compartment Info Banner - shown when a specific compartment is clicked */}
+        {selectedItem?.selectedCompartmentId && (
+          <div style={{
+            ...sectionStyle,
+            background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
+            borderColor: '#60a5fa',
+            marginBottom: '1rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <Package size={16} style={{ color: '#60a5fa' }} />
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e2e8f0' }}>
+                Compartment Selected
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.85rem' }}>
+              <div>
+                <div style={{ ...labelStyle, marginBottom: '0.15rem' }}>Rack</div>
+                <div style={{ color: '#e2e8f0', fontWeight: 500 }}>
+                  {selectedItem.type?.replace(/_/g, ' ').toUpperCase() || 'Storage Rack'}
+                </div>
+              </div>
+              <div>
+                <div style={{ ...labelStyle, marginBottom: '0.15rem' }}>Position</div>
+                <div style={{ color: '#e2e8f0', fontWeight: 500 }}>
+                  Row {(selectedItem.selectedCompartmentRow || 0) + 1}, Col {(selectedItem.selectedCompartmentCol || 0) + 1}
+                </div>
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <div style={{ ...labelStyle, marginBottom: '0.15rem' }}>Compartment ID</div>
+                <div style={{ color: '#60a5fa', fontWeight: 500, fontSize: '0.8rem', wordBreak: 'break-all' }}>
+                  {selectedItem.selectedCompartmentId || 'N/A'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* No Data Available */}
+        {selectedItem?.selectedCompartmentId && !locationTagId && (
+          <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
+              <PackageOpen size={32} />
+            </div>
+            <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>No Data Available</div>
+            <div style={{ fontSize: '0.85rem' }}>This compartment does not have a location tag assigned.</div>
+          </div>
+        )}
+
         {/* Loading */}
         {loading && (
           <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
@@ -250,8 +298,8 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
           </div>
         )}
 
-        {/* No locationTagId on the component */}
-        {!loading && !error && !locationTagId && (
+        {/* No locationTagId on the component (but NOT a compartment - compartments have their own message above) */}
+        {!loading && !error && !locationTagId && !selectedItem?.selectedCompartmentId && (
           <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
             <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
               <PackageOpen size={32} />

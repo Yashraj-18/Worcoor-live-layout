@@ -587,11 +587,12 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
               onClick={(event: any) => {
                 event.stopPropagation();
                 
-                // In readonly mode, trigger item selection for location details
+                // In readonly mode, trigger item selection for location details (even for empty compartments)
                 if (isReadOnly && onSelect) {
                   console.log('Compartment clicked in readonly mode:', { item, compartmentId, row, col, compartmentData });
                   // Pass the compartment-specific data by calling onSelect with a special format
                   // We'll pass the compartmentId so the parent can identify which compartment was clicked
+                  // For empty compartments, compartmentData will be null/undefined
                   onSelect(item.id, { compartmentId, compartmentData, row, col });
                   return;
                 }

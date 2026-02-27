@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import WarehouseMapView from '@/components/warehouse/WarehouseMapView';
 import '@/styles/warehouse.css';
 
-export default function WarehouseMapFullscreenPage() {
+function WarehouseMapFullscreenContent() {
   const searchParams = useSearchParams();
   const layoutId = searchParams.get('layoutId');
 
@@ -100,5 +100,17 @@ export default function WarehouseMapFullscreenPage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function WarehouseMapFullscreenPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-600">Loading...</div>
+      </div>
+    }>
+      <WarehouseMapFullscreenContent />
+    </Suspense>
   );
 }

@@ -14,7 +14,7 @@ declare module 'fastify' {
 export async function registerSocketIO(app: FastifyInstance, env: AppEnv) {
   const io = new SocketIOServer(app.server, {
     cors: {
-      origin: env.CORS_ORIGIN,
+      origin: env.CORS_ORIGIN.split(',').map(o => o.trim()).filter(Boolean),
       credentials: true,
     },
     transports: ['websocket', 'polling'],

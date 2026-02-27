@@ -536,14 +536,14 @@ export default function AssetManagementPage() {
           ) : (
             <div className="rounded-md border">
               <Table>
-                <TableHeader className="bg-gray-100 text-black dark:bg-slate-950 dark:hover:bg-slate-950">
+                <TableHeader>
                   <TableRow>
-                    <TableHead className="text-black font-semibold whitespace-nowrap min-w-[200px]">Asset ID</TableHead>
-                    <TableHead className="text-black font-semibold whitespace-nowrap min-w-[200px]">Asset Name</TableHead>
-                    <TableHead className="text-black font-semibold whitespace-nowrap">Asset Type</TableHead>
-                    <TableHead className="text-black font-semibold whitespace-nowrap">Warehouse</TableHead>
-                    <TableHead className="text-black font-semibold whitespace-nowrap">Location Tag</TableHead>
-                    <TableHead className="text-black font-semibold whitespace-nowrap text-right">Actions</TableHead>
+                    <TableHead className="text-foreground font-semibold whitespace-nowrap min-w-[200px]">Asset ID</TableHead>
+                    <TableHead className="text-foreground font-semibold whitespace-nowrap min-w-[200px]">Asset Name</TableHead>
+                    <TableHead className="text-foreground font-semibold whitespace-nowrap">Asset Type</TableHead>
+                    <TableHead className="text-foreground font-semibold whitespace-nowrap">Warehouse</TableHead>
+                    <TableHead className="text-foreground font-semibold whitespace-nowrap">Location Tag</TableHead>
+                    <TableHead className="text-foreground font-semibold whitespace-nowrap text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -553,11 +553,11 @@ export default function AssetManagementPage() {
                       ref={index === filteredAssets.length - 1 ? lastAssetElementRef : null}
                       className="hover:bg-muted/50"
                     >
-                      <TableCell className="p-4 md:p-6">{asset.assetId || "-"}</TableCell>
-                      <TableCell className="p-4 md:p-6">{asset.assetName}</TableCell>
-                      <TableCell className="p-4 md:p-6">{asset.assetType}</TableCell>
-                      <TableCell className="p-4 md:p-6">{getWarehouseNameByAsset(asset)}</TableCell>
-                      <TableCell className="p-4 md:p-6">{asset.locationTagName || getLocationTagNameById(asset.locationTagId)}</TableCell>
+                      <TableCell className="p-4 md:p-6 text-foreground">{asset.assetId || "-"}</TableCell>
+                      <TableCell className="p-4 md:p-6 text-foreground">{asset.assetName}</TableCell>
+                      <TableCell className="p-4 md:p-6 text-foreground">{asset.assetType}</TableCell>
+                      <TableCell className="p-4 md:p-6 text-foreground">{getWarehouseNameByAsset(asset)}</TableCell>
+                      <TableCell className="p-4 md:p-6 text-foreground">{asset.locationTagName || getLocationTagNameById(asset.locationTagId)}</TableCell>
                       <TableCell className="p-4 md:p-6 text-right">
                         <div className="flex justify-end gap-2">
                           <Button

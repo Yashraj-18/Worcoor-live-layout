@@ -330,20 +330,20 @@ export default function OrgUnitsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Unit ID</TableHead>
-                <TableHead>Unit Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Area</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-foreground font-semibold">Unit ID</TableHead>
+                <TableHead className="text-foreground font-semibold">Unit Name</TableHead>
+                <TableHead className="text-foreground font-semibold">Type</TableHead>
+                <TableHead className="text-foreground font-semibold">Status</TableHead>
+                <TableHead className="text-foreground font-semibold">Area</TableHead>
+                <TableHead className="text-right text-foreground font-semibold">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUnits.length > 0 ? (
                 filteredUnits.map((unit) => (
                   <TableRow key={unit.id}>
-                    <TableCell className="font-medium">{unit.unitId ?? "—"}</TableCell>
-                    <TableCell className="font-medium">{unit.unitName}</TableCell>
+                    <TableCell className="font-medium text-foreground">{unit.unitId ?? "—"}</TableCell>
+                    <TableCell className="font-medium text-foreground">{unit.unitName}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="capitalize">
                         {unit.unitType}
@@ -353,12 +353,12 @@ export default function OrgUnitsPage() {
                       <div className="flex items-center gap-2">
                         <span
                           className={`h-2 w-2 rounded-full ${unit.status === "LIVE"
-                              ? "bg-green-500"
-                              : unit.status === "OFFLINE"
-                                ? "bg-gray-400"
-                                : unit.status === "MAINTENANCE"
-                                  ? "bg-amber-500"
-                                  : "bg-blue-500"
+                            ? "bg-green-500"
+                            : unit.status === "OFFLINE"
+                              ? "bg-gray-400"
+                              : unit.status === "MAINTENANCE"
+                                ? "bg-amber-500"
+                                : "bg-blue-500"
                             }`}
                         />
                         <span>{unit.status}</span>

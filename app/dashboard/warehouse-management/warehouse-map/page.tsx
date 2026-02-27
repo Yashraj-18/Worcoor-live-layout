@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { warehouseService } from '@/src/services/warehouseService';
 import type { Layout } from '@/types/warehouse';
 import '@/styles/warehouse.css';
 
-function WarehouseMapPage() {
+function WarehouseMapPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
@@ -155,6 +155,21 @@ function WarehouseMapPage() {
         onEditLayout={handleEditLayout}
       />
     </div>
+  );
+}
+
+function WarehouseMapPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading Warehouse Maps...</p>
+        </div>
+      </div>
+    }>
+      <WarehouseMapPageContent />
+    </Suspense>
   );
 }
 

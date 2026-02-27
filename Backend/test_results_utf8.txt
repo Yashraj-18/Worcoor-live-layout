@@ -1,0 +1,143 @@
+﻿
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/Work/Worcoor-Layout-Mapping/Backend[39m
+
+ [32mΓ£ô[39m tests/realtime/guards.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 24[2mms[22m[39m
+ [32mΓ£ô[39m tests/warehouse/live-map.service.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 19[2mms[22m[39m
+ [33mΓ¥»[39m tests/warehouse/location-tags.service.test.ts [2m ([22m[2m5 tests[22m [2m|[22m [31m3 failed[39m[2m)[22m[90m 28[2mms[22m[39m
+[31m   [33mΓ¥»[31m tests/warehouse/location-tags.service.test.ts[2m > [22mLocationTagsService[2m > [22mprevents creating duplicate location tag names[39m
+[31m     ΓåÆ this.repository.findByNameWithinUnit is not a function[39m
+[31m   [33mΓ¥»[31m tests/warehouse/location-tags.service.test.ts[2m > [22mLocationTagsService[2m > [22mcreates tag when name is unique[39m
+[31m     ΓåÆ this.repository.findByNameWithinUnit is not a function[39m
+[31m   [33mΓ¥»[31m tests/warehouse/location-tags.service.test.ts[2m > [22mLocationTagsService[2m > [22mprevents updating to duplicate location tag names[39m
+[31m     ΓåÆ this.repository.findById is not a function[39m
+ [33mΓ¥»[39m tests/auth/auth.service.test.ts [2m ([22m[2m8 tests[22m [2m|[22m [31m5 failed[39m[2m)[22m[90m 49[2mms[22m[39m
+[31m   [33mΓ¥»[31m tests/auth/auth.service.test.ts[2m > [22mAuthService[2m > [22mlogin[2m > [22mauthenticates and responds with user + organization details[39m
+[31m     ΓåÆ expected undefined to deeply equal { user: { id: 'user-1', ΓÇª(2) }, ΓÇª(1) }[39m
+[31m   [33mΓ¥»[31m tests/auth/auth.service.test.ts[2m > [22mAuthService[2m > [22mregister[2m > [22mcreates organization and admin user then sets auth cookie[39m
+[31m     ΓåÆ expected undefined to deeply equal { user: { ΓÇª(3) }, ΓÇª(1) }[39m
+[31m   [33mΓ¥»[31m tests/auth/auth.service.test.ts[2m > [22mAuthService[2m > [22mrequestPasswordReset[2m > [22mresponds generically when user does not exist[39m
+[31m     ΓåÆ expected undefined to deeply equal { Object (message) }[39m
+[31m   [33mΓ¥»[31m tests/auth/auth.service.test.ts[2m > [22mAuthService[2m > [22mrequestPasswordReset[2m > [22mstores hashed reset token and returns token in development[39m
+[31m     ΓåÆ expected undefined to match object { ΓÇª(2) }[39m
+[31m   [33mΓ¥»[31m tests/auth/auth.service.test.ts[2m > [22mAuthService[2m > [22mconfirmPasswordReset[2m > [22mupdates password and clears reset token[39m
+[31m     ΓåÆ expected undefined to deeply equal { Object (message) }[39m
+ [33mΓ¥»[39m tests/inventory/assets.service.test.ts [2m ([22m[2m8 tests[22m [2m|[22m [31m1 failed[39m[2m)[22m[90m 48[2mms[22m[39m
+[31m   [33mΓ¥»[31m tests/inventory/assets.service.test.ts[2m > [22mAssetsService[2m > [22mcreates asset after verifying location tag exists[39m
+[31m     ΓåÆ expected "spy" to be called with arguments: [ { assetName: 'Forklift', ΓÇª(3) } ][90m
+
+Received: 
+
+[1m  1st spy call:
+
+[22m[2m  Array [[22m
+[2m    Object {[22m
+[31m+     "assetId": null,[90m
+[2m      "assetName": "Forklift",[22m
+[2m      "assetType": "vehicle",[22m
+[2m      "locationTagId": "tag-1",[22m
+[2m      "organizationId": "org-1",[22m
+[2m    },[22m
+[2m  ][22m
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+ [33mΓ¥»[39m tests/warehouse/layouts.service.test.ts [2m ([22m[2m4 tests[22m [2m|[22m [31m1 failed[39m[2m)[22m[90m 36[2mms[22m[39m
+[31m   [33mΓ¥»[31m tests/warehouse/layouts.service.test.ts[2m > [22mLayoutsService[2m > [22mcreates layout with provided unitId and org[39m
+[31m     ΓåÆ expected "spy" to be called with arguments: [ { layoutName: 'Mezzanine', ΓÇª(2) } ][90m
+
+Received: 
+
+[1m  1st spy call:
+
+[22m[2m  Array [[22m
+[2m    Object {[22m
+[31m+     "layoutData": null,[90m
+[2m      "layoutName": "Mezzanine",[22m
+[31m+     "metadata": null,[90m
+[2m      "organizationId": "org-1",[22m
+[31m+     "status": "draft",[90m
+[2m      "unitId": "unit-1",[22m
+[2m    },[22m
+[2m  ][22m
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+ [32mΓ£ô[39m tests/inventory/skus.service.test.ts [2m ([22m[2m9 tests[22m[2m)[22m[90m 30[2mms[22m[39m
+[90mstdout[2m | tests/inventory/skus.service.test.ts[2m > [22m[2mSkusService[2m > [22m[2mupdates SKU and validates capacity when location changes[22m[39m
+≡ƒöî emitLocationEvents - tag: tag-2 unitId: [90mundefined[39m
+≡ƒöî emitLocationEvents - tag: tag-2 unitId: [90mundefined[39m
+
+[90mstdout[2m | tests/inventory/skus.service.test.ts[2m > [22m[2mSkusService[2m > [22m[2mmoves SKU and logs movement[22m[39m
+≡ƒöî emitLocationEvents - tag: tag-2 unitId: [90mundefined[39m
+≡ƒöî emitLocationEvents - tag: tag-2 unitId: [90mundefined[39m
+
+ [33mΓ¥»[39m tests/warehouse/units.service.test.ts [2m ([22m[2m4 tests[22m [2m|[22m [31m1 failed[39m[2m)[22m[90m 25[2mms[22m[39m
+[31m   [33mΓ¥»[31m tests/warehouse/units.service.test.ts[2m > [22mUnitsService[2m > [22mcreates unit while injecting organization id[39m
+[31m     ΓåÆ expected "spy" to be called with arguments: [ { unitName: 'Secondary', ΓÇª(4) } ][90m
+
+Received: 
+
+[1m  1st spy call:
+
+[22m[2m  Array [[22m
+[2m    Object {[22m
+[31m+     "area": null,[90m
+[2m      "description": null,[22m
+[2m      "organizationId": "org-1",[22m
+[2m      "status": "LIVE",[22m
+[2m      "unitName": "Secondary",[22m
+[2m      "unitType": "warehouse",[22m
+[2m    },[22m
+[2m  ][22m
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+ [32mΓ£ô[39m tests/inventory/sku-movements.service.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 6[2mms[22m[39m
+ [33mΓ¥»[39m tests/warehouse/components.service.test.ts [2m ([22m[2m10 tests[22m [2m|[22m [31m2 failed[39m[2m)[22m[33m 645[2mms[22m[39m
+[31m   [33mΓ¥»[31m tests/warehouse/components.service.test.ts[2m > [22mComponentsService[2m > [22mupdates component and clears location tag when null provided[39m
+[31m     ΓåÆ expected "spy" to be called with arguments: [ 'component-1', 'org-1', { ΓÇª(1) } ][90m
+
+Received: 
+
+[1m  1st spy call:
+
+[22m[2m  Array [[22m
+[2m    "component-1",[22m
+[2m    "org-1",[22m
+[2m    Object {[22m
+[2m      "locationTagId": null,[22m
+[31m+     "locationTagName": null,[90m
+[2m    },[22m
+[2m  ][22m
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+[31m   [33mΓ¥»[31m tests/warehouse/components.service.test.ts[2m > [22mComponentsService[2m > [22mrequires valid location tag when updating to a new tag[39m
+[31m     ΓåÆ expected "spy" to be called with arguments: [ 'component-1', 'org-1', { ΓÇª(1) } ][90m
+
+Received: 
+
+[1m  1st spy call:
+
+[22m[2m  Array [[22m
+[2m    "component-1",[22m
+[2m    "org-1",[22m
+[2m    Object {[22m
+[2m      "locationTagId": "tag-1",[22m
+[31m+     "locationTagName": null,[90m
+[2m    },[22m
+[2m  ][22m
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+
+[2m Test Files [22m [1m[31m6 failed[39m[22m[2m | [22m[1m[32m4 passed[39m[22m[90m (10)[39m
+[2m      Tests [22m [1m[31m13 failed[39m[22m[2m | [22m[1m[32m46 passed[39m[22m[90m (59)[39m
+[2m   Start at [22m 19:59:14
+[2m   Duration [22m 2.28s[2m (transform 1.55s, setup 0ms, collect 4.87s, tests 910ms, environment 4ms, prepare 3.72s)[22m
+

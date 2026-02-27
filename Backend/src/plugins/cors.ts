@@ -10,7 +10,7 @@ export async function registerCors(app: FastifyInstance, env: AppEnv) {
 
   await app.register(cors, {
     origin: (origin, cb) => {
-      if (!origin) {
+      if (!origin || allowedOrigins.includes('*')) {
         cb(null, true);
         return;
       }

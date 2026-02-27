@@ -12,9 +12,11 @@ declare module 'fastify' {
 }
 
 export async function registerSocketIO(app: FastifyInstance, env: AppEnv) {
+  const allowedOrigins = env.CORS_ORIGIN.split(',').map(o => o.trim()).filter(Boolean);
+
   const io = new SocketIOServer(app.server, {
     cors: {
-      origin: env.CORS_ORIGIN.split(',').map(o => o.trim()).filter(Boolean),
+      origin: allowedOrigins.includes('*') ? true : allowedOrigins,
       credentials: true,
     },
     transports: ['websocket', 'polling'],

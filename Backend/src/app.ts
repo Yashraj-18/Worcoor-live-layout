@@ -23,6 +23,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await registerSocketIO(app, env);
 
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+  app.get('/healthz', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
   return app;
 }

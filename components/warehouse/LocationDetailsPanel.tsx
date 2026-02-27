@@ -259,12 +259,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                   Row {(selectedItem.selectedCompartmentRow || 0) + 1}, Col {(selectedItem.selectedCompartmentCol || 0) + 1}
                 </div>
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <div style={{ ...labelStyle, marginBottom: '0.15rem' }}>Compartment ID</div>
-                <div style={{ color: '#60a5fa', fontWeight: 500, fontSize: '0.8rem', wordBreak: 'break-all' }}>
-                  {selectedItem.selectedCompartmentId || 'N/A'}
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -331,15 +325,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
               </h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
 
-                <div>
-                  <div style={labelStyle}>ID</div>
-                  <div style={{ ...valueStyle, fontSize: '0.72rem', wordBreak: 'break-all' }}>{locationTag.id}</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Organization ID</div>
-                  <div style={{ ...valueStyle, fontSize: '0.72rem', wordBreak: 'break-all' }}>{locationTag.organizationId}</div>
-                </div>
-
                 <div style={{ gridColumn: '1 / -1' }}>
                   <div style={labelStyle}>Location Tag Name</div>
                   <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{locationTag.locationTagName}</div>
@@ -358,9 +343,8 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                   </div>
                 </div>
 
-                <div>
-                  <div style={labelStyle}>
-                    Utilization {isLive && <span style={{ color: '#22c55e' }}>●</span>}
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <div style={labelStyle}>Utilization {isLive && <span style={{ color: '#22c55e' }}>●</span>}
                   </div>
                   <div style={{
                     ...valueStyle,
@@ -381,11 +365,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                   </div>
                 )}
 
-                <div>
-                  <div style={labelStyle}>Unit ID</div>
-                  <div style={{ ...valueStyle, fontSize: '0.72rem', wordBreak: 'break-all' }}>{locationTag.unitId}</div>
-                </div>
-                <div>
+                <div style={{ gridColumn: '1 / -1' }}>
                   <div style={labelStyle}>Created At</div>
                   <div style={valueStyle}>{fmt(locationTag.createdAt)}</div>
                 </div>
@@ -443,13 +423,9 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                         <div style={labelStyle}>Expiry Date</div>
                         <div style={valueStyle}>{fmt(sku.expiryDate)}</div>
                       </div>
-                      <div>
+                      <div style={{ gridColumn: '1 / -1' }}>
                         <div style={labelStyle}>Created At</div>
                         <div style={valueStyle}>{fmt(sku.createdAt)}</div>
-                      </div>
-                      <div>
-                        <div style={labelStyle}>Location Tag ID</div>
-                        <div style={{ ...valueStyle, fontSize: '0.72rem', wordBreak: 'break-all' }}>{sku.locationTagId ?? 'N/A'}</div>
                       </div>
                     </div>
                   </div>

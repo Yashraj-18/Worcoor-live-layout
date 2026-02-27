@@ -66,7 +66,7 @@ export function useWarehouseSocket(options: UseWarehouseSocketOptions) {
 
   // Socket connection — only re-runs if unitId or layoutId actually changes
   useEffect(() => {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const backendUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
 
     const socket = io(backendUrl, {
       withCredentials: true,

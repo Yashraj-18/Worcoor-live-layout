@@ -44,20 +44,20 @@ const deriveItemCapacity = (item: any): { maxCapacity: number; usedCapacity: num
     if (item.compartmentContents && typeof item.compartmentContents === 'object') {
       Object.values(item.compartmentContents).forEach((content: any) => {
         if (!content) return;
-        
+
         // Check if compartment is occupied by any of these indicators
-        const hasContent = 
-          content.sku || 
+        const hasContent =
+          content.sku ||
           content.primarySku ||
-          content.locationId || 
+          content.locationId ||
           content.primaryLocationId ||
           content.uniqueId ||
           (Array.isArray(content.locationIds) && content.locationIds.length > 0) ||
           (Array.isArray(content.levelLocationMappings) && content.levelLocationMappings.length > 0) ||
           (Array.isArray(content.levelIds) && content.levelIds.length > 0);
-        
+
         if (!hasContent) return;
-        
+
         // Calculate quantity based on available data
         let qty = 1;
         if (typeof content.quantity === 'number' && content.quantity > 0) {
@@ -69,7 +69,7 @@ const deriveItemCapacity = (item: any): { maxCapacity: number; usedCapacity: num
         } else if (Array.isArray(content.levelIds) && content.levelIds.length > 0) {
           qty = content.levelIds.length;
         }
-        
+
         usedCapacity += qty;
       });
     }
@@ -104,19 +104,18 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
     totalAssets: number;
   } | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
-  
+
   // Location tags with volumetric data
   const [locationTags, setLocationTags] = useState<LocationTag[]>([]);
 
   // Fetch stats and location tags from API
   const fetchStats = useCallback(async () => {
     if (!unitId) return;
-    
+
     setIsLoadingStats(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
       const [statsResponse, tags] = await Promise.all([
-        fetch(`${apiUrl}/api/units/${unitId}/live-map/stats`, {
+        fetch(`/api/units/${unitId}/live-map/stats`, {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
@@ -124,7 +123,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
         }),
         locationTagService.listByUnit(unitId).catch(() => [] as LocationTag[])
       ]);
-      
+
       if (statsResponse.ok) {
         const stats = await statsResponse.json();
         setApiStats({
@@ -199,7 +198,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
       // Collect SKUs from item properties
       if (item.sku) allSkus.add(item.sku);
       if (item.primarySku) allSkus.add(item.primarySku);
-      
+
       // Collect SKUs from locationTag.skus[]
       if (item.locationTag && Array.isArray(item.locationTag.skus)) {
         item.locationTag.skus.forEach((sku: any) => {
@@ -211,13 +210,13 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
       if (item.compartmentContents && typeof item.compartmentContents === 'object') {
         Object.values(item.compartmentContents).forEach((c: any) => {
           if (!c) return;
-          
+
           // Collect location tags from compartments
           const compartmentLocationTag = c.locationId || c.primaryLocationId;
           if (compartmentLocationTag) {
             uniqueLocationTags.add(String(compartmentLocationTag).trim());
           }
-          
+
           // Collect SKUs from compartments
           if (c.sku) allSkus.add(c.sku);
           if (c.primarySku) allSkus.add(c.primarySku);
@@ -227,11 +226,11 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
 
     // ── Per-location-tag volumetric capacity (L × B × H from database) ──
     // Each item with a locationTag gets mapped to its volumetric dimensions from the location tags table.
-    const tagMap = new Map<string, { 
+    const tagMap = new Map<string, {
       locationTagName: string;
-      length: number | null; 
-      breadth: number | null; 
-      height: number | null; 
+      length: number | null;
+      breadth: number | null;
+      height: number | null;
       unitOfMeasurement: string | null;
       capacity: number;
       usedCapacity: number;
@@ -250,8 +249,8 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
         const height = tagData?.height ?? null;
         const capacity = tagData?.capacity ?? 0;
         const locationTagName = tagData?.locationTagName ?? tag;
-        
-        tagMap.set(tag, { 
+
+        tagMap.set(tag, {
           locationTagName,
           length,
           breadth,
@@ -269,32 +268,32 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
       if (item.compartmentContents && typeof item.compartmentContents === 'object') {
         Object.values(item.compartmentContents).forEach((content: any) => {
           if (!content) return;
-          
+
           // Check if compartment has content
-          const hasContent = 
-            content.sku || 
+          const hasContent =
+            content.sku ||
             content.primarySku ||
-            content.locationId || 
+            content.locationId ||
             content.primaryLocationId ||
             content.uniqueId ||
             (Array.isArray(content.locationIds) && content.locationIds.length > 0) ||
             (Array.isArray(content.levelLocationMappings) && content.levelLocationMappings.length > 0);
-          
+
           if (!hasContent) return;
-          
+
           // Extract location tag from compartment content
           const compartmentTagName: string = (content.locationId || content.primaryLocationId || '').toString().trim();
-          
+
           if (compartmentTagName) {
             // Find the corresponding location tag data from the database
-            const tagData = locationTags.find(t => 
-              t.locationTagName === compartmentTagName || 
+            const tagData = locationTags.find(t =>
+              t.locationTagName === compartmentTagName ||
               t.id === compartmentTagName
             );
-            
+
             // Check if the location tag from database has SKUs (currentItems > 0 means SKUs are assigned)
             const hasSku = tagData ? (tagData.currentItems > 0) : false;
-            
+
             // Calculate quantity for this compartment
             let qty = 1;
             if (typeof content.quantity === 'number' && content.quantity > 0) {
@@ -304,7 +303,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
             } else if (Array.isArray(content.levelLocationMappings) && content.levelLocationMappings.length > 0) {
               qty = content.levelLocationMappings.length;
             }
-            
+
             addToTag(compartmentTagName, tagData, qty, hasSku);
           }
         });
@@ -313,16 +312,16 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
         const { usedCapacity } = deriveItemCapacity(item);
         const tagName: string =
           (item.locationTag?.locationTagName || item.locationTag?.name || item.locationTagId || item.locationId || item.primaryLocationId || '').toString().trim();
-        
+
         if (tagName) {
-          const tagData = locationTags.find(t => 
-            t.locationTagName === tagName || 
+          const tagData = locationTags.find(t =>
+            t.locationTagName === tagName ||
             t.id === item.locationTagId
           );
-          
+
           // Check if the location tag from database has SKUs (currentItems > 0 means SKUs are assigned)
           const hasSku = tagData ? (tagData.currentItems > 0) : false;
-          
+
           addToTag(tagName, tagData, usedCapacity, hasSku);
         }
       }
@@ -532,7 +531,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
             <TrendingUp size={16} />
             Volumetric Space Utilization
           </h4>
-          
+
           {displayStats.locationTagData && displayStats.locationTagData.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto' }}>
               {displayStats.locationTagData.map((location, index) => (
@@ -557,32 +556,32 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
                     <div style={{
                       fontSize: '0.9rem',
                       fontWeight: 'bold',
-                      color: location.utilizationPercentage > 80 ? '#22c55e' : 
-                             location.utilizationPercentage > 50 ? '#f59e0b' : '#ef4444'
+                      color: location.utilizationPercentage > 80 ? '#22c55e' :
+                        location.utilizationPercentage > 50 ? '#f59e0b' : '#ef4444'
                     }}>
                       {location.utilizationPercentage}%
                     </div>
                   </div>
-                  
+
                   {/* Progress Bar */}
                   <div style={{ marginBottom: '0.5rem' }}>
-                    <div style={{ 
-                      width: '100%', 
-                      height: '6px', 
-                      backgroundColor: 'hsl(215.3 25.1% 32.6%)', 
+                    <div style={{
+                      width: '100%',
+                      height: '6px',
+                      backgroundColor: 'hsl(215.3 25.1% 32.6%)',
                       borderRadius: '3px'
                     }}>
                       <div style={{
                         width: `${location.utilizationPercentage}%`,
                         height: '100%',
-                        backgroundColor: location.utilizationPercentage > 80 ? '#22c55e' : 
-                                       location.utilizationPercentage > 50 ? '#f59e0b' : '#ef4444',
+                        backgroundColor: location.utilizationPercentage > 80 ? '#22c55e' :
+                          location.utilizationPercentage > 50 ? '#f59e0b' : '#ef4444',
                         borderRadius: '3px',
                         transition: 'width 0.3s ease'
                       }}></div>
                     </div>
                   </div>
-                  
+
                   {/* Capacity Details */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.75rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>

@@ -5,7 +5,7 @@ let globalSocket: Socket | null = null;
 
 const getSocket = (): Socket => {
   if (!globalSocket || !globalSocket.connected) {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api/', '') ?? '';
+    const apiUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
     globalSocket = io(apiUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling'],

@@ -30,8 +30,8 @@ export class AuthService {
     const token = await reply.jwtSign(payload);
     reply.setCookie('token', token, {
       httpOnly: true,
-      sameSite: 'strict',
-      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'none',
+      secure: true,
       path: '/',
       maxAge: 86400000, // 24 hours in milliseconds
     });

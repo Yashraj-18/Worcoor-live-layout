@@ -122,7 +122,7 @@ const FullscreenMap = () => {
   const [highlightedItems, setHighlightedItems] = useState([]);
   const [filteredKeys, setFilteredKeys] = useState([]);
   const [highlightedCompartmentsMap, setHighlightedCompartmentsMap] = useState({});
-  
+
   // Enhanced dropdown search states
   const [selectedLocationTag, setSelectedLocationTag] = useState('');
   const [selectedSku, setSelectedSku] = useState('');
@@ -220,26 +220,25 @@ const FullscreenMap = () => {
           const encodedData = hash.replace('#fullscreen-map=', '');
           const decodedData = decodeURIComponent(encodedData);
           const parsedData = JSON.parse(decodedData);
-          
+
           // Extract unitId from parsed data to fetch live data
           const unitId = parsedData.unitId;
-          
+
           if (unitId) {
             // Fetch live data from API
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const response = await fetch(`${apiUrl}/api/units/${unitId}/live-map`, {
+            const response = await fetch(`/api/units/${unitId}/live-map`, {
               credentials: 'include',
               headers: {
                 'Content-Type': 'application/json',
               },
             });
-            
+
             if (!response.ok) {
               throw new Error('Failed to fetch live map data');
             }
-            
+
             const liveData = await response.json();
-            
+
             // Transform API response to match expected structure
             const transformedData = {
               ...parsedData,
@@ -249,9 +248,9 @@ const FullscreenMap = () => {
                 items: liveData.layouts[0]?.components || [],
               },
             };
-            
+
             setMapData(transformedData);
-            
+
             // Generate operational data for each item
             const layoutItems = transformedData.layoutData?.items || [];
 
@@ -265,7 +264,7 @@ const FullscreenMap = () => {
           } else {
             // Fallback to static data if no unitId
             setMapData(parsedData);
-            
+
             const layoutItems = parsedData.layoutData?.items || parsedData.layoutItems || [];
 
             if (layoutItems.length > 0) {
@@ -282,7 +281,7 @@ const FullscreenMap = () => {
         setError('No map data provided');
       }
     };
-    
+
     loadMapData();
   }, []);
 
@@ -291,13 +290,13 @@ const FullscreenMap = () => {
 
     items.forEach((item, index) => {
       const itemId = `item-${index}`;
-      
+
       // Extract locationId from various possible sources
-      let locationId = item.locationId || 
-                       item.locationData?.location_id ||
-                       item.properties?.locationId ||
-                       item.data?.locationId;
-      
+      let locationId = item.locationId ||
+        item.locationData?.location_id ||
+        item.properties?.locationId ||
+        item.data?.locationId;
+
       // For storage racks with compartments, try to get locationId from first compartment
       if (!locationId && item.compartmentContents) {
         const compartments = Object.values(item.compartmentContents);
@@ -309,7 +308,7 @@ const FullscreenMap = () => {
 
       // Fetch real data from the service if locationId exists
       const realLocationData = locationId ? locationDataService.getLocationById(locationId) : null;
-      
+
       if (locationId) {
         console.log(`FullscreenMap - Item ${index}: locationId=${locationId}, realData=`, realLocationData);
       }
@@ -375,18 +374,18 @@ const FullscreenMap = () => {
 
     const itemId = `item-${index}`;
     let opData = operationalData[itemId];
-    
+
     // If a specific compartment was clicked, fetch its real data
     if (item.selectedCompartment) {
       const compartmentLocationId = item.selectedCompartment.locationId || item.selectedCompartment.uniqueId;
       const compartmentRealData = compartmentLocationId ? locationDataService.getLocationById(compartmentLocationId) : null;
-      
+
       console.log('FullscreenMap - Compartment clicked:', {
         compartmentId: item.selectedCompartmentId,
         locationId: compartmentLocationId,
         realData: compartmentRealData
       });
-      
+
       // Create modified opData with compartment-specific real data
       opData = {
         ...opData,
@@ -410,7 +409,7 @@ const FullscreenMap = () => {
       'Expiry date approaching',
       'Damage reported - Inspection required'
     ];
-    
+
     if (Math.random() > 0.7) { // 30% chance of alerts
       const alertCount = Math.floor(Math.random() * 3) + 1;
       for (let i = 0; i < alertCount; i++) {
@@ -505,7 +504,7 @@ const FullscreenMap = () => {
       addSku(content.primarySku);
       addSku(content.locationId); // Location ID can map to SKU name
       addSku(content.primaryLocationId); // Primary location ID can map to SKU name
-      
+
       // Handle locationIds array
       if (Array.isArray(content.locationIds)) {
         content.locationIds.forEach(addSku);
@@ -585,12 +584,12 @@ const FullscreenMap = () => {
     setAvailableSkus(Array.from(skus).sort());
     setAvailableAssets(Array.from(assets).sort());
   };
-  
+
   // Enhanced search functionality with dropdown filters only - matching WarehouseMapView approach
   const performSearch = useCallback(() => {
     // Check if dropdown search is active
     const hasDropdownFilters = selectedLocationTag || selectedSku || selectedAsset;
-    
+
     if (!hasDropdownFilters) {
       setSearchResults([]);
       setHighlightedItems([]);
@@ -654,7 +653,7 @@ const FullscreenMap = () => {
           // Check item-level levelLocationMappings (vertical racks)
           let itemLevelMappingsMatch = false;
           if (Array.isArray(item.levelLocationMappings)) {
-            itemLevelMappingsMatch = item.levelLocationMappings.some(mapping => 
+            itemLevelMappingsMatch = item.levelLocationMappings.some(mapping =>
               (mapping?.locationId === selectedLocationTag || mapping?.locId === selectedLocationTag)
             );
           }
@@ -687,7 +686,7 @@ const FullscreenMap = () => {
         if (selectedSku) {
           // Get location IDs that have this SKU name
           const locationIdsForSku = skuNameToLocationIds[selectedSku] || [];
-          
+
           let itemLevelSkuMatch = false;
           itemLevelSkuMatch = [item.sku, item.skuId, item.locationId]
             .some((value) => typeof value === 'string' && (value.trim() === selectedSku || locationIdsForSku.includes(value.trim())));
@@ -814,12 +813,12 @@ const FullscreenMap = () => {
     const value = e.target.value;
     setSelectedLocationTag(value);
   };
-  
+
   const handleSkuChange = (e) => {
     const value = e.target.value;
     setSelectedSku(value);
   };
-  
+
   const handleAssetChange = (e) => {
     const value = e.target.value;
     setSelectedAsset(value);
@@ -895,20 +894,20 @@ const FullscreenMap = () => {
     const viewBoxX = centerX - viewBoxWidth / 2;
     const viewBoxY = centerY - viewBoxHeight / 2;
 
-    const handleMouseDown = () => {};
-    const handleMouseMove = () => {};
-    const handleMouseUp = () => {};
-    const handleWheel = () => {};
+    const handleMouseDown = () => { };
+    const handleMouseMove = () => { };
+    const handleMouseUp = () => { };
+    const handleWheel = () => { };
 
     return (
-      <svg 
+      <svg
         ref={(node) => {
           if (node) {
             node.style.transform = 'none';
           }
         }}
-        width="100%" 
-        height="100%" 
+        width="100%"
+        height="100%"
         viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
         className="fullscreen-warehouse-svg"
         preserveAspectRatio="xMidYMid meet"
@@ -918,29 +917,29 @@ const FullscreenMap = () => {
         onWheel={handleWheel}
       >
         {/* Background */}
-        <rect 
-          x={viewBoxX} 
-          y={viewBoxY} 
-          width={viewBoxWidth} 
-          height={viewBoxHeight} 
-          fill="#ffffff" 
-          stroke="#dee2e6" 
-          strokeWidth="2" 
+        <rect
+          x={viewBoxX}
+          y={viewBoxY}
+          width={viewBoxWidth}
+          height={viewBoxHeight}
+          fill="#ffffff"
+          stroke="#dee2e6"
+          strokeWidth="2"
           rx="8"
         />
-        
+
         {/* Grid pattern */}
         <defs>
           <pattern id="fullscreen-grid" width="60" height="60" patternUnits="userSpaceOnUse">
-            <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#e0e0e0" strokeWidth="1" opacity="0.3"/>
+            <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#e0e0e0" strokeWidth="1" opacity="0.3" />
           </pattern>
         </defs>
-        <rect 
-          x={viewBoxX} 
-          y={viewBoxY} 
-          width={viewBoxWidth} 
-          height={viewBoxHeight} 
-          fill="url(#fullscreen-grid)" 
+        <rect
+          x={viewBoxX}
+          y={viewBoxY}
+          width={viewBoxWidth}
+          height={viewBoxHeight}
+          fill="url(#fullscreen-grid)"
         />
 
         {/* Render warehouse items */}
@@ -1088,7 +1087,7 @@ const FullscreenMap = () => {
                   strokeWidth="1"
                 />
               )}
-              
+
               {/* Utilization bar for storage items */}
               {opData && opData.type === 'storage' && item.width > 40 && (
                 <g>
@@ -1110,7 +1109,7 @@ const FullscreenMap = () => {
                   />
                 </g>
               )}
-              
+
               {/* Alert indicator */}
               {opData && opData.alerts && opData.alerts.length > 0 && (
                 <text
@@ -1123,7 +1122,7 @@ const FullscreenMap = () => {
                   ⚠
                 </text>
               )}
-              
+
               {/* Item label */}
               {item.width > 60 && item.height > 30 && !item.disableAutoLabel && (
                 <text
@@ -1139,7 +1138,7 @@ const FullscreenMap = () => {
                   {getItemLabel(item)}
                 </text>
               )}
-              
+
               {/* Real-time metrics display for storage units */}
               {opData && opData.type === 'storage' && item.width > 60 && item.height > 40 && (
                 <g>
@@ -1154,7 +1153,7 @@ const FullscreenMap = () => {
                   >
                     {opData.unitId}
                   </text>
-                  
+
                   {/* Capacity info */}
                   <text
                     x={item.x + item.width / 2}
@@ -1168,7 +1167,7 @@ const FullscreenMap = () => {
                   >
                     {opData.occupied}/{opData.capacity}
                   </text>
-                  
+
                   {/* Location info */}
                   <text
                     x={item.x + item.width / 2}
@@ -1198,7 +1197,7 @@ const FullscreenMap = () => {
                   >
                     {opData.zoneId}
                   </text>
-                  
+
                   {/* Throughput */}
                   <text
                     x={item.x + 8}
@@ -1209,7 +1208,7 @@ const FullscreenMap = () => {
                   >
                     {opData.throughput} items/hr
                   </text>
-                  
+
                   {/* Workers */}
                   <text
                     x={item.x + 8}
@@ -1220,7 +1219,7 @@ const FullscreenMap = () => {
                   >
                     👥 {opData.activeWorkers} workers
                   </text>
-                  
+
                   {/* Efficiency */}
                   <text
                     x={item.x + item.width - 8}
@@ -1235,7 +1234,7 @@ const FullscreenMap = () => {
                   </text>
                 </g>
               )}
-              
+
               {/* Fixed info icon for ALL interactive items */}
               {isInteractive && (
                 <g>
@@ -1278,7 +1277,7 @@ const FullscreenMap = () => {
             </g>
           );
         })}
-        
+
         {/* Optimization indicator */}
         <text x={viewBoxX + 20} y={viewBoxY + viewBoxHeight - 20} fontSize="14" fill="#28a745" fontWeight="bold">
           ✓ Ultra-tight optimized layout - Fullscreen view
@@ -1340,21 +1339,21 @@ const FullscreenMap = () => {
                 <div className="status-item">
                   <span className="label">Procurement Date:</span>
                   <span className="status-value">
-                    {realData.sku_procured_date 
+                    {realData.sku_procured_date
                       ? new Date(realData.sku_procured_date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })
                       : 'N/A'}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="info-section" style={{ 
-              background: realData.available_quantity > 0 
-                ? 'linear-gradient(135deg, #e8f5e9, #c8e6c9)' 
+            <div className="info-section" style={{
+              background: realData.available_quantity > 0
+                ? 'linear-gradient(135deg, #e8f5e9, #c8e6c9)'
                 : 'linear-gradient(135deg, #ffebee, #ffcdd2)',
               border: realData.available_quantity > 0 ? '2px solid #4CAF50' : '2px solid #F44336'
             }}>
@@ -1362,8 +1361,8 @@ const FullscreenMap = () => {
               <div className="status-grid">
                 <div className="status-item">
                   <span className="label">Available Quantity:</span>
-                  <span className="status-value" style={{ 
-                    fontSize: '1.5em', 
+                  <span className="status-value" style={{
+                    fontSize: '1.5em',
                     fontWeight: 'bold',
                     color: realData.available_quantity > 0 ? '#2E7D32' : '#C62828'
                   }}>
@@ -1373,13 +1372,13 @@ const FullscreenMap = () => {
                 <div className="status-item">
                   <span className="label">Stock Status:</span>
                   <span className="status-value">
-                    {realData.available_quantity > 100 
-                      ? '✅ Well Stocked' 
-                      : realData.available_quantity > 50 
-                      ? '⚠️ Moderate Stock' 
-                      : realData.available_quantity > 0 
-                      ? '🔴 Low Stock' 
-                      : '❌ Out of Stock'}
+                    {realData.available_quantity > 100
+                      ? '✅ Well Stocked'
+                      : realData.available_quantity > 50
+                        ? '⚠️ Moderate Stock'
+                        : realData.available_quantity > 0
+                          ? '🔴 Low Stock'
+                          : '❌ Out of Stock'}
                   </span>
                 </div>
               </div>
@@ -1398,8 +1397,8 @@ const FullscreenMap = () => {
             <div className="status-item">
               <span className="label">Location:</span>
               <span className="status-value">
-                {opData.location.zone ? `${opData.location.zone}-${opData.location.aisle}-${opData.location.position}` : 
-                 `${opData.location.building}, Floor ${opData.location.floor}, ${opData.location.sector}`}
+                {opData.location.zone ? `${opData.location.zone}-${opData.location.aisle}-${opData.location.position}` :
+                  `${opData.location.building}, Floor ${opData.location.floor}, ${opData.location.sector}`}
               </span>
             </div>
             <div className="status-item">
@@ -1484,8 +1483,8 @@ const FullscreenMap = () => {
             <h4>Capacity</h4>
             <div className="capacity-info">
               <div className="capacity-bar">
-                <div 
-                  className="capacity-fill" 
+                <div
+                  className="capacity-fill"
                   style={{ width: `${(opData.occupied / opData.capacity) * 100}%` }}
                 ></div>
               </div>
@@ -1668,14 +1667,14 @@ const FullscreenMap = () => {
             {unit.status}
           </span>
         </div>
-        
+
         {/* Enhanced Dropdown Search Filters - Moved to Header */}
         <div className="fullscreen-search-inline">
           <div className="search-dropdown-filters">
             <div className="dropdown-filter">
               <label>📍 Location Tag:</label>
-              <select 
-                value={selectedLocationTag} 
+              <select
+                value={selectedLocationTag}
                 onChange={handleLocationTagChange}
                 className="search-dropdown"
               >
@@ -1685,11 +1684,11 @@ const FullscreenMap = () => {
                 ))}
               </select>
             </div>
-            
+
             <div className="dropdown-filter">
               <label>📦 SKU:</label>
-              <select 
-                value={selectedSku} 
+              <select
+                value={selectedSku}
                 onChange={handleSkuChange}
                 className="search-dropdown"
               >
@@ -1699,11 +1698,11 @@ const FullscreenMap = () => {
                 ))}
               </select>
             </div>
-            
+
             <div className="dropdown-filter">
               <label>🏭 Asset:</label>
-              <select 
-                value={selectedAsset} 
+              <select
+                value={selectedAsset}
                 onChange={handleAssetChange}
                 className="search-dropdown"
               >
@@ -1713,7 +1712,7 @@ const FullscreenMap = () => {
                 ))}
               </select>
             </div>
-            
+
             {/* Clear button only shows when filters are active */}
             {(selectedLocationTag || selectedSku || selectedAsset) && (
               <div className="dropdown-filter">
@@ -1725,16 +1724,16 @@ const FullscreenMap = () => {
             )}
           </div>
         </div>
-        
+
         <div className="fullscreen-map-controls">
-          <button 
+          <button
             className="fullscreen-control-btn"
             onClick={() => window.print()}
             title="Print Map"
           >
             🖨️
           </button>
-          <button 
+          <button
             className="fullscreen-control-btn"
             onClick={() => window.close()}
             title="Close Window"
@@ -1843,11 +1842,11 @@ const FullscreenMap = () => {
                 onClose={() => setShowInfoPanel(false)}
                 isEmbedded={true}
               />
-            )} 
+            )}
 
             {/* Show Warehouse Overview Panel by default (no component selected) */}
             {!showInfoPanel && (
-              <WarehouseOverviewPanel 
+              <WarehouseOverviewPanel
                 layoutData={{
                   items: mapData?.layoutData?.items || [],
                   name: mapData?.name
@@ -1905,16 +1904,16 @@ const getItemBackgroundColor = (type, opData) => {
     'office_zone': '#5c6bc0',
     'transit_zone': '#bdbdbd'
   };
-  
+
   let baseColor = colors[type] || '#f5f5f5';
-  
+
   // Modify color based on operational status
   if (opData && opData.status === 'maintenance') {
     baseColor = '#ffecb3'; // Light amber for maintenance
   } else if (opData && opData.availability === 'maintenance') {
     baseColor = '#ffcdd2'; // Light red for unavailable
   }
-  
+
   return baseColor;
 };
 

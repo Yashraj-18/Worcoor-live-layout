@@ -1,69 +1,118 @@
-# Worcoor
+# Worcoor Layout Mapping
 
-A brief description....
+Warehouse management system for tracking organizational units, location tags, SKUs, assets, and storage racks.
 
-## Technologies Used
+## Monorepo Structure
 
-*   Next.js
-*   React
-*   TypeScript
-*   Tailwind CSS
-*   Radix UI
-*   Axios
-*   React Hook Form
-*   Zod
-*   Recharts
-*   date-fns
-*   And more...
+This is a monorepo where the **Frontend (Next.js)** lives at the repository root and the **Backend (Fastify)** lives in the `Backend/` subfolder. Next.js requires its configuration files (`app/`, `components/`, `next.config.mjs`, etc.) to be at the project root — they cannot be moved into a subdirectory without breaking the framework.
 
-## Project Structure
+```
+Worcoor-Layout-Mapping/          ← Frontend (Next.js) root
+├── app/                         # Next.js App Router pages
+│   ├── dashboard/               # Dashboard routes
+│   │   ├── reference-data/      # Org Units, Location Tags, SKUs, Assets, Bulk Upload
+│   │   ├── warehouse-management/# Layout builder & warehouse map
+│   │   └── admin/               # User & role management
+│   ├── login/                   # Auth pages
+│   ├── layout.tsx
+│   └── globals.css
+├── components/                  # Reusable UI components
+│   ├── ui/                      # Base Radix UI components
+│   ├── dashboard/               # Dashboard-specific components
+│   ├── inventory/               # SKU form components
+│   ├── layout/                  # Page layout components
+│   └── warehouse/               # Warehouse map components
+├── src/
+│   ├── services/                # API service layer (axios clients)
+│   ├── constants/               # API endpoint constants
+│   └── utils/                   # Auth and utility helpers
+├── hooks/                       # Custom React hooks
+├── contexts/                    # React context providers
+├── lib/                         # Warehouse utilities and helpers
+├── types/                       # Shared TypeScript type definitions
+├── styles/                      # Additional CSS (warehouse styles)
+├── public/                      # Static assets
+├── warehouse/                   # Legacy warehouse components
+├── bulk-import-data/            # Sample CSV files for Bulk Upload feature
+├── scripts/                     # Dev/test scripts (multi-tenant tests)
+├── next.config.mjs
+├── tailwind.config.ts
+├── tsconfig.json
+├── package.json
+└── Backend/                     ← Backend (Fastify) subfolder
+    ├── src/
+    │   ├── modules/             # Feature modules (auth, units, skus, assets…)
+    │   ├── database/            # Drizzle ORM schema & migrations
+    │   └── middleware/          # JWT auth & validation
+    ├── 01-units.csv             # Seed data — Org Units
+    ├── 02-layouts.csv           # Seed data — Layouts
+    ├── 03-location-tags.csv     # Seed data — Location Tags
+    ├── 04-skus.csv              # Seed data — SKUs
+    ├── 05-assets.csv            # Seed data — Assets
+    ├── import-script.ts         # Seed data import script
+    ├── package.json
+    └── tsconfig.json
+```
 
-The project follows a standard Next.js structure with a focus on separating concerns:
+## Technology Stack
 
-*   `src/`: Contains the main application logic, including services, utilities, contexts, and constants.
-*   `components/`: Reusable UI components.
-*   `lib/`: Utility functions and data.
-*   `hooks/`: Custom React hooks.
-*   `app/`: Next.js app router pages and layouts.
+### Frontend (root)
+- **Next.js 14** (App Router)
+- **React 18** with TypeScript
+- **Tailwind CSS** + Radix UI components
+- **React Hook Form** + Zod validation
+- **Recharts** for data visualization
 
-## Setup and Installation
+### Backend (`Backend/`)
+- **Fastify** HTTP framework
+- **PostgreSQL** with Drizzle ORM
+- **JWT** authentication
+- **Supabase** (hosted Postgres)
 
-1.  Clone the repository.
-2.  Navigate to the project directory.
-3.  Install dependencies using your preferred package manager (npm, yarn, or pnpm):
+## Setup
 
-    ```bash
-    pnpm install
-    # or npm install
-    # or yarn install
-    ```
+### Prerequisites
+- Node.js 18+
+- PostgreSQL 14+ (or Supabase project)
+- pnpm (recommended)
 
-4.  Copy the `.env.example` file to `.env.local` and update environment variables if necessary.
+### Frontend
 
-    ```bash
-    cp .env.example .env.local
-    ```
+```bash
+# From repository root
+pnpm install
+cp .env.example .env.local   # configure API base URL
+pnpm dev                     # http://localhost:3000
+```
 
-5.  Run the development server:
+### Backend
 
-    ```bash
-    pnpm dev
-    # or npm run dev
-    # or yarn dev
-    ```
+```bash
+cd Backend
+pnpm install
+# configure .env (copy from .env.example)
+pnpm run db:push             # run migrations
+pnpm run dev                 # http://localhost:4000
+```
 
-6.  Open [http://localhost:3000](http://localhost:3000) in your browser.
+## Default Credentials
+
+| Field | Value |
+|-------|-------|
+| Email | `admin@worcoor.com` |
+| Password | `Admin@123` |
 
 ## Key Features
 
-*   **Authentication:** User authentication managed via `AuthContext` and persisted in local storage.
-*   **API Service:** Centralized service (`apiService.ts`) for making API calls with built-in authentication header handling and token refresh logic.
-*   **Styling:** Utilizes Tailwind CSS with a custom theme and Radix UI components for a consistent and responsive design.
+- JWT-based user authentication
+- Organizational unit management (warehouses, offices, production)
+- Location tag tracking with L×B×H dimensions and capacity calculation
+- SKU inventory management with effective/expiry dates
+- Asset management with location assignment
+- Interactive warehouse layout builder with rack visualization
+- Bulk data import via CSV or Excel (SKUs, Location Tags, Assets)
+- Multi-tenant data isolation
 
-## Contributing
+## API Documentation
 
-Instructions on how to contribute...
-
-## License
-
-Project license information...
+Swagger docs available at `http://localhost:4000/documentation` when the backend is running.

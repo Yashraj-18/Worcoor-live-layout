@@ -312,7 +312,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
         // For non-compartmentalized items, process as before
         const { usedCapacity } = deriveItemCapacity(item);
         const tagName: string =
-          (item.locationTag?.locationTagName || item.locationTag?.name || item.locationTagId || item.locationCode || item.locationId || item.primaryLocationId || '').toString().trim();
+          (item.locationTag?.locationTagName || item.locationTag?.name || item.locationTagId || item.locationId || item.primaryLocationId || '').toString().trim();
         
         if (tagName) {
           const tagData = locationTags.find(t => 
@@ -639,7 +639,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
                   stroke="#f59e0b"
                   strokeWidth="12"
                   strokeDasharray={`${2 * Math.PI * 50}`}
-                  strokeDashoffset={`${2 * Math.PI * 50 * (1 - (locationTags.length > 0 ? locationTags.filter(t => t.currentItems > 0).length / locationTags.length : 0))}`}
+                  strokeDashoffset={`${2 * Math.PI * 50 * (1 - (locationTags.length > 0 ? displayStats.locationTagData.filter((t: any) => t.utilizationPercentage > 0).length / locationTags.length : 0))}`}
                   style={{ transition: 'stroke-dashoffset 0.5s ease' }}
                 />
               </svg>
@@ -653,11 +653,11 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
                 fontWeight: 'bold',
                 color: '#f59e0b'
               }}>
-                {locationTags.length > 0 ? Math.round((locationTags.filter(t => t.currentItems > 0).length / locationTags.length) * 100) : 0}%
+                {locationTags.length > 0 ? Math.round((displayStats.locationTagData.filter((t: any) => t.utilizationPercentage > 0).length / locationTags.length) * 100) : 0}%
               </div>
             </div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.5rem' }}>
-              {locationTags.filter(t => t.currentItems > 0).length} of {locationTags.length} tags in use
+              {displayStats.locationTagData.filter((t: any) => t.utilizationPercentage > 0).length} of {locationTags.length} tags in use
             </div>
           </div>
 

@@ -101,6 +101,12 @@ export default function SkuManagementPage() {
     loadLocationTags()
   }, [loadLocationTags])
 
+  useEffect(() => {
+    if (!isEditOpen) {
+      setSelectedSku(null)
+    }
+  }, [isEditOpen])
+
   const getLocationTagLabel = (sku: Sku) => {
     if (sku.locationTagName) return sku.locationTagName
     if (!sku.locationTagId) return "-"
@@ -129,8 +135,8 @@ export default function SkuManagementPage() {
     try {
       const created = await skuService.create(mapFormValuesToPayload(data))
       setSkus((prev) => [created, ...prev])
-      setIsAddOpen(false)
       toast({ title: "SKU created", description: `${created.skuName} has been added successfully.` })
+      setIsAddOpen(false)
     } catch (error: any) {
       console.error("Failed to create SKU", error)
       toast({
@@ -149,9 +155,8 @@ export default function SkuManagementPage() {
     try {
       const updated = await skuService.update(selectedSku.id, mapFormValuesToPayload(data))
       setSkus((prev) => prev.map((sku) => (sku.id === updated.id ? updated : sku)))
-      setIsEditOpen(false)
-      setSelectedSku(null)
       toast({ title: "SKU updated", description: `${updated.skuName} has been updated.` })
+      setIsEditOpen(false)
     } catch (error: any) {
       console.error("Failed to update SKU", error)
       toast({

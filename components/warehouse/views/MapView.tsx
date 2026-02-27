@@ -137,7 +137,7 @@ const WarehouseMapView = ({ facilityData }) => {
 
     // Find the selected unit from saved layouts
     const selectedLayout = savedLayouts.find(layout => layout.id === unitId);
-    
+
     if (!selectedLayout?.layoutData?.items) {
       setAvailableLocationTags([]);
       setAvailableSkus([]);
@@ -1313,6 +1313,9 @@ const WarehouseMapView = ({ facilityData }) => {
 
   const filteredItemKeys = highlightData.itemKeys;
   const highlightedCompartmentsMap = highlightData.compartmentMap;
+  const effectiveFilteredKeys = (selectedLocationTag || selectedSku || selectedAsset) && filteredItemKeys.length === 0
+    ? ['__no_match__']
+    : filteredItemKeys;
 
   // Dropdown filter handlers
   const handleLocationTagChange = (e) => {
@@ -2117,8 +2120,8 @@ const WarehouseMapView = ({ facilityData }) => {
                         background="transparent"
                         showLabels={false}
                         showMetadata={false}
-                        highlightedKeys={filteredItemKeys}
-                        filteredKeys={filteredItemKeys}
+                        highlightedKeys={effectiveFilteredKeys}
+                        filteredKeys={effectiveFilteredKeys}
                         highlightedCompartmentsMap={highlightedCompartmentsMap}
                         padding={60}
                         allowUpscale={false}

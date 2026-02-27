@@ -1,0 +1,16 @@
+﻿unit_id,unit_name,unit_type,status,description,area
+CDC-001,Central Distribution Center,warehouse,LIVE,Main distribution hub for North region,50000 sq meters
+ECW-002,East Coast Warehouse,warehouse,LIVE,Primary warehouse for East Coast operations,35000 sq meters
+WCF-003,West Coast Fulfillment,warehouse,LIVE,West Coast distribution center,42000 sq meters
+MSF-004,Midwest Storage Facility,warehouse,LIVE,Regional storage and distribution,28000 sq meters
+SDH-005,Southern Distribution Hub,warehouse,LIVE,Southern region main warehouse,38000 sq meters
+TLC-006,Texas Logistics Center,warehouse,LIVE,Texas and Southwest operations,45000 sq meters
+FRW-007,Florida Regional Warehouse,warehouse,LIVE,Southeast coastal distribution,32000 sq meters
+PND-008,Pacific Northwest Depot,warehouse,LIVE,Northwest region warehouse,30000 sq meters
+MRS-009,Mountain Region Storage,warehouse,LIVE,Mountain states distribution,25000 sq meters
+NED-010,New England Distribution,warehouse,LIVE,New England regional hub,27000 sq meters
+MPA-011,Manufacturing Plant A,manufacturing,LIVE,Primary manufacturing facility,60000 sq meters
+MPB-012,Manufacturing Plant B,manufacturing,LIVE,Secondary production facility,55000 sq meters
+CSF-013,Cold Storage Facility,warehouse,LIVE,Temperature-controlled storage,20000 sq meters
+RPC-014,Returns Processing Center,warehouse,LIVE,Returns and refurbishment center,15000 sq meters
+CDT-015,Cross-Dock Terminal,warehouse,LIVE,High-velocity cross-docking facility,18000 sq meters

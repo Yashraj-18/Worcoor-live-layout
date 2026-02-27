@@ -170,12 +170,36 @@ export class LocationTagsService {
     const { locationTagId } = request.params;
     const orgId = request.user.organizationId;
 
-    const deleted = await this.repository.delete(locationTagId, orgId);
-
-    if (!deleted) {
+    // Check if location tag exists
+    const existing = await this.repository.findById(locationTagId, orgId);
+    if (!existing) {
       return reply.code(404).send({ error: 'Location tag not found' });
     }
 
-    reply.code(204).send();
+    try {
+      // Unassign location tag from all SKUs, Assets, and Components
+      // This sets their locationTagId to NULL before deleting the tag
+      await this.repository.unassignFromSKUs(locationTagId, orgId);
+      await this.repository.unassignFromAssets(locationTagId, orgId);
+      await this.repository.unassignFromComponents(locationTagId, orgId);
+
+      // Now delete the location tag
+      const deleted = await this.repository.delete(locationTagId, orgId);
+
+      if (!deleted) {
+        return reply.code(404).send({ error: 'Location tag not found' });
+      }
+
+      reply.code(204).send();
+    } catch (error: any) {
+      // Handle any unexpected errors
+      if (error.code === '23503' || error.message?.includes('foreign key')) {
+        return reply.code(409).send({ 
+          error: 'Cannot delete location tag',
+          details: 'This location tag is referenced by movement records. Please contact support.'
+        });
+      }
+      throw error;
+    }
   }
 }

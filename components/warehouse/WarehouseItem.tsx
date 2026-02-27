@@ -99,7 +99,9 @@ const WarehouseItem = ({
   stackMode, 
   isReadOnly,
   isHighlighted = false,
-  highlightedCompartments
+  highlightedCompartments,
+  locationTagsMap = {},
+  hideNonMatchingCompartments = false
 }: any) => {
   const [hoverTooltip, setHoverTooltip] = useState<any>(null);
   const [hoveredCompartment, setHoveredCompartment] = useState<any>(null);
@@ -523,6 +525,24 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           const row = Math.floor(index / cols);
           const col = index % cols;
           const compartmentId = `${row}-${col}`;
+          if (hideNonMatchingCompartments && Array.isArray(highlightedCompartments) && highlightedCompartments.length > 0) {
+            if (!highlightedCompartments.includes(compartmentId)) {
+              const x = col * (cellWidth + gap);
+              const y = row * (cellHeight + gap);
+              // Render invisible placeholder to preserve rack shape/spacing
+              return (
+                <rect
+                  key={compartmentId}
+                  x={x}
+                  y={y}
+                  width={cellWidth}
+                  height={cellHeight}
+                  fill="transparent"
+                  stroke="transparent"
+                />
+              );
+            }
+          }
           const compartmentData = item.compartmentContents && item.compartmentContents[compartmentId];
           const isCompartmentHighlighted = Array.isArray(highlightedCompartments)
             ? highlightedCompartments.includes(compartmentId)
@@ -542,7 +562,17 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           // Use status-based border colors for storage racks
           // Determine capacity status based on location tags and SKU assignments
           const hasLocationTags = Boolean(compartmentData?.locationId || compartmentData?.uniqueId || compartmentData?.primaryLocationId || (compartmentData?.locationIds && compartmentData.locationIds.length > 0));
-          const hasSkusAssigned = Boolean(compartmentData?.sku || compartmentData?.skuId || compartmentData?.primarySku);
+          
+          // Check if SKUs are assigned to the location tag (from database)
+          // Look up the specific location tag for this compartment
+          const compartmentLocationId = compartmentData?.locationId || compartmentData?.primaryLocationId;
+          const compartmentLocationTag = compartmentLocationId ? locationTagsMap[compartmentLocationId] : null;
+          
+          // ONLY check backend location tag data - currentItems field indicates SKUs assigned
+          const hasSkusAssigned = Boolean(
+            compartmentLocationTag && compartmentLocationTag.currentItems > 0
+          );
+          
           const capacityStatus = determineCapacityStatus(hasLocationTags, hasSkusAssigned);
           const borderStyle = isReadOnly
             ? getStorageComponentBorder(hasLocationTags, capacityStatus)
@@ -571,11 +601,12 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
               onClick={(event: any) => {
                 event.stopPropagation();
                 
-                // In readonly mode, trigger item selection for location details
+                // In readonly mode, trigger item selection for location details (even for empty compartments)
                 if (isReadOnly && onSelect) {
                   console.log('Compartment clicked in readonly mode:', { item, compartmentId, row, col, compartmentData });
                   // Pass the compartment-specific data by calling onSelect with a special format
                   // We'll pass the compartmentId so the parent can identify which compartment was clicked
+                  // For empty compartments, compartmentData will be null/undefined
                   onSelect(item.id, { compartmentId, compartmentData, row, col });
                   return;
                 }
@@ -861,11 +892,14 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
     item?.inventoryData?.uniqueId ||
     (item?.locationData?.locationIds && item.locationData.locationIds.length > 0)
   );
+  
+  // Look up the location tag from backend to check SKU assignment
+  const unitLocationId = item?.locationId || item?.locationData?.primaryLocationId || item?.inventoryData?.locationId || item?.inventoryData?.uniqueId;
+  const unitLocationTag = unitLocationId ? locationTagsMap[unitLocationId] : null;
+  
+  // ONLY check backend location tag data - currentItems field indicates SKUs assigned
   const hasSkusAssignedForUnit = Boolean(
-    item?.sku || 
-    item?.skuId || 
-    item?.inventoryData?.sku || 
-    item?.inventoryData?.skuId
+    unitLocationTag && unitLocationTag.currentItems > 0
   );
   const storageUnitCapacityStatus = determineCapacityStatus(hasLocationTagsForUnit, hasSkusAssignedForUnit);
   
@@ -1488,7 +1522,8 @@ WarehouseItem.propTypes = {
   stackMode: PropTypes.bool,
   isReadOnly: PropTypes.bool,
   isHighlighted: PropTypes.bool,
-  highlightedCompartments: PropTypes.arrayOf(PropTypes.string)
+  highlightedCompartments: PropTypes.arrayOf(PropTypes.string),
+  hideNonMatchingCompartments: PropTypes.bool
 };
 
 // Default props
@@ -1504,7 +1539,8 @@ WarehouseItem.defaultProps = {
   stackMode: false,
   isReadOnly: false,
   isHighlighted: false,
-  highlightedCompartments: null
+  highlightedCompartments: null,
+  hideNonMatchingCompartments: false
 };
 
 export default WarehouseItem;

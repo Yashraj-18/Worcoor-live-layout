@@ -2,27 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Simple fade animation for dropdowns */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Apply fade-in animation to dialogs, popups, and dropdowns */
-.dialog-animation,
-[data-state='open'] {
-  animation: fadeIn 0.2s ease-out;
-}
-
 /* Fix for radix dropdown content positioning */
 [data-radix-popper-content-wrapper] {
-  opacity: 0;
-  animation: fadeIn 0.2s ease-out forwards;
-  /* This ensures the dropdown appears immediately at its final position */
   transition: none !important;
 }
 
@@ -215,13 +196,6 @@ input[type="datetime-local"] {
   accent-color: red; /* Works in some browsers only */
 }
 
-/* Smooth transitions for theme changes */
-* {
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow,
-    transform, filter, backdrop-filter;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
 :deep(.outer-div > div) {
   @apply !rounded-none !border-0 !bg-transparent !shadow-none;
 }
@@ -269,26 +243,6 @@ box-shadow: none !important;
 
 *::-webkit-scrollbar-thumb:hover {
   background: hsl(222.22deg 47.37% 11.18% / 39%);
-}
-
-/* Smooth transitions for theme changes */
-* {
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow,
-    transform, filter, backdrop-filter;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-/* Glass effect utility */
-.glass-effect {
-  backdrop-filter: blur(16px) saturate(180%);
-  background-color: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.125);
-}
-
-.dark .glass-effect {
-  background-color: rgba(17, 25, 40, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.125);
 }
 
 .nextjs-toast{

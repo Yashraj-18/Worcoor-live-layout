@@ -55,6 +55,16 @@ export class UnitsRepository {
     };
   }
 
+  async findByUnitId(unitId: string, organizationId: string): Promise<UnitEntity | null> {
+    const result = await db
+      .select()
+      .from(units)
+      .where(and(eq(units.unitId, unitId), eq(units.organizationId, organizationId)))
+      .limit(1);
+
+    return result[0] ?? null;
+  }
+
   async create(payload: CreateUnitDto): Promise<UnitEntity> {
     const [created] = await db.insert(units).values(payload).returning();
     return created;

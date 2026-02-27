@@ -156,4 +156,23 @@ export async function locationTagsRoutes(app: FastifyInstance) {
     },
     handler: (request, reply) => service.update(request, reply),
   });
+
+  app.delete<{ Params: LocationTagParams }>('/:locationTagId', {
+    preHandler: [app.authenticate, requireRole('admin')],
+    schema: {
+      params: locationTagParamSchema,
+      response: {
+        204: { type: 'null', description: 'Location tag deleted successfully' },
+        404: { type: 'object', properties: { error: { type: 'string' } } },
+        409: { 
+          type: 'object', 
+          properties: { 
+            error: { type: 'string' },
+            details: { type: 'string' }
+          } 
+        },
+      },
+    },
+    handler: (request, reply) => service.remove(request, reply),
+  });
 }

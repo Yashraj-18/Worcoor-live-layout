@@ -19,12 +19,12 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-11 w-full items-center justify-between rounded-xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm px-4 py-2 text-sm ring-offset-background placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:border-blue-300 disabled:cursor-not-allowed disabled:opacity-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/80 dark:ring-offset-slate-950 dark:placeholder:text-slate-400 dark:focus:ring-slate-300 [&>span]:line-clamp-1",
+      "flex h-11 w-full items-center justify-between rounded-xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm px-4 py-2 text-sm text-slate-900 ring-offset-background placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:border-blue-300 disabled:cursor-not-allowed disabled:opacity-50 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:ring-offset-slate-950 dark:placeholder:text-slate-400 dark:focus:ring-slate-300 [&>span]:line-clamp-1",
       className,
     )}
     {...props}
   >
- <span className="truncate text-ellipsis">{children}</span> 
+    <span className="truncate text-ellipsis">{children}</span>
     <SelectPrimitive.Icon asChild>
       <ChevronDown className="h-4 w-4 opacity-50" />
     </SelectPrimitive.Icon>
@@ -101,7 +101,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-lg py-2.5 pl-8 pr-2 text-sm outline-none focus:bg-slate-100 focus:text-slate-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-slate-50 dark:focus:bg-slate-700 dark:focus:text-slate-100 dark:hover:bg-slate-700/50",
+      "relative flex w-full cursor-default select-none items-center rounded-lg py-2.5 pl-8 pr-2 text-sm text-slate-900 outline-none focus:bg-slate-100 focus:text-slate-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-slate-50 dark:text-slate-100 dark:focus:bg-slate-700 dark:focus:text-slate-100 dark:hover:bg-slate-700/50",
       className,
     )}
     {...props}

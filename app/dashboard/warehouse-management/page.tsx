@@ -13,6 +13,7 @@ import { PageTitle } from '@/components/page-title';
 import WarehouseMapView from '@/components/warehouse/WarehouseMapView';
 import { warehouseService, componentToItem } from '@/src/services/warehouseService';
 import { orgUnitService, type OrgUnit } from '@/src/services/orgUnits';
+import { locationTagService, type LocationTag } from '@/src/services/locationTags';
 import { notification } from '@/src/services/notificationService';
 import type { Layout } from '@/types/warehouse';
 import '@/styles/warehouse.css';
@@ -21,6 +22,7 @@ export default function WarehouseManagementPage() {
   const router = useRouter();
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
   const [layouts, setLayouts] = useState<Layout[]>([]);
+  const [locationTagsMap, setLocationTagsMap] = useState<Record<string, LocationTag[]>>({});
   const [isLoadingLayouts, setIsLoadingLayouts] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showMapModal, setShowMapModal] = useState(false);
@@ -67,6 +69,20 @@ export default function WarehouseManagementPage() {
       );
 
       setLayouts(layoutsWithLiveItems);
+
+      // Fetch location tags from Reference Data for each unit
+      const tagsMap: Record<string, LocationTag[]> = {};
+      await Promise.all(
+        units.map(async (unit) => {
+          try {
+            const tags = await locationTagService.listByUnit(unit.id);
+            tagsMap[unit.id] = tags;
+          } catch {
+            tagsMap[unit.id] = [];
+          }
+        })
+      );
+      setLocationTagsMap(tagsMap);
     } catch (err) {
       console.error('Failed to load layouts', err);
       setLayouts([]);
@@ -81,6 +97,7 @@ export default function WarehouseManagementPage() {
     // Clear all state first (hard refresh)
     setLayouts([]);
     setOrgUnits([]);
+    setLocationTagsMap({});
     setError(null);
     setShowMapModal(false);
     setSelectedLayoutId(null);
@@ -177,20 +194,13 @@ export default function WarehouseManagementPage() {
     return totalMax > 0 ? Math.round(Math.min(totalUsed, totalMax) / totalMax * 100) : 0;
   };
 
-  // Location tag utilization: components with a locationTagId assigned / total components
-  const locationTagUtilizationFor = (layout: Layout): { pct: number; tagged: number; total: number } => {
-    const items: any[] = (layout as any).layoutData?.items ?? [];
-    if (!items.length) return { pct: 0, tagged: 0, total: 0 };
-    const total = items.length;
-    const tagged = items.filter((item: any) =>
-      item.locationTagId != null && String(item.locationTagId).trim() !== ''
-    ).length;
-    return { pct: Math.round((tagged / total) * 100), tagged, total };
-  };
+  // Org-wide tag utilization for the Avg Tag Utilization summary card
+  const allOrgTags = Object.values(locationTagsMap).flat();
+  const orgTagTotal = allOrgTags.length;
+  const orgTagInUse = allOrgTags.filter((tag) => tag.currentItems > 0).length;
+  const orgTagPct = orgTagTotal > 0 ? Math.round((orgTagInUse / orgTagTotal) * 100) : 0;
 
-  const avgTagUtilization = layouts.length > 0
-    ? Math.round(layouts.reduce((sum, l) => sum + locationTagUtilizationFor(l).pct, 0) / layouts.length)
-    : null;
+  const avgTagUtilization = orgTagTotal > 0 ? orgTagPct : null;
 
   const isEmptyState = !isLoadingLayouts && layouts.length === 0;
 
@@ -301,7 +311,14 @@ export default function WarehouseManagementPage() {
                 : meta.size ?? '—';
             const itemsLabel = meta.totalItems ?? meta.items ?? meta.croppedItems ?? 0;
             const lastActivity = layout.updatedAt ?? layout.createdAt;
-            const tagStats = locationTagUtilizationFor(layout);
+            const unitTags = locationTagsMap[layout.unitId] ?? [];
+            const canvasItems: any[] = (layout as any).layoutData?.items ?? [];
+            const placedTagIds = new Set(canvasItems.map((i: any) => i.locationTagId).filter(Boolean));
+            const placedTags = unitTags.filter((t) => placedTagIds.has(t.id));
+            const unitTagInUse = placedTags.filter((t) => t.currentItems > 0).length;
+            const unitTagTotal = unitTags.length;
+            const unitTagPct = unitTagTotal > 0 ? Math.round((unitTagInUse / unitTagTotal) * 100) : 0;
+            const tagStats = { pct: unitTagPct, inUse: unitTagInUse, total: unitTagTotal };
             const slotCapacity = (() => {
               const items: any[] = (layout as any).layoutData?.items ?? [];
               const GRID = 60;
@@ -363,15 +380,11 @@ export default function WarehouseManagementPage() {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Location Tag Utilization</p>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{tagStats.tagged}/{tagStats.total} tagged ({tagStats.pct}%)</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{tagStats.inUse}/{tagStats.total} ({tagStats.pct}%)</p>
                       </div>
                       <Progress value={tagStats.pct} className="h-2" />
                     </div>
 
-                    <div className="flex items-center justify-between pt-1">
-                      <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Utilised / Total</p>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{slotCapacity.utilised} / {slotCapacity.total}</p>
-                    </div>
                   </div>
                 </CardContent>
                 

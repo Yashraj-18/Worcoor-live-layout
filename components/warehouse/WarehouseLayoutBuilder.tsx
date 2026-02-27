@@ -33,12 +33,12 @@ import { simulateDataRefresh, DataCache } from '@/lib/warehouse/utils/dataRefres
 import { facilityHierarchy } from '@/lib/warehouse/utils/facilityHierarchy';
 import { shapeCreator } from '@/lib/warehouse/utils/shapeCreator';
 import { LayoutCropper } from '@/lib/warehouse/utils/layoutCropper';
-import { 
-  constrainToBoundary, 
-  autoAdjustFloorPlan, 
+import {
+  constrainToBoundary,
+  autoAdjustFloorPlan,
   validateItemPlacement,
   validateItemResize,
-  getFloorPlan 
+  getFloorPlan
 } from '@/lib/warehouse/utils/boundaryManager';
 import showMessage from '@/lib/warehouse/utils/showMessage';
 
@@ -93,7 +93,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [centerCanvasTrigger, setCenterCanvasTrigger] = useState<number>(0);
-  
+
   // New state for enhanced features
   const [selectedFacility, setSelectedFacility] = useState<any>(null);
   const [showMainDashboard, setShowMainDashboard] = useState<boolean>(false);
@@ -112,6 +112,8 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   const [multiLocationSelectorVisible, setMultiLocationSelectorVisible] = useState<boolean>(false);
   const [pendingSkuRequest, setPendingSkuRequest] = useState<any>(null);
   const [mapTypeSelectorVisible, setMapTypeSelectorVisible] = useState<boolean>(false);
+  const [existingLayoutWarningVisible, setExistingLayoutWarningVisible] = useState<boolean>(false);
+  const [existingLayoutForUnit, setExistingLayoutForUnit] = useState<{ id: string; name: string } | null>(null);
 
   // Backend integration state
   const [activeLayoutId, setActiveLayoutId] = useState<string | null>(propLayoutId || initialLayout?.id || null);
@@ -120,7 +122,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectedItem = warehouseItems.find(item => item.id === selectedItemId);
-  
+
   // STEP 2 — add right here ↓
   const selectionBoundingBox = React.useMemo(() => {
     if (selectedItemIds.length === 0) return null;
@@ -136,7 +138,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       maxY: Math.max(...selected.map(i => i.y + (i.height || 80))),
     };
   }, [selectedItemIds, warehouseItems]);
-  
+
   const existingInnerBoundaryForSelection = React.useMemo(() => {
     if (selectedItemIds.length === 0) return null;
     return warehouseItems.find(item => {
@@ -146,21 +148,8 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   }, [selectedItemIds, warehouseItems]);
 
 
-  // Handle org unit selection
-  const handleOrgUnitSelect = useCallback((selection: any) => {
-    const { orgUnit, status } = selection;
-    const layoutName = `${orgUnit.name} Layout`;
-    
-    setSelectedOrgUnit(orgUnit);
-    setSelectedOrgMap(null); // Reset map selection when org unit changes
-    setLayoutName(layoutName);
-    setLayoutNameSet(true);
-    
-    // Fetch location tags for the selected org unit
-    fetchLocationTagsForOrgUnit(orgUnit);
-  }, []);
-
   // Fetch location tags for a specific org unit
+  // NOTE: must be defined BEFORE handleOrgUnitSelect (used in its deps array)
   const fetchLocationTagsForOrgUnit = useCallback(async (orgUnit: any) => {
     if (!orgUnit) {
       setLocationTags([]);
@@ -171,14 +160,14 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
     try {
       setIsLoadingLocationTags(true);
       console.log(`🏷️ WarehouseLayoutBuilder - Fetching location tags for org unit: ${orgUnit.name} (ID: ${orgUnit.id})`);
-      
+
       const tags = await locationTagService.listByUnit(orgUnit.id);
-      
+
       console.log(`✅ WarehouseLayoutBuilder - Successfully fetched ${tags.length} location tags for ${orgUnit.name}:`);
       console.table(tags);
-      
+
       setLocationTags(tags);
-      
+
       // Additional detailed logging
       tags.forEach((tag, index) => {
         console.log(`📍 Location Tag ${index + 1}:`, {
@@ -187,12 +176,12 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
           capacity: tag.capacity,
           currentItems: tag.currentItems,
           utilization: tag.utilizationPercentage,
-          dimensions: tag.length && tag.breadth && tag.height 
+          dimensions: tag.length && tag.breadth && tag.height
             ? `${tag.length}×${tag.breadth}×${tag.height} ${tag.unitOfMeasurement}`
             : 'N/A'
         });
       });
-      
+
     } catch (error) {
       console.error(`❌ WarehouseLayoutBuilder - Failed to fetch location tags for org unit ${orgUnit.name}:`, error);
       setLocationTags([]);
@@ -200,6 +189,35 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       setIsLoadingLocationTags(false);
     }
   }, []);
+
+  // Handle org unit selection
+  const handleOrgUnitSelect = useCallback(async (selection: any) => {
+    const { orgUnit } = selection;
+    const newLayoutName = `${orgUnit.name} Layout`;
+
+    // In create mode (no active layout), check if this org unit already has a layout.
+    // Edit mode skips this check — the org unit is already locked to the existing layout.
+    if (!activeLayoutId) {
+      try {
+        const existingLayouts = await warehouseService.getLayouts(orgUnit.id);
+        if (existingLayouts && existingLayouts.length > 0) {
+          // A layout already exists for this org unit — block and show warning
+          setExistingLayoutForUnit({ id: existingLayouts[0].id, name: existingLayouts[0].layoutName || newLayoutName });
+          setExistingLayoutWarningVisible(true);
+          return; // Do NOT update selectedOrgUnit
+        }
+      } catch (err) {
+        console.warn('⚠️ Could not check existing layouts for org unit:', err);
+        // On error, allow the selection to proceed so as not to block the user
+      }
+    }
+
+    setSelectedOrgUnit(orgUnit);
+    setSelectedOrgMap(null);
+    setLayoutName(newLayoutName);
+    setLayoutNameSet(true);
+    fetchLocationTagsForOrgUnit(orgUnit);
+  }, [activeLayoutId, fetchLocationTagsForOrgUnit]);
 
   // -----------------------------------------------------------------------
   // Backend hydration: fetch components for the active layout
@@ -245,7 +263,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   useEffect(() => {
     console.log('WarehouseLayoutBuilder - initialOrgUnit:', initialOrgUnit);
     console.log('WarehouseLayoutBuilder - initialLayout:', initialLayout);
-    
+
     if (initialOrgUnit) {
       setSelectedOrgUnit(initialOrgUnit);
       const layoutName = initialLayout?.name || `${initialOrgUnit.name} Layout`;
@@ -260,24 +278,24 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       setActiveLayoutId(initialLayout.id);
       setOriginalLayoutId(initialLayout.id);
     }
-    
+
     // Only use initialLayout.items as fallback when there is no activeLayoutId
     // (backend hydration effect handles the case when activeLayoutId is set)
     if (!activeLayoutId && initialLayout && initialLayout.items) {
       console.log('Setting warehouse items from initialLayout (no backend layout):', initialLayout.items);
-      
+
       // Check if this is an existing layout by looking for it in saved layouts
       const savedLayouts = JSON.parse(localStorage.getItem('warehouseLayouts') || '[]');
-      const existingLayout = savedLayouts.find((layout: any) => 
-        layout.name === initialLayout.name && 
+      const existingLayout = savedLayouts.find((layout: any) =>
+        layout.name === initialLayout.name &&
         layout.orgUnit === (initialOrgUnit?.name || 'Unknown')
       );
-      
+
       if (existingLayout) {
         setOriginalLayoutId(existingLayout.id);
         console.log('📝 Found existing layout ID for editing:', existingLayout.id);
       }
-      
+
       // Auto-center components in the canvas
       const items = initialLayout.items;
       if (items.length > 0) {
@@ -286,24 +304,24 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
         const minY = Math.min(...items.map(item => item.y || 0));
         const maxX = Math.max(...items.map(item => (item.x || 0) + (item.width || 0)));
         const maxY = Math.max(...items.map(item => (item.y || 0) + (item.height || 0)));
-        
+
         // Calculate the current layout dimensions
         const layoutWidth = maxX - minX;
         const layoutHeight = maxY - minY;
-        
+
         // Calculate actual visible canvas dimensions (based on WarehouseCanvas fixed positioning)
         // Canvas is positioned: top: 60px, left: 320px, right: 320px, bottom: 40px
         const viewportWidth = window.innerWidth - 320 - 320; // Left + Right margins
         const viewportHeight = window.innerHeight - 60 - 40; // Top + Bottom margins
-        
+
         // Use reasonable defaults if viewport calculation fails
         const canvasWidth = Math.max(viewportWidth, 800);
         const canvasHeight = Math.max(viewportHeight, 500);
-        
+
         // Calculate center offset in the 5000x5000 scrollable canvas
         const offsetX = 2500 - (layoutWidth / 2) - minX; // Center in 5000px canvas
         const offsetY = 2500 - (layoutHeight / 2) - minY; // Center in 5000px canvas
-        
+
         console.log('Auto-centering layout:', {
           layoutBounds: { minX, minY, maxX, maxY },
           layoutDimensions: { width: layoutWidth, height: layoutHeight },
@@ -311,11 +329,11 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
           canvasDimensions: { width: canvasWidth, height: canvasHeight },
           centerOffset: { x: offsetX, y: offsetY }
         });
-        
+
         // Apply centering to all items AND force storage_unit to green
         const centeredItems = items.map(item => {
           const finalColor = item.type === 'storage_unit' ? 'transparent' : item.color;
-          
+
           return {
             ...item,
             x: (item.x || 0) + offsetX,
@@ -324,9 +342,9 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
             color: finalColor
           };
         });
-        
+
         setWarehouseItems(centeredItems);
-        
+
         // Auto-scroll to center the view
         setTimeout(() => {
           const canvasElement = document.querySelector('.warehouse-canvas');
@@ -334,9 +352,9 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
             // Scroll to the center of the layout in the 5000x5000 canvas
             const scrollLeft = offsetX - (canvasWidth / 2) + (layoutWidth / 2);
             const scrollTop = offsetY - (canvasHeight / 2) + (layoutHeight / 2);
-            
+
             console.log('Auto-scrolling to:', { scrollLeft, scrollTop });
-            
+
             canvasElement.scrollLeft = scrollLeft;
             canvasElement.scrollTop = scrollTop;
           }
@@ -356,7 +374,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
           console.warn('warehouseItems is not an array during refresh, resetting to empty array');
           return [];
         }
-        
+
         const refreshed = simulateDataRefresh(prev);
         setLastRefresh(Date.now());
         return refreshed;
@@ -374,7 +392,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
         console.warn('warehouseItems is not an array, resetting to empty array');
         return [];
       }
-      
+
       // First apply general color correction
       const generalCorrectedItems = prev.map(item => {
         if (item.type === COMPONENT_TYPES.SPARE_UNIT) {
@@ -424,16 +442,16 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
           setWarehouseItems(layoutData.items);
           setLayoutName(layoutData.name || 'Loaded Layout');
           setLayoutNameSet(true);
-          
+
           // Store the original layout ID for editing
           if (layoutData.id) {
             setOriginalLayoutId(layoutData.id);
             console.log('📝 Editing existing layout with ID:', layoutData.id);
           }
-          
+
           // Clear the temporary load data
           localStorage.removeItem('loadLayoutData');
-          
+
           // Show confirmation
           showMessage.success(`Layout "${layoutData.name || 'Loaded Layout'}" loaded successfully!\n\nThis layout has been optimized to remove white space and focus on operational content.`);
         }
@@ -486,7 +504,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   ) => {
     const isSpareUnit = newItem.type === COMPONENT_TYPES.SPARE_UNIT;
     const isStorageUnit = newItem.type === COMPONENT_TYPES.STORAGE_UNIT;
-    
+
     // Generate location code
     const locationCode = generateLocationCode(
       newItem.type,
@@ -495,13 +513,13 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       newItem.y,
       facilityContext
     );
-    
+
     // Generate inventory data
     const inventoryData = generateMockInventoryData(locationCode, newItem.type);
-    
+
     // Assign random storage orientation
     const storageOrientations = Object.values(STORAGE_ORIENTATION);
-    
+
     // Debug logging for Storage Unit
     if (isStorageUnit) {
       console.group('🏷️ STORAGE UNIT DEBUG');
@@ -513,7 +531,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       console.log('Only user-provided labels or component names will be used');
       console.groupEnd();
     }
-    
+
     // Determine base color - force Storage Units and Storage Racks to transparent
     const isStorageRack = newItem.type === COMPONENT_TYPES.SKU_HOLDER || newItem.type === COMPONENT_TYPES.VERTICAL_SKU_HOLDER;
     const baseColor = isStorageUnit || isStorageRack
@@ -521,7 +539,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       : isSpareUnit
         ? (newItem.customColor || newItem.color || '#8D6E63')
         : (newItem.color || getComponentColor(newItem.type, newItem.category));
-    
+
     // Create enhanced item
     const enhancedItem = {
       ...newItem,
@@ -532,15 +550,15 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       color: baseColor,
       ...(isSpareUnit ? { customColor: baseColor } : {}),
       // Set label based on component type
-      label: newItem.label || (isStorageUnit ? (newItem.name === 'Open Storage Space' ? 'Open Storage Space' : 
-                                                   newItem.name === 'Dispatch Staging Area' ? 'Dispatch Staging Area' :
-                                                   newItem.name === 'Grading Area' ? 'Grading Area' :
-                                                   newItem.name === 'Processing Area' ? 'Processing Area' :
-                                                   newItem.name === 'Production Area' ? 'Production Area' :
-                                                   newItem.name === 'Packaging Area' ? 'Packaging Area' :
-                                                   newItem.name === 'Cold Storage' ? 'Cold Storage' : 'Storage Unit-test') : newItem.name)
+      label: newItem.label || (isStorageUnit ? (newItem.name === 'Open Storage Space' ? 'Open Storage Space' :
+        newItem.name === 'Dispatch Staging Area' ? 'Dispatch Staging Area' :
+          newItem.name === 'Grading Area' ? 'Grading Area' :
+            newItem.name === 'Processing Area' ? 'Processing Area' :
+              newItem.name === 'Production Area' ? 'Production Area' :
+                newItem.name === 'Packaging Area' ? 'Packaging Area' :
+                  newItem.name === 'Cold Storage' ? 'Cold Storage' : 'Storage Unit-test') : newItem.name)
     };
-    
+
     // Debug logging for final Storage Unit item
     if (isStorageUnit) {
       console.group('✅ FINAL STORAGE UNIT ITEM');
@@ -556,7 +574,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       console.log('Note: No autoLabel property - auto-generation removed');
       console.groupEnd();
     }
-    
+
     return enhancedItem;
   }, [selectedFacility]);
 
@@ -595,9 +613,9 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       return;
     }
     console.log('Org unit selected:', selectedOrgUnit);
-    
+
     saveToUndoStack(warehouseItems);
-    
+
     let createdItem: any = null;
     setWarehouseItems(prev => {
       // Generate facility context if available
@@ -605,11 +623,11 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
         zoneId: selectedFacility.id,
         dimensions: { width: newItem.width, height: newItem.height }
       } : null;
-      
+
       // Use the reusable function to create enhanced item
       const enhancedItem = createEnhancedWarehouseItem(newItem, prev, facilityContext);
       createdItem = enhancedItem;
-      
+
       return [...prev, enhancedItem];
     });
     setSelectedItemId(newItem.id);
@@ -640,24 +658,24 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   const handleMoveItem = useCallback((itemId: string, x: number, y: number) => {
     setWarehouseItems(prev => {
       const floorPlan = getFloorPlan(prev);
-      
+
       return prev.map(item => {
         if (item.id !== itemId) return item;
-        
+
         let finalX = Math.max(0, x);
         let finalY = Math.max(0, y);
-        
+
         // Constrain to floor plan boundary if not the floor plan itself
         if (floorPlan && item.containerLevel !== 1) {
           const constrained = constrainToBoundary({ ...item, x: finalX, y: finalY }, floorPlan);
           finalX = constrained.x;
           finalY = constrained.y;
         }
-        
+
         return { ...item, x: finalX, y: finalY };
       });
     });
-    
+
     // Auto-adjust floor plan after move
     setTimeout(() => {
       setWarehouseItems(prev => {
@@ -700,7 +718,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   const handleSelectItem = useCallback((itemId: string, isMultiSelect = false) => {
     setSelectedItemId(itemId);       // keeps PropertiesPanel working as before
     setShowBoundaryDropdown(false);
-    
+
     if (isMultiSelect) {
       // Shift+click → toggle item in/out of multi-selection
       setSelectedItemIds(prev =>
@@ -717,21 +735,21 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   const handleUpdateItem = useCallback((itemId: string, updates: any) => {
     setWarehouseItems(prev => {
       const floorPlan = getFloorPlan(prev);
-      
+
       return prev.map(item => {
         if (item.id !== itemId) return item;
-        
+
         let finalUpdates = { ...updates };
-        
+
         // Validate resize if width or height is being updated
         if ((updates.width || updates.height) && floorPlan && item.containerLevel !== 1) {
           const newWidth = updates.width || item.width;
           const newHeight = updates.height || item.height;
-          
+
           const validation = validateItemResize(item, newWidth, newHeight, prev);
           finalUpdates.width = validation.constrainedWidth;
           finalUpdates.height = validation.constrainedHeight;
-          
+
           // Auto-adjust floor plan if resize would exceed boundary
           if (validation.needsBoundaryExpansion) {
             setTimeout(() => {
@@ -739,7 +757,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
             }, 100);
           }
         }
-        
+
         const isSpareUnit = item.type === COMPONENT_TYPES.SPARE_UNIT;
         const baseColor = isSpareUnit
           ? (finalUpdates.customColor || finalUpdates.color || item.customColor || item.color || '#8D6E63')
@@ -1060,13 +1078,13 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   }, []);
 
   const handleLockToggle = useCallback((itemId: string, lockType: any, isLocked: any) => {
-    setWarehouseItems(prevItems => 
-      prevItems.map(item => 
-        item.id === itemId 
-          ? { 
-              ...item, 
-              [lockType === 'position' ? 'isPositionLocked' : 'isSizeLocked']: isLocked 
-            }
+    setWarehouseItems(prevItems =>
+      prevItems.map(item =>
+        item.id === itemId
+          ? {
+            ...item,
+            [lockType === 'position' ? 'isPositionLocked' : 'isSizeLocked']: isLocked
+          }
           : item
       )
     );
@@ -1128,7 +1146,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   const handleAddLayerAbove = useCallback((item: any) => {
     const newLayerName = prompt('Enter name for new layer:', item.name + ' Layer');
     if (newLayerName) {
-      setWarehouseItems(prev => 
+      setWarehouseItems(prev =>
         prev.map(warehouseItem => {
           if (warehouseItem.id === item.id) {
             const updatedItem = { ...warehouseItem };
@@ -1157,7 +1175,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   const handleAddLayerBelow = useCallback((item: any) => {
     const newLayerName = prompt('Enter name for new layer:', item.name + ' Base Layer');
     if (newLayerName) {
-      setWarehouseItems(prev => 
+      setWarehouseItems(prev =>
         prev.map(warehouseItem => {
           if (warehouseItem.id === item.id) {
             const updatedItem = { ...warehouseItem };
@@ -1192,9 +1210,9 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   }, []);
 
   const handleUpdateStack = useCallback((updatedStack: any) => {
-    setWarehouseItems(prev => 
-      prev.map(item => 
-        item.id === updatedStack.id 
+    setWarehouseItems(prev =>
+      prev.map(item =>
+        item.id === updatedStack.id
           ? { ...item, stack: updatedStack.stack }
           : item
       )
@@ -1226,9 +1244,9 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       setLayoutNameSet(true);
       return;
     }
-    
+
     const layoutName = `${selectedOrgUnit.name} - ${orgMap.name}`;
-    
+
     setSelectedOrgMap(orgMap);
     setLayoutName(layoutName);
     setLayoutNameSet(true);
@@ -1238,9 +1256,9 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   const handleLocationIdRequest = useCallback((itemId: string, compartmentId: any, row: any, col: any) => {
     const item = warehouseItems.find(item => item.id === itemId);
     setPendingSkuRequest({ itemId, compartmentId, row, col });
-    
+
     console.log('Location ID request for item:', item); // Debug log
-    
+
     // Check if this component supports multiple location IDs
     if (item && item.type === 'vertical_sku_holder') {
       console.log('Detected vertical storage rack, opening MultiLocationSelector'); // Debug log
@@ -1255,9 +1273,9 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   const getExistingLocationIds = useCallback((itemId) => {
     const item = warehouseItems.find(item => item.id === itemId);
     if (!item) return [];
-    
+
     const locationIds = [];
-    
+
     // Get Location IDs from compartmentalized items (Storage Racks)
     if (item.compartmentContents) {
       const compartmentLocationIds = Object.values(item.compartmentContents)
@@ -1272,28 +1290,28 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
         .filter(Boolean);
       locationIds.push(...compartmentLocationIds);
     }
-    
+
     // Get Location IDs from single location items (Storage Units)
     if (item.locationId) {
       locationIds.push(item.locationId);
     }
-    
+
     // Get multiple location IDs from storage units with multi-location support
     if (item.locationData && item.locationData.isMultiLocation && item.locationData.locationIds) {
       locationIds.push(...item.locationData.locationIds);
     }
-    
+
     return locationIds;
   }, [warehouseItems]);
 
   // Handle Location ID selection
   const handleLocationIdSelect = useCallback((data: any) => {
     if (!pendingSkuRequest) return;
-    
+
     const { itemId, compartmentId, row, col } = pendingSkuRequest;
     const item = warehouseItems.find(item => item.id === itemId);
     if (!item) return;
-    
+
     // Handle multiple location IDs for vertical storage racks
     if (data.isMultiple && item.type === 'vertical_sku_holder') {
       const {
@@ -1308,9 +1326,9 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       const resolvedMappings = levelLocationMappings.length > 0
         ? levelLocationMappings
         : locationIds.map((locId, index) => ({
-            levelId: levelIds[index] || `L${index + 1}`,
-            locationId: locId
-          }));
+          levelId: levelIds[index] || `L${index + 1}`,
+          locationId: locId
+        }));
 
       const resolvedLevelIds = levelIds.length > 0
         ? levelIds
@@ -1373,7 +1391,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
     // Handle multiple location IDs for storage units
     if (data.locationIds && Array.isArray(data.locationIds)) {
       const primaryLocationId = data.locationIds[0] || '';
-      handleUpdateItem(itemId, { 
+      handleUpdateItem(itemId, {
         locationId: primaryLocationId, // Primary location ID for display
         locationData: {
           isMultiLocation: true,
@@ -1401,7 +1419,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
 
     // Handle single location units (Storage Unit)
     if (compartmentId === 'single-sku') {
-      handleUpdateItem(itemId, { 
+      handleUpdateItem(itemId, {
         locationId: locationId,
         locationData: {
           locationId: locationId,
@@ -1421,9 +1439,9 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       syncLocationTagToBackend(itemId, locationId || null);
     } else {
       // Handle compartmentalized units (Horizontal Storage Racks)
-      const newContents = { 
-        ...item.compartmentContents, 
-        [compartmentId]: { 
+      const newContents = {
+        ...item.compartmentContents,
+        [compartmentId]: {
           locationId: locationId,
           quantity: 1,
           storageSpace: `${Math.floor(item.width / 60)}x${Math.floor(item.height / 60)}`,
@@ -1443,12 +1461,12 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
           }
         }
       };
-      
+
       handleUpdateItem(itemId, { compartmentContents: newContents });
       // Sync the first assigned location tag to backend component's location_tag_id
       syncLocationTagToBackend(itemId, locationId || null);
     }
-    
+
     setSkuIdSelectorVisible(false);
     setPendingSkuRequest(null);
   }, [pendingSkuRequest, warehouseItems, handleUpdateItem, syncLocationTagToBackend]);
@@ -1465,24 +1483,13 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
     setPendingSkuRequest(null);
   }, []);
 
-  const handleSave = useCallback(() => {
-    // If no org unit selected, prompt user to select one
-    if (!selectedOrgUnit) {
-      showMessage.warning('Please select an organizational unit from the dropdown in the top navigation bar before saving.');
-      return;
-    }
-    
-    // Show map type selector modal before saving
-    setMapTypeSelectorVisible(true);
-  }, [selectedOrgUnit]);
-
   const handleMapTypeSelected = useCallback((selection: any) => {
     const { status } = selection;
     const operationalStatus = status.id; // Use selected status from modal
-    
+
     // Use ultra-tight cropping to eliminate ALL white space
     const croppedLayout = LayoutCropper.createUltraTightCrop(warehouseItems);
-    
+
     // Add operational metadata
     const operationalMetadata = {
       totalComponents: croppedLayout.croppedItems.length,
@@ -1495,7 +1502,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
         y: Math.round(croppedLayout.offset.y)
       }
     };
-    
+
     const layoutData = {
       name: layoutName,
       items: croppedLayout.croppedItems, // Use cropped items instead of original
@@ -1519,7 +1526,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
         croppedDimensions: operationalMetadata.croppedDimensions
       }
     };
-    
+
     // -----------------------------------------------------------------------
     // Backend persistence: save/update layout in the database
     // -----------------------------------------------------------------------
@@ -1561,23 +1568,40 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
         })
         .catch(err => console.error('❌ Failed to create layout in backend:', err?.response?.status, err?.response?.data || err.message));
     }
-    
+
     // Show confirmation with status
     const statusLabels = {
       'operational': 'Operational (Ready for live operations)',
       'draft': 'Draft (Work in progress - not ready for operations)'
     };
-    
+
     // Show confirmation with ultra-tight cropping info
-    const croppingInfo = operationalMetadata.whitespaceRemoved.x > 0 || operationalMetadata.whitespaceRemoved.y > 0 
+    const croppingInfo = operationalMetadata.whitespaceRemoved.x > 0 || operationalMetadata.whitespaceRemoved.y > 0
       ? `\n\nUltra-tight optimization: Removed ${operationalMetadata.whitespaceRemoved.x}px × ${operationalMetadata.whitespaceRemoved.y}px of white space\nFinal size: ${operationalMetadata.croppedDimensions.width}px × ${operationalMetadata.croppedDimensions.height}px\nZero padding applied for maximum focus`
       : '';
-    
+
     showMessage.success(`Layout "${layoutName}" saved successfully!\n\nOrganizational Unit: ${selectedOrgUnit?.name || 'Unknown'}\nStatus: ${statusLabels[operationalStatus as keyof typeof statusLabels] || 'Unknown'}${croppingInfo}\n\nThis layout is now available in the Live Warehouse Maps section.`);
-    
+
     // Close the map type selector modal
     setMapTypeSelectorVisible(false);
   }, [warehouseItems, layoutName, layoutNameSet, selectedOrgUnit, selectedOrgMap, activeLayoutId, syncComponentsToBackend]);
+
+  const handleSave = useCallback(() => {
+    // If no org unit selected, prompt user to select one
+    if (!selectedOrgUnit) {
+      showMessage.warning('Please select an organizational unit from the dropdown in the top navigation bar before saving.');
+      return;
+    }
+
+    if (activeLayoutId) {
+      // EDIT MODE: bypass the status picker modal — preserve the existing status and update directly
+      const existingStatus = (initialLayout as any)?.status || 'operational';
+      handleMapTypeSelected({ status: { id: existingStatus } });
+    } else {
+      // CREATE MODE: show the status picker modal (Save as Operational / Draft)
+      setMapTypeSelectorVisible(true);
+    }
+  }, [selectedOrgUnit, activeLayoutId, initialLayout, handleMapTypeSelected]);
 
   const handleLoad = useCallback(() => {
     // Try to load from localStorage
@@ -1608,9 +1632,9 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
     setLayoutNameSet(false);
   }, []);
 
-  
 
-  
+
+
   // Auto-generate boundary
   const handleAutoGenerateBoundary = useCallback(() => {
     const existingBoundary = warehouseItems.find(item => item.type === 'square_boundary');
@@ -1653,7 +1677,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
     setWarehouseItems(prev => [...prev, boundary]);
     showMessage.success(`Boundary generated! ${boundary.width}×${boundary.height}px, ${components.length} components`);
   }, [warehouseItems]);
-  
+
   // STEP 5 — paste the two new functions right here ↓
   const handleGenerateInnerBoundary = useCallback(() => {
     if (selectedItemIds.length === 0) return;
@@ -1701,7 +1725,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
     setShowBoundaryDropdown(false);
     showMessage.success('Inner boundary removed.');
   }, [existingInnerBoundaryForSelection]);
-  
+
   // Navigation handlers
   const handleNavigateToBuilder = useCallback(() => {
     setShowMainDashboard(false);
@@ -1713,7 +1737,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
 
   // Check if we're in fullscreen map mode
   const isFullscreenMap = window.location.hash.startsWith('#fullscreen-map=');
-  
+
   // If fullscreen map, render only the fullscreen component
   if (isFullscreenMap) {
     return <FullscreenMap />;
@@ -1747,41 +1771,42 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
               onAutoGenerateBoundary={handleAutoGenerateBoundary}
               itemCount={warehouseItems.length}
               onNavigateToDashboard={handleNavigateToDashboard}
+              isEditMode={!!activeLayoutId}
             />
-            
+
             <div className="main-content">
               {/* Debug: Log warehouseItems state */}
               {console.log('WarehouseCanvas - warehouseItems:', warehouseItems)}
               {console.log('WarehouseCanvas - warehouseItems length:', warehouseItems.length)}
               {console.log('WarehouseCanvas - warehouseItems sample:', warehouseItems[0])}
               <ComponentPanel />
-              
+
               <WarehouseCanvas
-                  items={warehouseItems}
-                  onAddItem={handleAddItem}
-                  onMoveItem={handleMoveItem}
-                  onSelectItem={handleSelectItem}
-                  selectedItemId={selectedItemId}
-                  selectedItemIds={selectedItemIds}
-                  onUpdateItem={handleUpdateItem}
-                  onCanvasClick={handleCanvasClick}
-                  stackMode={stackMode}
-                  onRightClick={handleRightClick}
-                  onCreateStack={handleCreateStack}
-                  onInfoClick={handleInfoClick}
-                  zoomLevel={zoomLevel}
-                  panOffset={panOffset}
-                  onPanChange={handlePanChange}
-                  onRequestSkuId={handleLocationIdRequest}
-                  centerCanvasTrigger={centerCanvasTrigger}
-                />
-                
-                <PropertiesPanel
-                  selectedItem={selectedItem}
-                  onUpdateItem={handleUpdateItem}
-                  onDeleteItem={handleDeleteItem}
-                />
-              </div>
+                items={warehouseItems}
+                onAddItem={handleAddItem}
+                onMoveItem={handleMoveItem}
+                onSelectItem={handleSelectItem}
+                selectedItemId={selectedItemId}
+                selectedItemIds={selectedItemIds}
+                onUpdateItem={handleUpdateItem}
+                onCanvasClick={handleCanvasClick}
+                stackMode={stackMode}
+                onRightClick={handleRightClick}
+                onCreateStack={handleCreateStack}
+                onInfoClick={handleInfoClick}
+                zoomLevel={zoomLevel}
+                panOffset={panOffset}
+                onPanChange={handlePanChange}
+                onRequestSkuId={handleLocationIdRequest}
+                centerCanvasTrigger={centerCanvasTrigger}
+              />
+
+              <PropertiesPanel
+                selectedItem={selectedItem}
+                onUpdateItem={handleUpdateItem}
+                onDeleteItem={handleDeleteItem}
+              />
+            </div>
 
 
             {/* Context Menu - Only show if there are warehouse items */}
@@ -1859,7 +1884,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
                 >
                   ▾
                 </button>
-                
+
                 {/* Dropdown menu */}
                 {showBoundaryDropdown && (
                   <div
@@ -1894,7 +1919,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
             )}
 
 
-            
+
             {/* Zone Context Menu */}
             <ZoneContextMenu
               isVisible={zoneContextMenu.visible}
@@ -2013,12 +2038,86 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
           isLoadingLocationTags={isLoadingLocationTags}
         />
 
-        {/* Map Type Selector Modal - Select operational status before saving */}
+        {/* Map Type Selector Modal - Select operational status before saving (create mode only) */}
         <OrgUnitSelector
           isVisible={mapTypeSelectorVisible}
           onClose={() => setMapTypeSelectorVisible(false)}
           onSave={handleMapTypeSelected}
         />
+
+        {/* Existing Layout Warning Modal - shown when user tries to create a layout for an org unit that already has one */}
+        {existingLayoutWarningVisible && existingLayoutForUnit && (
+          <div
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
+            }}
+            onClick={() => setExistingLayoutWarningVisible(false)}
+          >
+            <div
+              style={{
+                background: 'linear-gradient(135deg, rgba(30,41,59,0.98) 0%, rgba(15,23,42,0.98) 100%)',
+                border: '1px solid rgba(239,68,68,0.4)',
+                borderRadius: 16, padding: 0, width: 480, maxWidth: '90vw',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                overflow: 'hidden'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(15,23,42,0.9) 0%, rgba(30,41,59,0.8) 100%)',
+                borderBottom: '1px solid rgba(239,68,68,0.3)',
+                padding: '20px 24px', fontSize: '1.0625rem', fontWeight: 700,
+                color: '#fff', textAlign: 'center', letterSpacing: '-0.02em'
+              }}>
+                ⚠️ Layout Already Exists
+              </div>
+              {/* Body */}
+              <div style={{ padding: '24px', color: '#cbd5e1', fontSize: '0.9375rem', lineHeight: 1.6, textAlign: 'center' }}>
+                <p style={{ margin: '0 0 8px', color: '#f1f5f9', fontWeight: 600 }}>
+                  This Org Unit already has a saved layout.
+                </p>
+                <p style={{ margin: '0 0 20px', color: '#94a3b8', fontSize: '0.875rem' }}>
+                  Only one map is allowed per Org Unit. To make changes, please edit the existing layout.
+                </p>
+              </div>
+              {/* Footer */}
+              <div style={{
+                display: 'flex', gap: 12, justifyContent: 'flex-end',
+                padding: '16px 24px', borderTop: '1px solid rgba(239,68,68,0.2)',
+                background: 'rgba(15,23,42,0.5)'
+              }}>
+                <button
+                  style={{
+                    padding: '0.75rem 1.25rem', borderRadius: 8, fontSize: '0.875rem',
+                    fontWeight: 600, cursor: 'pointer', border: '1px solid rgba(99,102,241,0.3)',
+                    background: 'rgba(30,41,59,0.6)', color: '#cbd5e1'
+                  }}
+                  onClick={() => setExistingLayoutWarningVisible(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  style={{
+                    padding: '0.75rem 1.5rem', borderRadius: 8, fontSize: '0.875rem',
+                    fontWeight: 600, cursor: 'pointer', border: '1px solid rgba(59,130,246,0.5)',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: '#fff',
+                    boxShadow: '0 4px 12px rgba(59,130,246,0.2)'
+                  }}
+                  onClick={() => {
+                    setExistingLayoutWarningVisible(false);
+                    router.push(`/warehouse-management/edit/${existingLayoutForUnit.id}`);
+                  }}
+                >
+                  Edit Existing Layout
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DndProvider>
   );

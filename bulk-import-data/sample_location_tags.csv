@@ -1,0 +1,21 @@
+location_tag,unit_id,length,breadth,height,unit_of_measurement,description
+RACK-A-01,,12,1.2,6,meters,Aisle A Rack 1 - Heavy Duty Pallet Racking
+RACK-A-02,,12,1.2,6,meters,Aisle A Rack 2 - Heavy Duty Pallet Racking
+RACK-A-03,,12,1.2,6,meters,Aisle A Rack 3 - Heavy Duty Pallet Racking
+RACK-B-01,,10,1.2,5.5,meters,Aisle B Rack 1 - Medium Load Racking
+RACK-B-02,,10,1.2,5.5,meters,Aisle B Rack 2 - Medium Load Racking
+RACK-B-03,,10,1.2,5.5,meters,Aisle B Rack 3 - Medium Load Racking
+RACK-C-01,,8,1.2,4,meters,Aisle C Rack 1 - Light Duty Shelving
+RACK-C-02,,8,1.2,4,meters,Aisle C Rack 2 - Light Duty Shelving
+ZONE-BULK-01,,20,15,1,meters,Bulk Storage Zone 1 - Floor Level
+ZONE-BULK-02,,20,15,1,meters,Bulk Storage Zone 2 - Floor Level
+ZONE-STAGING-IN,,15,10,1,meters,Inbound Staging Area
+ZONE-STAGING-OUT,,15,10,1,meters,Outbound Staging Area
+MEZZANINE-L1,,30,20,3,meters,Mezzanine Level 1 - Small Parts Storage
+PICK-FACE-01,,3,1.2,2,meters,Pick Face Station 1 - Electronics
+PICK-FACE-02,,3,1.2,2,meters,Pick Face Station 2 - Tools and Hardware
+PICK-FACE-03,,3,1.2,2,meters,Pick Face Station 3 - Safety Equipment
+COLD-RACK-01,,6,1.2,3,meters,Temperature Controlled Rack 1
+DOCK-BUFFER-01,,8,6,1,meters,Receiving Dock Buffer Area 1
+DOCK-BUFFER-02,,8,6,1,meters,Receiving Dock Buffer Area 2
+QUARANTINE-01,,10,8,1,meters,Quarantine and Inspection Hold Area

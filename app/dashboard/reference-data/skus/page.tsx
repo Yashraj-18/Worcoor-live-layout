@@ -101,6 +101,12 @@ export default function SkuManagementPage() {
     loadLocationTags()
   }, [loadLocationTags])
 
+  useEffect(() => {
+    if (!isEditOpen) {
+      setSelectedSku(null)
+    }
+  }, [isEditOpen])
+
   const getLocationTagLabel = (sku: Sku) => {
     if (sku.locationTagName) return sku.locationTagName
     if (!sku.locationTagId) return "-"
@@ -129,8 +135,8 @@ export default function SkuManagementPage() {
     try {
       const created = await skuService.create(mapFormValuesToPayload(data))
       setSkus((prev) => [created, ...prev])
-      setIsAddOpen(false)
       toast({ title: "SKU created", description: `${created.skuName} has been added successfully.` })
+      setIsAddOpen(false)
     } catch (error: any) {
       console.error("Failed to create SKU", error)
       toast({
@@ -149,9 +155,8 @@ export default function SkuManagementPage() {
     try {
       const updated = await skuService.update(selectedSku.id, mapFormValuesToPayload(data))
       setSkus((prev) => prev.map((sku) => (sku.id === updated.id ? updated : sku)))
-      setIsEditOpen(false)
-      setSelectedSku(null)
       toast({ title: "SKU updated", description: `${updated.skuName} has been updated.` })
+      setIsEditOpen(false)
     } catch (error: any) {
       console.error("Failed to update SKU", error)
       toast({
@@ -235,29 +240,29 @@ export default function SkuManagementPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>SKU ID</TableHead>
-                <TableHead>SKU Name</TableHead>
-                <TableHead>SKU Category</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead>Effective Date</TableHead>
-                <TableHead>Expiry Date</TableHead>
-                <TableHead>Location Tag</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-foreground font-semibold">SKU ID</TableHead>
+                <TableHead className="text-foreground font-semibold">SKU Name</TableHead>
+                <TableHead className="text-foreground font-semibold">SKU Category</TableHead>
+                <TableHead className="text-foreground font-semibold">Quantity</TableHead>
+                <TableHead className="text-foreground font-semibold">Unit</TableHead>
+                <TableHead className="text-foreground font-semibold">Effective Date</TableHead>
+                <TableHead className="text-foreground font-semibold">Expiry Date</TableHead>
+                <TableHead className="text-foreground font-semibold">Location Tag</TableHead>
+                <TableHead className="text-right text-foreground font-semibold">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredSkus.length ? (
                 filteredSkus.map((sku) => (
                   <TableRow key={sku.id}>
-                    <TableCell>{sku.skuId || "-"}</TableCell>
-                    <TableCell className="font-medium">{sku.skuName}</TableCell>
-                    <TableCell>{sku.skuCategory}</TableCell>
-                    <TableCell>{sku.quantity}</TableCell>
-                    <TableCell>{sku.skuUnit}</TableCell>
-                    <TableCell>{sku.effectiveDate || "-"}</TableCell>
-                    <TableCell>{sku.expiryDate || "-"}</TableCell>
-                    <TableCell>{getLocationTagLabel(sku)}</TableCell>
+                    <TableCell className="text-foreground">{sku.skuId || "-"}</TableCell>
+                    <TableCell className="font-medium text-foreground">{sku.skuName}</TableCell>
+                    <TableCell className="text-foreground">{sku.skuCategory}</TableCell>
+                    <TableCell className="text-foreground">{sku.quantity}</TableCell>
+                    <TableCell className="text-foreground">{sku.skuUnit}</TableCell>
+                    <TableCell className="text-foreground">{sku.effectiveDate || "-"}</TableCell>
+                    <TableCell className="text-foreground">{sku.expiryDate || "-"}</TableCell>
+                    <TableCell className="text-foreground">{getLocationTagLabel(sku)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button

@@ -12,32 +12,34 @@ interface TopNavbarProps {
   onOrgUnitSelect?: (selection: { orgUnit: OrgUnit; status: { id: string; name: string } }) => void;
   selectedOrgMap?: any;
   onOrgMapSelect?: (map: any) => void;
-  
+
   // Location Tags
   locationTags?: any[];
   isLoadingLocationTags?: boolean;
-  
+
   // File Operations
   onSave?: () => void;
   onLoad?: () => void;
   onClear?: () => void;
-  
+
   // View Controls
   onZoomReset?: () => void;
-  
+
   onUndo?: () => void;
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
-  
+
   // Boundary
   onAutoGenerateBoundary?: () => void;
-  
+
   // Status
   itemCount?: number;
-  
+
   // Navigation
   onNavigateToDashboard?: () => void;
+  // Edit mode flag
+  isEditMode?: boolean;
 }
 
 const TopNavbar: React.FC<TopNavbarProps> = ({
@@ -47,32 +49,34 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
   onOrgUnitSelect,
   selectedOrgMap,
   onOrgMapSelect,
-  
+
   // Location Tags
   locationTags,
   isLoadingLocationTags,
-  
+
   // File Operations
   onSave,
   onLoad,
   onClear,
-  
+
   // View Controls
   onZoomReset,
-  
+
   onUndo,
   onRedo,
   canUndo,
   canRedo,
-  
+
   // Boundary
   onAutoGenerateBoundary,
-  
+
   // Status
   itemCount,
-  
+
   // Navigation
-  onNavigateToDashboard
+  onNavigateToDashboard,
+  // Edit mode flag
+  isEditMode = false,
 }) => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
@@ -118,10 +122,10 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
         id: option.id,
         name: option.unitName
       };
-      
-      onOrgUnitSelect({ 
-        orgUnit: adaptedOrgUnit, 
-        status: { id: 'operational', name: 'Operational' } 
+
+      onOrgUnitSelect({
+        orgUnit: adaptedOrgUnit,
+        status: { id: 'operational', name: 'Operational' }
       });
     }
     if (onOrgMapSelect) {
@@ -146,7 +150,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
   const getDropdownLabel = () => {
     console.log('TopNavbar - selectedOrgUnit:', selectedOrgUnit);
     console.log('TopNavbar - selectedOrgMap:', selectedOrgMap);
-    
+
     if (selectedOrgUnit && selectedOrgMap) {
       return `${selectedOrgUnit.name} • ${selectedOrgMap.name}`;
     }
@@ -164,11 +168,11 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
           <div className="brand-text" style={{ paddingTop: '8px' }}>
             <div className="brand-title">WC Builder</div>
           </div>
-          <button 
+          <button
             className="return-dashboard-btn"
             onClick={onNavigateToDashboard}
             title="Return to Dashboard"
-            style={{ 
+            style={{
               marginTop: '0px',
               fontSize: '11px',
               padding: '4px 8px'
@@ -177,15 +181,21 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
             ← Dashboard
           </button>
         </div>
-        
+
         <div className="selector-group">
           {/* Org Unit Selector */}
           <div className="selector-item">
-            <button 
+            <button
               className="modern-selector"
-              onClick={(e) => { e.stopPropagation(); toggleDropdown('orgUnit'); }}
+              onClick={(e) => {
+                if (isEditMode) return; // locked in edit mode
+                e.stopPropagation();
+                toggleDropdown('orgUnit');
+              }}
+              style={isEditMode ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+              title={isEditMode ? 'Org Unit is locked in edit mode' : undefined}
             >
-              <span className="selector-label">Org Unit</span>
+              <span className="selector-label">Org Unit{isEditMode ? ' 🔒' : ''}</span>
               <span className="selector-value">{getDropdownLabel()}</span>
               <span className="selector-arrow">▼</span>
             </button>
@@ -231,7 +241,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
         <div className="action-group">
           {/* File Actions */}
           <div className="action-item">
-            <button 
+            <button
               className="action-btn"
               onClick={(e) => { e.stopPropagation(); toggleDropdown('file'); }}
             >
@@ -241,7 +251,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
               <div className="action-dropdown">
                 <button onClick={() => onSave?.()} className="action-option">
                   <span className="option-icon">💾</span>
-                  <span>Save Layout</span>
+                  <span>{isEditMode ? 'Update Layout' : 'Save Layout'}</span>
                 </button>
                 <div className="dropdown-separator"></div>
                 <button onClick={() => onClear?.()} className="action-option danger">
@@ -252,10 +262,10 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
             )}
           </div>
 
-          
+
           {/* Tools Actions */}
           <div className="action-item">
-            <button 
+            <button
               className="action-btn"
               onClick={(e) => { e.stopPropagation(); toggleDropdown('tools'); }}
             >
@@ -280,7 +290,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
       {/* Right Section - Controls & Status */}
       <div className="navbar-right">
         <div className="control-group">
-          <button 
+          <button
             className={`control-btn ${!canUndo ? 'disabled' : ''}`}
             onClick={onUndo}
             disabled={!canUndo}
@@ -288,7 +298,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
           >
             ↶
           </button>
-          <button 
+          <button
             className={`control-btn ${!canRedo ? 'disabled' : ''}`}
             onClick={onRedo}
             disabled={!canRedo}
@@ -297,13 +307,13 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
             ↷
           </button>
         </div>
-        
+
         <div className="status-group">
           <div className="status-badge">
             <span className="status-count">{itemCount}</span>
             <span className="status-label">items</span>
           </div>
-          
+
           {/* Location Tags Status */}
           {selectedOrgUnit && (
             <div className="status-badge" style={{ marginLeft: '8px' }}>
@@ -317,18 +327,18 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
               )}
             </div>
           )}
-          
+
           {/* Debug Button - Remove in production */}
           {process.env.NODE_ENV === 'development' && selectedOrgUnit && (
-            <button 
+            <button
               onClick={debugFetchLocationTags}
-              style={{ 
-                marginLeft: '8px', 
-                padding: '2px 6px', 
-                fontSize: '10px', 
-                backgroundColor: '#ff6b6b', 
-                color: 'white', 
-                border: 'none', 
+              style={{
+                marginLeft: '8px',
+                padding: '2px 6px',
+                fontSize: '10px',
+                backgroundColor: '#ff6b6b',
+                color: 'white',
+                border: 'none',
                 borderRadius: '3px',
                 cursor: 'pointer'
               }}

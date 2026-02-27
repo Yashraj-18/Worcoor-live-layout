@@ -19,6 +19,7 @@ import { locationTagService } from '@/src/services/locationTags';
 import { warehouseService, componentToItem } from '@/src/services/warehouseService';
 import { orgUnitService } from '@/src/services/orgUnits';
 import { skuService } from '@/src/services/skus';
+import { assetService } from '@/src/services/assets';
 
 // TypeScript interfaces
 interface WarehouseLayout {
@@ -122,7 +123,10 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   const [dropdownSearchActive, setDropdownSearchActive] = useState<boolean>(false);
   const [availableLocationTags, setAvailableLocationTags] = useState<string[]>([]);
   const [availableSkus, setAvailableSkus] = useState<string[]>([]);
+  const [skuLocationMap, setSkuLocationMap] = useState<Record<string, string[]>>({});
   const [availableAssets, setAvailableAssets] = useState<string[]>([]);
+  const [locationTagsData, setLocationTagsData] = useState<any[]>([]);
+  const [assetLocationTagMap, setAssetLocationTagMap] = useState<Record<string, string>>({});
   const [selectedLocationTag, setSelectedLocationTag] = useState<string>('');
   const [selectedSku, setSelectedSku] = useState<string>('');
   const [selectedAsset, setSelectedAsset] = useState<string>('');
@@ -327,10 +331,13 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     if (!unitId) return;
 
     try {
-      const [tags, skuResponse] = await Promise.all([
+      const [tags, skuResponse, assetResponse] = await Promise.all([
         locationTagService.listByUnit(unitId).catch(() => []),
         skuService.list({ unitId, limit: 100 }).catch(() => ({ items: [] })),
+        assetService.list({ unitId, limit: 100 }).catch(() => ({ items: [] })),
       ]);
+      console.log('🧪 skuResponse:', skuResponse, 'items count:', skuResponse?.items?.length);
+      console.log('🧪 SKU items:', JSON.stringify(skuResponse.items, null, 2));
 
       // Location tags: deduplicated tag names from backend
       const tagSet = new Set<string>();
@@ -339,6 +346,9 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         if (name) tagSet.add(name);
       });
       setAvailableLocationTags(Array.from(tagSet));
+      
+      // Store full location tag objects for compartment border color logic
+      setLocationTagsData(tags || []);
 
       // SKUs: deduplicated skuName from backend
       const skuSet = new Set<string>();
@@ -346,7 +356,35 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         const name = (s.skuName || s.skuId || '').trim();
         if (name) skuSet.add(name);
       });
+      console.log('🧪 Setting availableSkus to:', Array.from(skuSet));
       setAvailableSkus(Array.from(skuSet));
+      const skuMap: Record<string, string[]> = {};
+      (skuResponse.items || []).forEach((s: any) => {
+        const skuName = (s.skuName || '').trim();
+        const locTag = (s.locationTagName || '').trim();
+        if (skuName && locTag) {
+          if (!skuMap[skuName]) skuMap[skuName] = [];
+          skuMap[skuName].push(locTag);
+          skuMap[skuName].push(locTag.toUpperCase());
+          skuMap[skuName].push(locTag.toLowerCase());
+        }
+      });
+      setSkuLocationMap(skuMap);
+      const backendAssetSet = new Set<string>();
+      const assetTagMap: Record<string, string> = {};
+      (assetResponse.items || []).forEach((a: any) => {
+        const name = (a.assetName || '').trim();
+        if (name) {
+          backendAssetSet.add(name);
+          // Map assetName → locationTagName
+          if (a.locationTagName) {
+            assetTagMap[name] = a.locationTagName.trim();
+          }
+        }
+      });
+      setAssetLocationTagMap(assetTagMap);
+      setAvailableAssets(prev => Array.from(new Set([...prev, ...Array.from(backendAssetSet)])));
+
     } catch (error) {
       console.error('Failed to hydrate dropdowns from backend:', error);
     }
@@ -453,6 +491,8 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     }
 
     const selectedLayout: WarehouseLayout | undefined = savedLayouts.find(layout => layout.id === layoutId);
+    console.log('🧪 selectedLayout:', selectedLayout?.id, 'hasItems:', !!selectedLayout?.layoutData?.items);
+
 
     if (!selectedLayout?.layoutData?.items) {
       setAvailableLocationTags([]);
@@ -463,6 +503,8 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
 
     // --- Assets: extract from layout items (component types) ---
     const assets = new Set<string>();
+    const allowedAssets = new Set(['Storage Unit', 'Horizontal Storage', 'Vertical Storage']);
+
     const typeMap: Record<string, string> = {
       'storage_unit': 'Storage Unit',
       'spare_unit': 'Spare Unit',
@@ -482,9 +524,11 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     selectedLayout.layoutData.items.forEach((item: WarehouseItem) => {
       if (item.type && item.type !== 'square_boundary') {
         const readableName = typeMap[item.type] || item.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        assets.add(readableName);
+        if (allowedAssets.has(readableName)) {  // ← only adds the 3 allowed types
+          assets.add(readableName);
+        }
       }
-    });
+  });
 
     setAvailableAssets(Array.from(assets));
 
@@ -544,6 +588,18 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   const customLayoutUnits = savedLayoutUnits;
   
   const warehouseUnits = [...defaultUnits, ...customLayoutUnits];
+
+  // Create location tags map for compartment border color logic
+  const locationTagsMap = useMemo(() => {
+    const map: Record<string, any> = {};
+    locationTagsData.forEach((tag: any) => {
+      const name = tag.locationTagName || tag.name;
+      if (name) {
+        map[name] = tag;
+      }
+    });
+    return map;
+  }, [locationTagsData]);
 
   const { layoutItemsForSummary, storageSummaries } = useMemo(() => {
     const result: {
@@ -1143,17 +1199,9 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
 
     // Create reverse lookup: SKU name -> location IDs (with all case variations)
     const skuNameToLocationIds: Record<string, string[]> = {};
-    if (layoutComponentsMock?.locations) {
-      layoutComponentsMock.locations.forEach(loc => {
-        if (loc.sku_name && loc.location_id) {
-          if (!skuNameToLocationIds[loc.sku_name]) {
-            skuNameToLocationIds[loc.sku_name] = [];
-          }
-          // Add all case variations of the location ID
-          skuNameToLocationIds[loc.sku_name].push(loc.location_id);
-          skuNameToLocationIds[loc.sku_name].push(loc.location_id.toUpperCase());
-          skuNameToLocationIds[loc.sku_name].push(loc.location_id.toLowerCase());
-        }
+    if (skuLocationMap) {
+      Object.entries(skuLocationMap).forEach(([skuName, locIds]) => {
+        skuNameToLocationIds[skuName] = locIds;
       });
     }
 
@@ -1267,10 +1315,41 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       }
 
       if (selectedAsset) {
-        const itemType = typeMap[selectedAsset] || selectedAsset.toLowerCase().replace(/ /g, '_');
-        const assetMatches = item.type === itemType;
-        matchesFilters = matchesFilters && assetMatches;
-      }
+        const layoutAssets = new Set(['Storage Unit', 'Horizontal Storage', 'Vertical Storage']);
+        if (layoutAssets.has(selectedAsset)) {
+          const itemType = typeMap[selectedAsset] || selectedAsset.toLowerCase().replace(/ /g, '_');
+          matchesFilters = matchesFilters && item.type === itemType;
+        } else {
+          const locationTagForAsset = assetLocationTagMap[selectedAsset];
+          if (locationTagForAsset) {
+            const itemLevelMatch = [item.locationId, item.locationCode, item.locationTag, item.primaryLocationId]
+              .some(v => typeof v === 'string' && v.trim() === locationTagForAsset);
+
+            let locationIdsMatch = false;
+            if (Array.isArray(item.locationIds)) {
+              locationIdsMatch = item.locationIds.includes(locationTagForAsset);
+            }
+
+            let levelMappingsMatch = false;
+            if (Array.isArray(item.levelLocationMappings)) {
+              levelMappingsMatch = item.levelLocationMappings.some(m =>
+                m?.locationId === locationTagForAsset || m?.locId === locationTagForAsset
+              );
+           }
+
+            let compartmentMatch = false;
+            if (item.compartmentContents) {
+              compartmentMatch = Object.values(item.compartmentContents).some((c: any) =>
+                c?.locationId === locationTagForAsset ||
+                c?.primaryLocationId === locationTagForAsset ||
+                (Array.isArray(c?.locationIds) && c.locationIds.includes(locationTagForAsset))
+              );
+            }
+
+            matchesFilters = matchesFilters && (itemLevelMatch || locationIdsMatch || levelMappingsMatch || compartmentMatch);
+         }
+       }
+     }
 
       if (!matchesFilters) {
         return;
@@ -1665,6 +1744,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                           stageBorder="none"
                           stageShadow="none"
                           stageBorderRadius="0px"
+                          locationTagsMap={locationTagsMap}
                           onItemClick={(item: WarehouseItem, index: number) => {
                             console.log('WarehouseMapView - Item clicked:', item);
                             console.log('WarehouseMapView - Item index:', index);

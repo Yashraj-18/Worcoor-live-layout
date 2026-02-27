@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -16,8 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Plus, Edit2, Trash2, Filter, X, ChevronDown, ChevronUp, MoreHorizontal } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Search, Plus, Edit, Trash2, Filter, X, ChevronDown, ChevronUp } from "lucide-react"
 
 const LOCATION_TAG_NONE_VALUE = "__none__"
 const LOCATION_TAG_UNASSIGNED_VALUE = "__unassigned__"
@@ -84,12 +83,12 @@ export default function AssetManagementPage() {
   const [locationTags, setLocationTags] = useState<LocationTagOption[]>([])
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("")
   const [dialogWarehouseId, setDialogWarehouseId] = useState<string>("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false)
   const [isEditAssetOpen, setIsEditAssetOpen] = useState(false)
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
   const [formMode, setFormMode] = useState<"add" | "edit">("add")
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [filters, setFilters] = useState<FilterOptions>({
     search: "",
     assetType: "",
@@ -225,13 +224,8 @@ export default function AssetManagementPage() {
 
       setAllLocationTags(tagOptions)
       setLocationTags(selectedWarehouseId ? tagOptions.filter((tag) => tag.unitId === selectedWarehouseId) : tagOptions)
-
-      if (selectedWarehouseId && !warehouseOptions.some((option) => option.id === selectedWarehouseId)) {
-        setSelectedWarehouseId("")
-        setLocationTags(tagOptions)
-      }
     } catch (error) {
-      console.error("Error fetching location tags:", error)
+      console.error("Failed to load warehouses and location tags", error)
     }
   }
 
@@ -249,6 +243,23 @@ export default function AssetManagementPage() {
     if (!locationTagId || locationTagId === LOCATION_TAG_NONE_VALUE) return "None"
     const locationTag = locationTags.find((tag) => tag.id === locationTagId)
     return locationTag?.name || "Unknown"
+  }
+
+  const getWarehouseNameByAsset = (asset: Asset) => {
+    // First try to get warehouse from asset's unitId
+    if (asset.unitId) {
+      const warehouse = warehouses.find((wh) => wh.id === asset.unitId)
+      if (warehouse) return warehouse.name
+    }
+    // If no unitId, try to get warehouse from location tag
+    if (asset.locationTagId) {
+      const locationTag = allLocationTags.find((tag) => tag.id === asset.locationTagId)
+      if (locationTag?.unitId) {
+        const warehouse = warehouses.find((wh) => wh.id === locationTag.unitId)
+        if (warehouse) return warehouse.name
+      }
+    }
+    return "-"
   }
 
   const handleAddAsset = () => {
@@ -314,8 +325,6 @@ export default function AssetManagementPage() {
         })
 
         setAssets((prev) => [mapApiAssetToView(created), ...prev])
-        setIsAddAssetOpen(false)
-        form.reset()
         toast({
           title: "Success",
           description: "Asset added successfully.",
@@ -329,12 +338,15 @@ export default function AssetManagementPage() {
         })
 
         setAssets((prev) => prev.map((asset) => (asset.id === updated.id ? mapApiAssetToView(updated) : asset)))
-        setIsEditAssetOpen(false)
-        setSelectedAsset(null)
         toast({
           title: "Success",
           description: "Asset updated successfully.",
         })
+      }
+      if (formMode === "add") {
+        setIsAddAssetOpen(false)
+      } else {
+        setIsEditAssetOpen(false)
       }
     } catch (error) {
       console.error("Error submitting asset:", error)
@@ -388,7 +400,7 @@ export default function AssetManagementPage() {
       (asset.assetId || "").toLowerCase().includes(filters.search.toLowerCase())
     const matchesType = !filters.assetType || asset.assetType === filters.assetType
     const matchesLocation = !filters.locationTag || asset.locationTagId === filters.locationTag
-    const matchesWarehouse = !selectedWarehouseId || asset.unitId === selectedWarehouseId || 
+    const matchesWarehouse = !selectedWarehouseId || asset.unitId === selectedWarehouseId ||
       allLocationTags.find((tag) => tag.id === asset.locationTagId)?.unitId === selectedWarehouseId
     return matchesSearch && matchesType && matchesLocation && matchesWarehouse
   })
@@ -524,13 +536,14 @@ export default function AssetManagementPage() {
           ) : (
             <div className="rounded-md border">
               <Table>
-                <TableHeader className="bg-gray-100 text-black dark:bg-slate-950 dark:hover:bg-slate-950">
+                <TableHeader>
                   <TableRow>
-                    <TableHead className="text-black font-semibold whitespace-nowrap min-w-[200px]">Asset ID</TableHead>
-                    <TableHead className="text-black font-semibold whitespace-nowrap min-w-[200px]">Asset Name</TableHead>
-                    <TableHead className="text-black font-semibold whitespace-nowrap">Asset Type</TableHead>
-                    <TableHead className="text-black font-semibold whitespace-nowrap">Location Tag</TableHead>
-                    <TableHead className="text-black font-semibold whitespace-nowrap text-right">Actions</TableHead>
+                    <TableHead className="text-foreground font-semibold whitespace-nowrap min-w-[200px]">Asset ID</TableHead>
+                    <TableHead className="text-foreground font-semibold whitespace-nowrap min-w-[200px]">Asset Name</TableHead>
+                    <TableHead className="text-foreground font-semibold whitespace-nowrap">Asset Type</TableHead>
+                    <TableHead className="text-foreground font-semibold whitespace-nowrap">Warehouse</TableHead>
+                    <TableHead className="text-foreground font-semibold whitespace-nowrap">Location Tag</TableHead>
+                    <TableHead className="text-foreground font-semibold whitespace-nowrap text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -540,38 +553,37 @@ export default function AssetManagementPage() {
                       ref={index === filteredAssets.length - 1 ? lastAssetElementRef : null}
                       className="hover:bg-muted/50"
                     >
-                      <TableCell className="p-4 md:p-6">{asset.assetId || "-"}</TableCell>
-                      <TableCell className="p-4 md:p-6">{asset.assetName}</TableCell>
-                      <TableCell className="p-4 md:p-6">{asset.assetType}</TableCell>
-                      <TableCell className="p-4 md:p-6">{asset.locationTagName || getLocationTagNameById(asset.locationTagId)}</TableCell>
+                      <TableCell className="p-4 md:p-6 text-foreground">{asset.assetId || "-"}</TableCell>
+                      <TableCell className="p-4 md:p-6 text-foreground">{asset.assetName}</TableCell>
+                      <TableCell className="p-4 md:p-6 text-foreground">{asset.assetType}</TableCell>
+                      <TableCell className="p-4 md:p-6 text-foreground">{getWarehouseNameByAsset(asset)}</TableCell>
+                      <TableCell className="p-4 md:p-6 text-foreground">{asset.locationTagName || getLocationTagNameById(asset.locationTagId)}</TableCell>
                       <TableCell className="p-4 md:p-6 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditAsset(asset)} className="cursor-pointer">
-                              <Edit2 className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-red-600 cursor-pointer hover:bg-red-50"
-                              onClick={() => handleDeleteAsset(asset)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditAsset(asset)}
+                          >
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleDeleteAsset(asset)}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
                   {isFetchingMore && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-4">
+                      <TableCell colSpan={6} className="text-center py-4">
                         <div className="flex items-center justify-center">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                         </div>
@@ -586,7 +598,12 @@ export default function AssetManagementPage() {
       </Card>
 
       {/* Add Asset Dialog */}
-      <Dialog open={isAddAssetOpen} onOpenChange={setIsAddAssetOpen}>
+      <Dialog open={isAddAssetOpen} onOpenChange={(open) => {
+        setIsAddAssetOpen(open)
+        if (!open) {
+          form.reset()
+        }
+      }}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Add New Asset</DialogTitle>
@@ -702,7 +719,7 @@ export default function AssetManagementPage() {
               />
 
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsAddAssetOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setIsAddAssetOpen(false)} disabled={isSubmitting}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
@@ -715,7 +732,13 @@ export default function AssetManagementPage() {
       </Dialog>
 
       {/* Edit Asset Dialog */}
-      <Dialog open={isEditAssetOpen} onOpenChange={setIsEditAssetOpen}>
+      <Dialog open={isEditAssetOpen} onOpenChange={(open) => {
+        setIsEditAssetOpen(open)
+        if (!open) {
+          setSelectedAsset(null)
+          form.reset()
+        }
+      }}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Edit Asset</DialogTitle>
@@ -832,7 +855,7 @@ export default function AssetManagementPage() {
               />
 
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsEditAssetOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setIsEditAssetOpen(false)} disabled={isSubmitting}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>

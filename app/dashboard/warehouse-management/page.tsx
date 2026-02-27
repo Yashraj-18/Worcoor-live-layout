@@ -312,7 +312,10 @@ export default function WarehouseManagementPage() {
             const itemsLabel = meta.totalItems ?? meta.items ?? meta.croppedItems ?? 0;
             const lastActivity = layout.updatedAt ?? layout.createdAt;
             const unitTags = locationTagsMap[layout.unitId] ?? [];
-            const unitTagInUse = unitTags.filter((t) => t.currentItems > 0).length;
+            const canvasItems: any[] = (layout as any).layoutData?.items ?? [];
+            const placedTagIds = new Set(canvasItems.map((i: any) => i.locationTagId).filter(Boolean));
+            const placedTags = unitTags.filter((t) => placedTagIds.has(t.id));
+            const unitTagInUse = placedTags.filter((t) => t.currentItems > 0).length;
             const unitTagTotal = unitTags.length;
             const unitTagPct = unitTagTotal > 0 ? Math.round((unitTagInUse / unitTagTotal) * 100) : 0;
             const tagStats = { pct: unitTagPct, inUse: unitTagInUse, total: unitTagTotal };

@@ -122,6 +122,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   const [dropdownSearchActive, setDropdownSearchActive] = useState<boolean>(false);
   const [availableLocationTags, setAvailableLocationTags] = useState<string[]>([]);
   const [availableSkus, setAvailableSkus] = useState<string[]>([]);
+  const [skuLocationMap, setSkuLocationMap] = useState<Record<string, string[]>>({});
   const [availableAssets, setAvailableAssets] = useState<string[]>([]);
   const [locationTagsData, setLocationTagsData] = useState<any[]>([]);
   const [selectedLocationTag, setSelectedLocationTag] = useState<string>('');
@@ -332,6 +333,8 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         locationTagService.listByUnit(unitId).catch(() => []),
         skuService.list({ unitId, limit: 100 }).catch(() => ({ items: [] })),
       ]);
+      console.log('🧪 skuResponse:', skuResponse, 'items count:', skuResponse?.items?.length);
+      console.log('🧪 SKU items:', JSON.stringify(skuResponse.items, null, 2));
 
       // Location tags: deduplicated tag names from backend
       const tagSet = new Set<string>();
@@ -350,7 +353,20 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         const name = (s.skuName || s.skuId || '').trim();
         if (name) skuSet.add(name);
       });
+      console.log('🧪 Setting availableSkus to:', Array.from(skuSet));
       setAvailableSkus(Array.from(skuSet));
+      const skuMap: Record<string, string[]> = {};
+      (skuResponse.items || []).forEach((s: any) => {
+        const skuName = (s.skuName || '').trim();
+        const locTag = (s.locationTagName || '').trim();
+        if (skuName && locTag) {
+          if (!skuMap[skuName]) skuMap[skuName] = [];
+          skuMap[skuName].push(locTag);
+          skuMap[skuName].push(locTag.toUpperCase());
+          skuMap[skuName].push(locTag.toLowerCase());
+        }
+      });
+      setSkuLocationMap(skuMap);
     } catch (error) {
       console.error('Failed to hydrate dropdowns from backend:', error);
     }
@@ -457,6 +473,8 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     }
 
     const selectedLayout: WarehouseLayout | undefined = savedLayouts.find(layout => layout.id === layoutId);
+    console.log('🧪 selectedLayout:', selectedLayout?.id, 'hasItems:', !!selectedLayout?.layoutData?.items);
+
 
     if (!selectedLayout?.layoutData?.items) {
       setAvailableLocationTags([]);
@@ -1159,17 +1177,9 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
 
     // Create reverse lookup: SKU name -> location IDs (with all case variations)
     const skuNameToLocationIds: Record<string, string[]> = {};
-    if (layoutComponentsMock?.locations) {
-      layoutComponentsMock.locations.forEach(loc => {
-        if (loc.sku_name && loc.location_id) {
-          if (!skuNameToLocationIds[loc.sku_name]) {
-            skuNameToLocationIds[loc.sku_name] = [];
-          }
-          // Add all case variations of the location ID
-          skuNameToLocationIds[loc.sku_name].push(loc.location_id);
-          skuNameToLocationIds[loc.sku_name].push(loc.location_id.toUpperCase());
-          skuNameToLocationIds[loc.sku_name].push(loc.location_id.toLowerCase());
-        }
+    if (skuLocationMap) {
+      Object.entries(skuLocationMap).forEach(([skuName, locIds]) => {
+        skuNameToLocationIds[skuName] = locIds;
       });
     }
 

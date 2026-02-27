@@ -312,7 +312,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
         // For non-compartmentalized items, process as before
         const { usedCapacity } = deriveItemCapacity(item);
         const tagName: string =
-          (item.locationTag?.locationTagName || item.locationTag?.name || item.locationTagId || item.locationCode || item.locationId || item.primaryLocationId || '').toString().trim();
+          (item.locationTag?.locationTagName || item.locationTag?.name || item.locationTagId || item.locationId || item.primaryLocationId || '').toString().trim();
         
         if (tagName) {
           const tagData = locationTags.find(t => 

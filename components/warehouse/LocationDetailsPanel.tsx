@@ -7,6 +7,8 @@ import { locationTagService } from '@/src/services/locationTags';
 import type { LocationTag } from '@/src/services/locationTags';
 import { skuService } from '@/src/services/skus';
 import type { Sku } from '@/src/services/skus';
+import { assetService } from '@/src/services/assets'; // ✅ Added
+import type { Asset } from '@/src/services/assets';   // ✅ Added
 import { useLocationSocket } from '@/hooks/useLocationSocket';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -15,14 +17,14 @@ interface SelectedItem {
   name?: string;
   label?: string;
   type?: string;
-  locationTagId?: string;  // real DB UUID  ← primary key we use
-  locationId?: string;     // display label only (e.g. "RACK-A-004")
+  locationTagId?: string;
+  locationId?: string;
   [key: string]: unknown;
 }
 
 interface LocationDetailsPanelProps {
   selectedItem: SelectedItem;
-  unitId: string | null | undefined;  // pass selectedUnitForDemo from WarehouseMapView
+  unitId: string | null | undefined;
   onClose: () => void;
   isEmbedded?: boolean;
 }
@@ -32,9 +34,7 @@ interface LocationDetailsPanelProps {
 const fmt = (dateStr?: string | null) =>
   dateStr
     ? new Date(dateStr).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
+        year: 'numeric', month: 'short', day: 'numeric',
       })
     : 'N/A';
 
@@ -50,10 +50,10 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
   const [locationTag, setLocationTag] = useState<LocationTag | null>(null);
   const [skus, setSkus]               = useState<Sku[]>([]);
+  const [assets, setAssets]           = useState<Asset[]>([]); // ✅ Added
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
 
-  // Live values pushed by WebSocket (override REST snapshot when received)
   const [liveCurrentItems, setLiveCurrentItems]     = useState<number | null>(null);
   const [liveUtilizationPct, setLiveUtilizationPct] = useState<number | null>(null);
 
@@ -63,6 +63,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
     if (!locationTagId || !unitId) {
       setLocationTag(null);
       setSkus([]);
+      setAssets([]);           // ✅ Reset assets too
       setLiveCurrentItems(null);
       setLiveUtilizationPct(null);
       return;
@@ -77,10 +78,11 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
       setLiveUtilizationPct(null);
 
       try {
-        // Fetch location tags list + SKUs for this location in parallel
-        const [allTags, skuResponse] = await Promise.all([
+        // ✅ Fetch location tags, SKUs, and assets in parallel
+        const [allTags, skuResponse, assetResponse] = await Promise.all([
           locationTagService.listByUnit(unitId),
           skuService.list({ locationTagId, limit: 100 }),
+          assetService.list({ locationTagId, limit: 100 }), // ✅ Added
         ]);
 
         if (cancelled) return;
@@ -88,6 +90,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
         const tag = allTags.find((t) => t.id === locationTagId) ?? null;
         setLocationTag(tag);
         setSkus(skuResponse.items);
+        setAssets(assetResponse.items); // ✅ Added
 
         if (!tag) {
           console.warn('LocationDetailsPanel: tag not found for id:', locationTagId);
@@ -100,9 +103,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
     };
 
     fetchData();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [locationTagId, unitId]);
 
   // ── WebSocket: live updates ───────────────────────────────────────────────
@@ -118,17 +119,15 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
   }, [locationTagId]);
 
   const handleLocationUpdated = useCallback((data) => {
-    console.log('🔄 location:updated', data);
     setLiveCurrentItems(data.current_items);
     setLiveUtilizationPct(data.utilization_percentage);
-    refreshSkus(); // re-fetch SKU list so quantities update too
+    refreshSkus();
   }, [refreshSkus]);
 
   const handleInventoryChanged = useCallback((data) => {
-    console.log('🔄 inventory:changed', data);
     setLiveCurrentItems(data.current_items);
     setLiveUtilizationPct(data.utilization_percentage);
-    refreshSkus(); // re-fetch SKU list so quantities update too
+    refreshSkus();
   }, [refreshSkus]);
 
   useLocationSocket({
@@ -138,7 +137,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
     onInventoryChanged: handleInventoryChanged,
   });
 
-  // ── Derived display values (socket overrides REST snapshot) ───────────────
+  // ── Derived display values ────────────────────────────────────────────────
 
   const displayCurrentItems   = liveCurrentItems   ?? locationTag?.currentItems          ?? 0;
   const displayUtilizationPct = liveUtilizationPct ?? locationTag?.utilizationPercentage ?? 0;
@@ -191,8 +190,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
   const displayName =
     selectedItem?.name || selectedItem?.label || selectedItem?.locationId || selectedItem?.type || 'Component';
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
   if (!selectedItem) return null;
 
   return (
@@ -208,9 +205,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
               <span style={{
                 fontSize: '0.65rem', background: '#22c55e', color: 'white',
                 padding: '2px 6px', borderRadius: '999px', fontWeight: 600, marginLeft: 4,
-              }}>
-                LIVE
-              </span>
+              }}>LIVE</span>
             )}
           </div>
           <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>{displayName}</div>
@@ -232,19 +227,16 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
       {/* ── Body ── */}
       <div style={contentStyle}>
 
-        {/* Compartment Info Banner - shown when a specific compartment is clicked */}
+        {/* Compartment Info Banner */}
         {selectedItem?.selectedCompartmentId && (
           <div style={{
             ...sectionStyle,
             background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
-            borderColor: '#60a5fa',
-            marginBottom: '1rem'
+            borderColor: '#60a5fa', marginBottom: '1rem',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
               <Package size={16} style={{ color: '#60a5fa' }} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e2e8f0' }}>
-                Compartment Selected
-              </span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e2e8f0' }}>Compartment Selected</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.85rem' }}>
               <div>
@@ -266,9 +258,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
         {/* No Data Available */}
         {selectedItem?.selectedCompartmentId && !locationTagId && (
           <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
-              <PackageOpen size={32} />
-            </div>
+            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}><PackageOpen size={32} /></div>
             <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>No Data Available</div>
             <div style={{ fontSize: '0.85rem' }}>This compartment does not have a location tag assigned.</div>
           </div>
@@ -292,23 +282,19 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
           </div>
         )}
 
-        {/* No locationTagId on the component (but NOT a compartment - compartments have their own message above) */}
+        {/* No locationTagId */}
         {!loading && !error && !locationTagId && !selectedItem?.selectedCompartmentId && (
           <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
-              <PackageOpen size={32} />
-            </div>
+            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}><PackageOpen size={32} /></div>
             <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>No Location Tag Assigned</div>
             <div style={{ fontSize: '0.85rem' }}>This component has no location tag linked to it.</div>
           </div>
         )}
 
-        {/* locationTagId present but not found in unit's tags */}
+        {/* Tag not found */}
         {!loading && !error && locationTagId && !locationTag && (
           <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
-              <PackageOpen size={32} />
-            </div>
+            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}><PackageOpen size={32} /></div>
             <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Tag Not Found</div>
             <div style={{ fontSize: '0.85rem', wordBreak: 'break-all' }}>ID: {locationTagId}</div>
           </div>
@@ -317,35 +303,26 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
         {/* ── Real data ── */}
         {!loading && !error && locationTag && (
           <>
-
             {/* Location Tag Section */}
             <div style={sectionStyle}>
               <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <MapPin size={16} /> Location Tag Information
               </h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-
                 <div style={{ gridColumn: '1 / -1' }}>
                   <div style={labelStyle}>Location Tag Name</div>
                   <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{locationTag.locationTagName}</div>
                 </div>
-
                 <div>
                   <div style={labelStyle}>Capacity</div>
                   <div style={valueStyle}>{locationTag.capacity}</div>
                 </div>
                 <div>
-                  <div style={labelStyle}>
-                    Current Items {isLive && <span style={{ color: '#22c55e' }}>●</span>}
-                  </div>
-                  <div style={{ ...valueStyle, color: isLive ? '#22c55e' : '#e2e8f0' }}>
-                    {displayCurrentItems}
-                  </div>
+                  <div style={labelStyle}>Current Items {isLive && <span style={{ color: '#22c55e' }}>●</span>}</div>
+                  <div style={{ ...valueStyle, color: isLive ? '#22c55e' : '#e2e8f0' }}>{displayCurrentItems}</div>
                 </div>
-
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <div style={labelStyle}>Utilization {isLive && <span style={{ color: '#22c55e' }}>●</span>}
-                  </div>
+                  <div style={labelStyle}>Utilization {isLive && <span style={{ color: '#22c55e' }}>●</span>}</div>
                   <div style={{
                     ...valueStyle,
                     color: displayUtilizationPct > 90 ? '#ef4444'
@@ -355,7 +332,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                     {displayUtilizationPct.toFixed(1)}%
                   </div>
                 </div>
-
                 {locationTag.length && (
                   <div style={{ gridColumn: '1 / -1' }}>
                     <div style={labelStyle}>Dimensions (L × B × H)</div>
@@ -364,12 +340,10 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                     </div>
                   </div>
                 )}
-
                 <div style={{ gridColumn: '1 / -1' }}>
                   <div style={labelStyle}>Created At</div>
                   <div style={valueStyle}>{fmt(locationTag.createdAt)}</div>
                 </div>
-
               </div>
             </div>
 
@@ -381,7 +355,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                   {skus.length} SKU{skus.length !== 1 ? 's' : ''}
                 </span>
               </h4>
-
               {skus.length === 0 ? (
                 <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
                   No SKUs assigned to this location
@@ -433,14 +406,50 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
               )}
             </div>
 
-            {/* Asset Section */}
+            {/* ✅ Asset Section — now fully wired */}
             <div style={sectionStyle}>
               <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Archive size={16} /> Asset Information
+                <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>
+                  {assets.length} Asset{assets.length !== 1 ? 's' : ''}
+                </span>
               </h4>
-              <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
-                Asset data not linked to this location tag
-              </div>
+
+              {assets.length === 0 ? (
+                <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
+                  No assets assigned to this location
+                </div>
+              ) : (
+                assets.map((asset, idx) => (
+                  <div
+                    key={asset.id}
+                    style={{
+                      marginBottom: idx < assets.length - 1 ? '1rem' : 0,
+                      paddingBottom: idx < assets.length - 1 ? '1rem' : 0,
+                      borderBottom: idx < assets.length - 1 ? '1px solid hsl(215.3 25.1% 32.6%)' : 'none',
+                    }}
+                  >
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <div style={labelStyle}>Asset Name</div>
+                        <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{asset.assetName}</div>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Asset ID</div>
+                        <div style={valueStyle}>{asset.assetId ?? '—'}</div>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Asset Type</div>
+                        <div style={valueStyle}>{asset.assetType}</div>
+                      </div>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <div style={labelStyle}>Created At</div>
+                        <div style={valueStyle}>{fmt(asset.createdAt)}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
           </>

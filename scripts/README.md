@@ -28,9 +28,7 @@ For each entity the suite validates three properties:
 ## Prerequisites
 
 1. **Backend running** on `http://localhost:4000` (or set `API_BASE_URL` env var).
-2. **Seeded tenant accounts**:
-   - Company A: `admin1@company.com` / `Admin@123`
-   - Company B: `admin2@company.com` / `Admin@123`
+2. **Seeded tenant accounts** with credentials set via environment variables (see below).
 3. **Node.js** installed (v18+ recommended).
 4. **axios** available (`npm install axios` if not already in project).
 
@@ -38,7 +36,7 @@ For each entity the suite validates three properties:
 
 ```bash
 # From repository root
-node scripts/multi-tenant-tests.js
+TENANT_A_PASSWORD=<password> TENANT_B_PASSWORD=<password> node scripts/multi-tenant-tests.js
 ```
 
 ### Environment Variables
@@ -46,6 +44,10 @@ node scripts/multi-tenant-tests.js
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `API_BASE_URL` | `http://localhost:4000/api` | Base URL for API requests |
+| `TENANT_A_EMAIL` | `admin1@company.com` | Email for Company A tenant |
+| `TENANT_A_PASSWORD` | _(required)_ | Password for Company A tenant |
+| `TENANT_B_EMAIL` | `admin2@company.com` | Email for Company B tenant |
+| `TENANT_B_PASSWORD` | _(required)_ | Password for Company B tenant |
 
 ## Output
 

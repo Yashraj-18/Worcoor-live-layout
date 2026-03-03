@@ -97,10 +97,7 @@ pnpm run dev                 # http://localhost:4000
 
 ## Default Credentials
 
-| Field | Value |
-|-------|-------|
-| Email | `admin@worcoor.com` |
-| Password | `Admin@123` |
+Default credentials are configured during initial database setup. Refer to the seeding instructions in `Backend/README.md`.
 
 ## Key Features
 

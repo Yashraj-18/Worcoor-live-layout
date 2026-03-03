@@ -7,8 +7,8 @@ import { locationTagService } from '@/src/services/locationTags';
 import type { LocationTag } from '@/src/services/locationTags';
 import { skuService } from '@/src/services/skus';
 import type { Sku } from '@/src/services/skus';
-import { assetService } from '@/src/services/assets'; // ✅ Added
-import type { Asset } from '@/src/services/assets';   // ✅ Added
+import { assetService } from '@/src/services/assets';
+import type { Asset } from '@/src/services/assets';
 import { useLocationSocket } from '@/hooks/useLocationSocket';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
   const [locationTag, setLocationTag] = useState<LocationTag | null>(null);
   const [skus, setSkus]               = useState<Sku[]>([]);
-  const [assets, setAssets]           = useState<Asset[]>([]); // ✅ Added
+  const [assets, setAssets]           = useState<Asset[]>([]);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
 
@@ -63,7 +63,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
     if (!locationTagId || !unitId) {
       setLocationTag(null);
       setSkus([]);
-      setAssets([]);           // ✅ Reset assets too
+      setAssets([]);
       setLiveCurrentItems(null);
       setLiveUtilizationPct(null);
       return;
@@ -78,11 +78,11 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
       setLiveUtilizationPct(null);
 
       try {
-        // ✅ Fetch location tags, SKUs, and assets in parallel
+        // Fetch location tags, SKUs, and assets in parallel
         const [allTags, skuResponse, assetResponse] = await Promise.all([
           locationTagService.listByUnit(unitId),
           skuService.list({ locationTagId, limit: 100 }),
-          assetService.list({ locationTagId, limit: 100 }), // ✅ Added
+          assetService.list({ locationTagId, limit: 100 }),
         ]);
 
         if (cancelled) return;
@@ -90,7 +90,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
         const tag = allTags.find((t) => t.id === locationTagId) ?? null;
         setLocationTag(tag);
         setSkus(skuResponse.items);
-        setAssets(assetResponse.items); // ✅ Added
+        setAssets(assetResponse.items);
 
         if (!tag) {
           console.warn('LocationDetailsPanel: tag not found for id:', locationTagId);
@@ -406,7 +406,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
               )}
             </div>
 
-            {/* ✅ Asset Section — now fully wired */}
+            {/* Asset Section */}
             <div style={sectionStyle}>
               <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Archive size={16} /> Asset Information

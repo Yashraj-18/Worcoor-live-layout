@@ -81,21 +81,24 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
   const [isLoadingOrgUnits, setIsLoadingOrgUnits] = useState(true);
+  const [orgUnitsError, setOrgUnitsError] = useState<string | null>(null);
+
+  const fetchOrgUnits = async () => {
+    try {
+      setIsLoadingOrgUnits(true);
+      setOrgUnitsError(null);
+      const data = await orgUnitService.list();
+      setOrgUnits(data);
+    } catch (error) {
+      console.error('Failed to fetch org units:', error);
+      setOrgUnitsError('Unable to load org units. Tap to retry.');
+    } finally {
+      setIsLoadingOrgUnits(false);
+    }
+  };
 
   // Fetch org units from Reference Data Management
   useEffect(() => {
-    const fetchOrgUnits = async () => {
-      try {
-        setIsLoadingOrgUnits(true);
-        const data = await orgUnitService.list();
-        setOrgUnits(data);
-      } catch (error) {
-        console.error('Failed to fetch org units:', error);
-      } finally {
-        setIsLoadingOrgUnits(false);
-      }
-    };
-
     fetchOrgUnits();
   }, []);
 
@@ -210,6 +213,13 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
                       <div className="dropdown-option disabled">
                         <span className="option-text">Loading org units...</span>
                       </div>
+                    ) : orgUnitsError ? (
+                      <button
+                        className="dropdown-option"
+                        onClick={(e) => { e.stopPropagation(); fetchOrgUnits(); }}
+                      >
+                        <span className="option-text text-destructive">{orgUnitsError}</span>
+                      </button>
                     ) : orgUnits.length > 0 ? (
                       orgUnits.map(option => {
                         const isSelected = selectedOrgUnit?.id === option.id;

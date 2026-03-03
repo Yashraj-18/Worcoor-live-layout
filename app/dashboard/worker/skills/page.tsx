@@ -243,7 +243,7 @@ export default function WorkerSkillsPage() {
   const getProficiencyBadge = (proficiency: string) => {
     switch (proficiency) {
       case "Beginner":
-        return <Badge className="bg-white text-blue-800 border border-blue-200 hover:bg-white">Beginner</Badge>
+        return <Badge className="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">Beginner</Badge>
       case "Intermediate":
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Intermediate</Badge>
       case "Advanced":
@@ -272,27 +272,27 @@ export default function WorkerSkillsPage() {
     }
 
     // Create properly typed worker skill based on certification status
-    const newWorkerSkill: WorkerSkill = newSkill.certified 
+    const newWorkerSkill: WorkerSkill = newSkill.certified
       ? {
-          id,
-          worker: selectedWorker.label,
-          skill: selectedSkillItem.label,
-          proficiency: newSkill.proficiency,
-          certified: true,
-          certificationDate: newSkill.certificationDate || new Date().toISOString().split('T')[0],
-          expiryDate: newSkill.expiryDate || new Date().toISOString().split('T')[0],
-          trainingHours: Number(newSkill.trainingHours),
-        } 
+        id,
+        worker: selectedWorker.label,
+        skill: selectedSkillItem.label,
+        proficiency: newSkill.proficiency,
+        certified: true,
+        certificationDate: newSkill.certificationDate || new Date().toISOString().split('T')[0],
+        expiryDate: newSkill.expiryDate || new Date().toISOString().split('T')[0],
+        trainingHours: Number(newSkill.trainingHours),
+      }
       : {
-          id,
-          worker: selectedWorker.label,
-          skill: selectedSkillItem.label,
-          proficiency: newSkill.proficiency,
-          certified: false,
-          certificationDate: null,
-          expiryDate: null,
-          trainingHours: Number(newSkill.trainingHours),
-        }
+        id,
+        worker: selectedWorker.label,
+        skill: selectedSkillItem.label,
+        proficiency: newSkill.proficiency,
+        certified: false,
+        certificationDate: null,
+        expiryDate: null,
+        trainingHours: Number(newSkill.trainingHours),
+      }
 
     setWorkerSkills([...workerSkills, newWorkerSkill])
     setIsAddDialogOpen(false)
@@ -321,13 +321,13 @@ export default function WorkerSkillsPage() {
       workerSkills.map((workerSkill) =>
         workerSkill.id === selectedSkill.id
           ? {
-              ...workerSkill,
-              proficiency: selectedSkill.proficiency,
-              certified: selectedSkill.certified,
-              certificationDate: selectedSkill.certified ? selectedSkill.certificationDate : null,
-              expiryDate: selectedSkill.certified ? selectedSkill.expiryDate : null,
-              trainingHours: Number(selectedSkill.trainingHours),
-            }
+            ...workerSkill,
+            proficiency: selectedSkill.proficiency,
+            certified: selectedSkill.certified,
+            certificationDate: selectedSkill.certified ? selectedSkill.certificationDate : null,
+            expiryDate: selectedSkill.certified ? selectedSkill.expiryDate : null,
+            trainingHours: Number(selectedSkill.trainingHours),
+          }
           : workerSkill,
       ),
     )

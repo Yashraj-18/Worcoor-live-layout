@@ -149,7 +149,7 @@ const locationChangesData = [
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white p-2 border rounded shadow-sm">
+      <div className="bg-popover text-popover-foreground p-2 border border-border rounded shadow-lg backdrop-blur-sm">
         <p className="font-medium">{label}</p>
         {payload.map((entry: any, index: number) => (
           <p key={`item-${index}`} style={{ color: entry.color || entry.fill }}>
@@ -588,21 +588,21 @@ export default function AssetDashboardPage() {
                     <p className="font-medium">Forklift Machine-001</p>
                     <p className="text-sm text-muted-foreground">Scheduled for: 2024-01-15</p>
                   </div>
-                  <Badge className="bg-white text-blue-800 border border-blue-200">In 5 days</Badge>
+                  <Badge className="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">In 5 days</Badge>
                 </div>
                 <div className="flex items-center justify-between border-b pb-2">
                   <div>
                     <p className="font-medium">Conveyor Belt-002</p>
                     <p className="text-sm text-muted-foreground">Scheduled for: 2024-01-20</p>
                   </div>
-                  <Badge className="bg-white text-blue-800 border border-blue-200">In 10 days</Badge>
+                  <Badge className="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">In 10 days</Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Packaging Machine-001</p>
                     <p className="text-sm text-muted-foreground">Scheduled for: 2024-02-01</p>
                   </div>
-                  <Badge className="bg-white text-blue-800 border border-blue-200">In 22 days</Badge>
+                  <Badge className="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">In 22 days</Badge>
                 </div>
               </div>
             </CardContent>

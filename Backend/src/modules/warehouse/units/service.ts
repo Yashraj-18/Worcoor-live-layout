@@ -4,7 +4,7 @@ import type { UnitsRepository } from './repository.js';
 import type { CreateUnitInput, UpdateUnitInput } from './schemas.js';
 
 export class UnitsService {
-  constructor(private readonly repository: UnitsRepository) {}
+  constructor(private readonly repository: UnitsRepository) { }
 
   async list(request: FastifyRequest, reply: FastifyReply) {
     const units = await this.repository.findAllByOrganization(request.user.organizationId);
@@ -66,12 +66,26 @@ export class UnitsService {
 
   async remove(request: FastifyRequest<{ Params: { unitId: string } }>, reply: FastifyReply) {
     const { unitId } = request.params;
-    const deleted = await this.repository.delete(unitId, request.user.organizationId);
 
-    if (!deleted) {
-      return reply.code(404).send({ error: 'Unit not found' });
+    try {
+      const deleted = await this.repository.delete(unitId, request.user.organizationId);
+
+      if (!deleted) {
+        return reply.code(404).send({ error: 'Unit not found' });
+      }
+
+      reply.code(204).send();
+    } catch (err: any) {
+      // Postgres foreign key violation – the unit is referenced by linked data
+      // (e.g. location tags, layouts) that could not be cascaded in the DB.
+      if (err?.code === '23503') {
+        return reply.code(409).send({
+          error:
+            'This organizational unit cannot be deleted because it has linked location tags or layouts. ' +
+            'Please remove all associated data first and then try again.',
+        });
+      }
+      throw err;
     }
-
-    reply.code(204).send();
   }
 }

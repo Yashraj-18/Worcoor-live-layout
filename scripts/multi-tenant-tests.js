@@ -2,8 +2,8 @@ const axios = require('axios')
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4000/api'
 const TENANTS = [
-  { name: 'Company A', email: 'admin1@company.com', password: 'Admin@123' },
-  { name: 'Company B', email: 'admin2@company.com', password: 'Admin@123' }
+  { name: 'Company A', email: process.env.TENANT_A_EMAIL || 'admin1@company.com', password: process.env.TENANT_A_PASSWORD },
+  { name: 'Company B', email: process.env.TENANT_B_EMAIL || 'admin2@company.com', password: process.env.TENANT_B_PASSWORD }
 ]
 
 function requireId(response, entity) {

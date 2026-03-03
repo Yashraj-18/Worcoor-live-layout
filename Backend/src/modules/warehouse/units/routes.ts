@@ -144,6 +144,12 @@ export async function unitsRoutes(app: FastifyInstance) {
             error: { type: 'string' },
           },
         },
+        409: {
+          type: 'object',
+          properties: {
+            error: { type: 'string' },
+          },
+        },
       },
     },
     handler: (request, reply) => service.remove(request, reply),

@@ -1,4 +1,4 @@
-import { and, count, eq, ilike } from 'drizzle-orm';
+import { and, count, eq, ilike, ne } from 'drizzle-orm';
 
 import { db } from '../../../config/database.js';
 import { locationTags, skus } from '../../../database/schema/index.js';
@@ -99,11 +99,16 @@ export class SkusRepository {
     return result[0] ?? null;
   }
 
-  async findBySkuId(organizationId: string, skuId: string) {
+  async findBySkuId(organizationId: string, skuId: string, excludeSkuDbId?: string) {
+    const filters = [eq(skus.organizationId, organizationId), eq(skus.skuId, skuId)];
+    if (excludeSkuDbId) {
+      filters.push(ne(skus.id, excludeSkuDbId));
+    }
+
     const [result] = await db
       .select()
       .from(skus)
-      .where(and(eq(skus.organizationId, organizationId), eq(skus.skuId, skuId)))
+      .where(and(...filters))
       .limit(1);
 
     return result ?? null;

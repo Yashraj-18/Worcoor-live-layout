@@ -78,6 +78,8 @@ export class SkusService {
 
       emitInventoryChanged(io, tag.unitId, {
         unit_id: tag.unitId,
+        location_tag_id: locationTagId,
+        current_items: currentItems,
         utilization_percentage: utilizationPercentage,
       });
     } catch (err) {

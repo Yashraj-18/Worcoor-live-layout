@@ -1,0 +1,397 @@
+/* Warehouse Tooltip Styles */
+.warehouse-tooltip {
+  position: fixed;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  max-width: 320px;
+  min-width: 200px;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1f2937;
+  z-index: 9999;
+  animation: tooltip-appear 0.15s ease-out;
+  pointer-events: auto;
+}
+
+@keyframes tooltip-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.warehouse-tooltip__content {
+  padding: 12px 16px;
+}
+
+.warehouse-tooltip__close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  transition: all 0.15s ease;
+}
+
+.warehouse-tooltip__close:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #374151;
+}
+
+/* Item Tooltip Variant */
+.warehouse-tooltip--item {
+  border-left: 4px solid #3b82f6;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__content {
+  padding: 16px;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #111827;
+  margin: 0 0 8px 0;
+  line-height: 1.3;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__subtitle {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__section {
+  margin: 12px 0;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__section:first-child {
+  margin-top: 0;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__section:last-child {
+  margin-bottom: 0;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__metric-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__metric-value {
+  color: #111827;
+  font-weight: 600;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__progress {
+  width: 100%;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__progress-value {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__inventory-list {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__inventory-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__inventory-item:last-child {
+  border-bottom: none;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__inventory-name {
+  color: #374151;
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__inventory-quantity {
+  color: #6b7280;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.warehouse-tooltip--item .warehouse-tooltip__inventory-more {
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 11px;
+  text-align: center;
+  padding: 4px 0;
+}
+
+/* Compartment Tooltip Variant */
+.warehouse-tooltip--compartment {
+  border-left: 4px solid #10b981;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__content {
+  padding: 12px;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__header {
+  margin-bottom: 8px;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #111827;
+  margin: 0 0 2px 0;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__meta {
+  font-size: 11px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__body {
+  font-size: 12px;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__metric-grid {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__metric-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__metric-value {
+  color: #111827;
+  font-weight: 600;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__progress-group {
+  margin: 8px 0;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__progress-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__progress {
+  width: 100%;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__progress-value {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #059669);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__chip {
+  display: inline-flex;
+  align-items: center;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  color: #374151;
+  font-weight: 500;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__chip-tag {
+  margin-left: 4px;
+  color: #6b7280;
+  font-size: 9px;
+}
+
+.warehouse-tooltip--compartment .warehouse-tooltip__empty-state {
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 11px;
+  text-align: center;
+  padding: 8px 0;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .warehouse-tooltip {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+
+  .warehouse-tooltip__close {
+    background: rgba(255, 255, 255, 0.1);
+    color: #9ca3af;
+  }
+
+  .warehouse-tooltip__close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #d1d5db;
+  }
+
+  .warehouse-tooltip--item {
+    border-left-color: #60a5fa;
+  }
+
+  .warehouse-tooltip--compartment {
+    border-left-color: #34d399;
+  }
+
+  .warehouse-tooltip--item .warehouse-tooltip__title,
+  .warehouse-tooltip--compartment .warehouse-tooltip__title {
+    color: #f9fafb;
+  }
+
+  .warehouse-tooltip--item .warehouse-tooltip__subtitle,
+  .warehouse-tooltip--compartment .warehouse-tooltip__meta {
+    color: #9ca3af;
+  }
+
+  .warehouse-tooltip--item .warehouse-tooltip__section-label {
+    color: #d1d5db;
+  }
+
+  .warehouse-tooltip--item .warehouse-tooltip__metric-label,
+  .warehouse-tooltip--compartment .warehouse-tooltip__metric-label {
+    color: #9ca3af;
+  }
+
+  .warehouse-tooltip--item .warehouse-tooltip__metric-value,
+  .warehouse-tooltip--compartment .warehouse-tooltip__metric-value {
+    color: #f9fafb;
+  }
+
+  .warehouse-tooltip--item .warehouse-tooltip__progress {
+    background: #374151;
+  }
+
+  .warehouse-tooltip--compartment .warehouse-tooltip__progress {
+    background: #374151;
+  }
+
+  .warehouse-tooltip--item .warehouse-tooltip__inventory-item {
+    border-bottom-color: #374151;
+  }
+
+  .warehouse-tooltip--item .warehouse-tooltip__inventory-name {
+    color: #d1d5db;
+  }
+
+  .warehouse-tooltip--item .warehouse-tooltip__inventory-quantity {
+    color: #9ca3af;
+  }
+
+  .warehouse-tooltip--compartment .warehouse-tooltip__chip {
+    background: #374151;
+    border-color: #4b5563;
+    color: #d1d5db;
+  }
+
+  .warehouse-tooltip--compartment .warehouse-tooltip__chip-tag {
+    color: #9ca3af;
+  }
+
+  .warehouse-tooltip--compartment .warehouse-tooltip__empty-state {
+    color: #6b7280;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .warehouse-tooltip {
+    max-width: 280px;
+    min-width: 160px;
+    font-size: 13px;
+  }
+
+  .warehouse-tooltip--item .warehouse-tooltip__content {
+    padding: 12px;
+  }
+
+  .warehouse-tooltip--item .warehouse-tooltip__title {
+    font-size: 14px;
+  }
+}

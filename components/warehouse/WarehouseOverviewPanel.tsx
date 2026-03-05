@@ -587,16 +587,12 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
                   </div>
 
                   {/* Capacity Details */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.75rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem', fontSize: '0.75rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#94a3b8' }}>Capacity:</span>
                       <span style={{ color: '#e2e8f0', fontWeight: '600' }}>
-                        {location.capacity}
+                        {location.capacity} {location.unitOfMeasurement || 'units'}
                       </span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#94a3b8' }}>Used:</span>
-                      <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{location.usedCapacity}</span>
                     </div>
                   </div>
                 </div>

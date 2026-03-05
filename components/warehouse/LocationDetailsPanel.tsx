@@ -40,6 +40,9 @@ interface SelectedItem {
   locationIds?: string[];
   levelIds?: string[];
   compartmentContents?: Record<string, CompartmentContent>;
+  // Multiple location tags support (for storage units/categories without levels)
+  locationTags?: string[]; // Array of location tag IDs/UUIDs
+  locationTagCodes?: string[]; // Array of location tag codes/names
   [key: string]: unknown;
 }
 
@@ -76,6 +79,8 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
   console.log('🔍 locationIds:', selectedItem?.locationIds);
   console.log('🔍 levelIds:', selectedItem?.levelIds);
   console.log('🔍 compartmentContents:', selectedItem?.compartmentContents);
+  console.log('🔍 locationTags (multi-tag support):', selectedItem?.locationTags);
+  console.log('🔍 locationTagCodes (multi-tag support):', selectedItem?.locationTagCodes);
 
   const locationTagId = selectedItem?.locationTagId ?? null;
 
@@ -87,12 +92,16 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
   // Multi-level state
   const [isMultiLevel, setIsMultiLevel] = useState(false);
   const [levelsData, setLevelsData]     = useState<any[]>([]);
+  
+  // Multiple location tags state (for storage units/categories without levels)
+  const [isMultiTag, setIsMultiTag] = useState(false);
+  const [multiTagsData, setMultiTagsData] = useState<any[]>([]);
 
   // Live values pushed by WebSocket (override REST snapshot when received)
   const [liveCurrentItems, setLiveCurrentItems]     = useState<number | null>(null);
   const [liveUtilizationPct, setLiveUtilizationPct] = useState<number | null>(null);
 
-  // ── Multi-level detection logic ───────────────────────────────────────────
+  // ── Multi-level and multi-tag detection logic ───────────────────────────────────
 
   const detectMultiLevels = useCallback((item: SelectedItem) => {
     console.log('🔍 Detecting multi-level for item:', item);
@@ -123,6 +132,40 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
     return { isMultiLevel: false, levels: [] };
   }, []);
 
+  const detectMultipleTags = useCallback((item: SelectedItem) => {
+    console.log('🔍 Detecting multiple tags for item:', item);
+    
+    // Check for multiple location tags (storage units/categories without levels)
+    if (item.locationTags && item.locationTags.length > 1) {
+      console.log('✅ Found multiple location tags in locationTags array');
+      return {
+        isMultiTag: true,
+        tagIds: item.locationTags
+      };
+    }
+    
+    // Check for multiple location tag codes
+    if (item.locationTagCodes && item.locationTagCodes.length > 1) {
+      console.log('✅ Found multiple location tag codes in locationTagCodes array');
+      return {
+        isMultiTag: true,
+        tagCodes: item.locationTagCodes
+      };
+    }
+    
+    // Check for locationIds array (multiple location IDs)
+    if (item.locationIds && item.locationIds.length > 1) {
+      console.log('✅ Found multiple location IDs in locationIds array');
+      return {
+        isMultiTag: true,
+        locationIds: item.locationIds
+      };
+    }
+    
+    console.log('❌ No multiple tags detected');
+    return { isMultiTag: false, tagIds: [], tagCodes: [], locationIds: [] };
+  }, []);
+
   // ── Initial data fetch via REST ───────────────────────────────────────────
 
   useEffect(() => {
@@ -130,6 +173,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
       setLocationTag(null);
       setSkus([]);
       setLevelsData([]);
+      setMultiTagsData([]);
       setLiveCurrentItems(null);
       setLiveUtilizationPct(null);
       return;
@@ -137,7 +181,9 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
     let cancelled = false;
     const multiLevelInfo = detectMultiLevels(selectedItem);
+    const multiTagInfo = detectMultipleTags(selectedItem);
     console.log('🔍 Multi-level detection result:', multiLevelInfo);
+    console.log('🔍 Multi-tag detection result:', multiTagInfo);
 
     const fetchData = async () => {
       setLoading(true);
@@ -147,7 +193,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
       try {
         if (multiLevelInfo.isMultiLevel) {
-          // Handle multi-level fetching
+          // Handle multi-level fetching (existing logic)
           console.log('🚀 Fetching multi-level data for levels:', multiLevelInfo.levels);
           
           const locationTagIds = multiLevelInfo.levels
@@ -234,6 +280,100 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
           setIsMultiLevel(true);
           setLocationTag(null); // Clear single-level data
           setSkus([]);
+          setIsMultiTag(false);
+          setMultiTagsData([]);
+        } else if (multiTagInfo.isMultiTag) {
+          // Handle multiple location tags fetching (new logic)
+          console.log('🚀 Fetching multiple tags data');
+          
+          let locationIdentifiers: string[] = [];
+          
+          // Determine which identifiers to use
+          if (multiTagInfo.tagIds && multiTagInfo.tagIds.length > 0) {
+            locationIdentifiers = multiTagInfo.tagIds;
+            console.log('🔍 Using tag IDs:', locationIdentifiers);
+          } else if (multiTagInfo.tagCodes && multiTagInfo.tagCodes.length > 0) {
+            locationIdentifiers = multiTagInfo.tagCodes;
+            console.log('🔍 Using tag codes:', locationIdentifiers);
+          } else if (multiTagInfo.locationIds && multiTagInfo.locationIds.length > 0) {
+            locationIdentifiers = multiTagInfo.locationIds;
+            console.log('🔍 Using location IDs:', locationIdentifiers);
+          }
+
+          if (locationIdentifiers.length === 0) {
+            console.warn('⚠️ No valid location identifiers found for multi-tag item');
+            setIsMultiTag(false);
+            setMultiTagsData([]);
+            return;
+          }
+
+          // Fetch all location tags in parallel
+          const allTags = await locationTagService.listByUnit(unitId);
+          
+          // Match tags by ID or by code/name
+          const matchedTags = locationIdentifiers.map(identifier => {
+            // First try to match by UUID (if identifier looks like a UUID)
+            const tagById = allTags.find(tag => tag.id === identifier);
+            if (tagById) return tagById;
+            
+            // Then try to match by location tag name/code
+            const tagByCode = allTags.find(tag => tag.locationTagName === identifier);
+            return tagByCode || null;
+          }).filter(tag => tag !== null);
+
+          console.log('🔍 Matched tags:', matchedTags.map(t => ({ id: t.id, name: t.locationTagName })));
+
+          // Fetch SKUs for all matched tags
+          const skuPromises = matchedTags.map(async (tag, idx: number) => {
+            try {
+              const result = await skuService.list({ locationTagId: tag.id, limit: 100 });
+              console.log('✅ Successfully fetched SKUs for tag:', tag.id, 'Count:', result.items.length);
+              return { ...result, tagIndex: idx, tag: tag };
+            } catch (err) {
+              console.error(`❌ Failed to fetch SKUs for tag ${tag.id}:`, err);
+              return { items: [], tagIndex: idx, tag: tag };
+            }
+          });
+          
+          const skuResponses = await Promise.allSettled(skuPromises);
+          const validSkuResponses = skuResponses.map((result) => {
+            if (result.status === 'fulfilled') {
+              return result.value;
+            } else {
+              console.error(`❌ SKU fetch failed:`, result.reason);
+              return { items: [], tagIndex: 0, tag: null };
+            }
+          });
+
+          // Set multi-tag data
+          const newMultiTagsData = matchedTags.map((tag, idx: number) => {
+            const skuResponse = validSkuResponses.find(resp => resp.tagIndex === idx);
+            
+            return {
+              locationTag: tag,
+              skus: skuResponse?.items || [],
+              tagInfo: {
+                tagIndex: idx,
+                tagId: tag.id,
+                tagCode: tag.locationTagName,
+                tagName: tag.locationTagName
+              }
+            };
+          });
+          
+          console.log('✅ Multi-tag data assembled:', newMultiTagsData.map(d => ({
+            tagCode: d.tagInfo.tagCode,
+            tagId: d.tagInfo.tagId,
+            hasTag: !!d.locationTag,
+            skuCount: d.skus.length
+          })));
+          
+          setMultiTagsData(newMultiTagsData);
+          setIsMultiTag(true);
+          setLocationTag(null); // Clear single-level data
+          setSkus([]);
+          setIsMultiLevel(false);
+          setLevelsData([]);
         } else {
           // Handle single-level (existing logic)
           if (!locationTagId) {
@@ -254,9 +394,11 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
           setSkus(skuResponse.items);
           setIsMultiLevel(false);
           setLevelsData([]);
+          setIsMultiTag(false);
+          setMultiTagsData([]);
         }
 
-        if (!multiLevelInfo.isMultiLevel && !selectedItem?.locationTagId) {
+        if (!multiLevelInfo.isMultiLevel && !multiTagInfo.isMultiTag && !selectedItem?.locationTagId) {
           console.warn('LocationDetailsPanel: tag not found');
         }
       } catch (err) {
@@ -271,7 +413,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [selectedItem, unitId, detectMultiLevels, locationTagId]);
+  }, [selectedItem, unitId, detectMultiLevels, detectMultipleTags, locationTagId]);
 
   // ── WebSocket: live updates ───────────────────────────────────────────────
 
@@ -386,6 +528,14 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                 padding: '2px 6px', borderRadius: '999px', fontWeight: 600, marginLeft: 4,
               }}>
                 {levelsData.length} LEVELS
+              </span>
+            )}
+            {isMultiTag && (
+              <span style={{
+                fontSize: '0.65rem', background: '#f59e0b', color: 'white',
+                padding: '2px 6px', borderRadius: '999px', fontWeight: 600, marginLeft: 4,
+              }}>
+                {multiTagsData.length} TAGS
               </span>
             )}
           </div>
@@ -622,6 +772,140 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                       </div>
                       <div style={{ fontSize: '0.85rem' }}>
                         Location ID: {levelData.levelInfo.locationId}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : isMultiTag ? (
+              // Multi-tag display (for storage units/categories without levels)
+              multiTagsData.map((tagData, index) => (
+                <div key={tagData.tagInfo.tagId} style={{ marginBottom: '2rem' }}>
+                  {/* Tag Header */}
+                  <div style={{
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                    color: 'white',
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    marginBottom: '1rem',
+                    fontWeight: 'bold',
+                    fontSize: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <MapPin size={18} />
+                    Tag {index + 1}: {tagData.locationTag?.locationTagName || 'Unknown Location'}
+                  </div>
+
+                  {tagData.locationTag ? (
+                    <>
+                      {/* Location Tag Info for this tag */}
+                      <div style={sectionStyle}>
+                        <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa' }}>
+                          📍 Tag {index + 1} Location Details
+                        </h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                          <div style={{ gridColumn: '1 / -1' }}>
+                            <div style={labelStyle}>Location Tag Name</div>
+                            <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>
+                              {tagData.locationTag.locationTagName}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={labelStyle}>Capacity</div>
+                            <div style={valueStyle}>{tagData.locationTag.capacity}</div>
+                          </div>
+                          <div>
+                            <div style={labelStyle}>Current Items</div>
+                            <div style={valueStyle}>{tagData.locationTag.currentItems || 0}</div>
+                          </div>
+                          <div style={{ gridColumn: '1 / -1' }}>
+                            <div style={labelStyle}>Utilization</div>
+                            <div style={{
+                              ...valueStyle,
+                              color: (tagData.locationTag.utilizationPercentage || 0) > 90 ? '#ef4444'
+                                   : (tagData.locationTag.utilizationPercentage || 0) > 70 ? '#f59e0b'
+                                   : '#22c55e',
+                            }}>
+                              {(tagData.locationTag.utilizationPercentage || 0).toFixed(1)}%
+                            </div>
+                          </div>
+                          {tagData.locationTag.length && (
+                            <div style={{ gridColumn: '1 / -1' }}>
+                              <div style={labelStyle}>Dimensions (L × B × H)</div>
+                              <div style={valueStyle}>
+                                {tagData.locationTag.length} × {tagData.locationTag.breadth} × {tagData.locationTag.height} {tagData.locationTag.unitOfMeasurement}
+                              </div>
+                            </div>
+                          )}
+                          <div style={{ gridColumn: '1 / -1' }}>
+                            <div style={labelStyle}>Created At</div>
+                            <div style={valueStyle}>{fmt(tagData.locationTag.createdAt)}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* SKU Info for this tag */}
+                      <div style={sectionStyle}>
+                        <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa' }}>
+                          📦 Tag {index + 1} SKU Information
+                          <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>
+                            {tagData.skus.length} SKU{tagData.skus.length !== 1 ? 's' : ''}
+                          </span>
+                        </h4>
+                        {tagData.skus.length === 0 ? (
+                          <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
+                            No SKUs assigned to Tag {index + 1}
+                          </div>
+                        ) : (
+                          tagData.skus.map((sku) => (
+                            <div key={sku.id} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid hsl(215.3 25.1% 32.6%)' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                  <div style={labelStyle}>SKU Name</div>
+                                  <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{sku.skuName}</div>
+                                </div>
+                                <div>
+                                  <div style={labelStyle}>Quantity</div>
+                                  <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: sku.quantity > 0 ? '#22c55e' : '#ef4444' }}>
+                                    {sku.quantity}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div style={labelStyle}>Category</div>
+                                  <div style={valueStyle}>{sku.skuCategory}</div>
+                                </div>
+                                <div>
+                                  <div style={labelStyle}>Unit</div>
+                                  <div style={valueStyle}>{sku.skuUnit}</div>
+                                </div>
+                                <div>
+                                  <div style={labelStyle}>Effective Date</div>
+                                  <div style={valueStyle}>{fmt(sku.effectiveDate)}</div>
+                                </div>
+                                <div>
+                                  <div style={labelStyle}>Expiry Date</div>
+                                  <div style={valueStyle}>{fmt(sku.expiryDate)}</div>
+                                </div>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                  <div style={labelStyle}>Created At</div>
+                                  <div style={valueStyle}>{fmt(sku.createdAt)}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                      <PackageOpen size={32} />
+                      <div style={{ fontWeight: 600, marginBottom: '0.5rem', marginTop: '1rem' }}>
+                        Tag {index + 1} - No Location Tag Found
+                      </div>
+                      <div style={{ fontSize: '0.85rem' }}>
+                        Tag ID: {tagData.tagInfo.tagId}
                       </div>
                     </div>
                   )}

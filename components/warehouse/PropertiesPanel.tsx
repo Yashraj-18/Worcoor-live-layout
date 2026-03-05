@@ -403,6 +403,444 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
         );
       })()}
 
+      {/* Storage Unit SKU Compartments */}
+      {selectedItem.type === 'storage_unit' && (() => {
+        // For storage units, handle both single and multiple location assignments
+        const isSingleSkuUnit = selectedItem.hasSku && selectedItem.singleSku;
+        const isMultiLocation = selectedItem.locationData?.isMultiLocation;
+        const locationIds = selectedItem.locationData?.locationIds || [];
+        
+        // Calculate total locations based on multi-location setup
+        const totalCompartments = isMultiLocation ? locationIds.length : 1;
+        const occupiedCount = isMultiLocation ? locationIds.length : ((selectedItem.locationId || selectedItem.locationData?.primaryLocationId) ? 1 : 0);
+        
+        // Helper function to update storage unit location
+        const updateStorageUnitLocation = (newLocationId: string, index?: number) => {
+          if (!newLocationId || !newLocationId.trim()) {
+            showMessage.error('Location ID cannot be empty');
+            return;
+          }
+          
+          const trimmedLocationId = newLocationId.trim();
+          
+          // Check if the new ID is already in use (excluding current one if editing)
+          if (globalIdCache.isIdInUse(trimmedLocationId)) {
+            showMessage.error(`Location ID "${trimmedLocationId}" is already in use elsewhere in the map`);
+            return;
+          }
+          
+          if (isMultiLocation && typeof index === 'number') {
+            // Update specific location in multi-location array
+            const updatedLocationIds = [...locationIds];
+            const oldLocationId = updatedLocationIds[index];
+            
+            // Remove old ID from cache if it exists
+            if (oldLocationId) {
+              globalIdCache.removeId(oldLocationId);
+            }
+            
+            // Add new ID to cache
+            globalIdCache.addId(trimmedLocationId);
+            
+            updatedLocationIds[index] = trimmedLocationId;
+            
+            onUpdateItem(selectedItem.id, { 
+              locationData: {
+                ...selectedItem.locationData,
+                locationIds: updatedLocationIds
+              }
+            });
+            
+            showMessage.success(`Location ID ${index + 1} updated to "${trimmedLocationId}"`);
+          } else {
+            // Single location update
+            const oldLocationId = selectedItem.locationId || selectedItem.locationData?.primaryLocationId;
+            if (oldLocationId) {
+              globalIdCache.removeId(oldLocationId);
+            }
+            
+            globalIdCache.addId(trimmedLocationId);
+            
+            onUpdateItem(selectedItem.id, { 
+              locationId: trimmedLocationId,
+              locationData: {
+                ...selectedItem.locationData,
+                primaryLocationId: trimmedLocationId
+              }
+            });
+            
+            showMessage.success(`Location ID updated to "${trimmedLocationId}"`);
+          }
+        };
+        
+        // Helper function to add new location to multi-location storage unit
+        const addNewLocation = () => {
+          const newLocationId = prompt('Add new Location ID:');
+          if (newLocationId && newLocationId.trim()) {
+            const trimmedLocationId = newLocationId.trim();
+            
+            // Check if the new ID is already in use
+            if (globalIdCache.isIdInUse(trimmedLocationId)) {
+              showMessage.error(`Location ID "${trimmedLocationId}" is already in use elsewhere in the map`);
+              return;
+            }
+            
+            const updatedLocationIds = [...locationIds, trimmedLocationId];
+            globalIdCache.addId(trimmedLocationId);
+            
+            onUpdateItem(selectedItem.id, { 
+              locationData: {
+                ...selectedItem.locationData,
+                locationIds: updatedLocationIds,
+                isMultiLocation: true
+              }
+            });
+            
+            showMessage.success(`New location "${trimmedLocationId}" added`);
+          }
+        };
+        
+        // Helper function to remove location from multi-location storage unit
+        const removeLocation = (index: number) => {
+          if (confirm(`Remove location "${locationIds[index]}" from this storage unit?`)) {
+            const oldLocationId = locationIds[index];
+            if (oldLocationId) {
+              globalIdCache.removeId(oldLocationId);
+            }
+            
+            const updatedLocationIds = locationIds.filter((_, i) => i !== index);
+            
+            // If only one location remains, convert to single location mode
+            if (updatedLocationIds.length === 0) {
+              onUpdateItem(selectedItem.id, { 
+                locationId: null,
+                locationData: {
+                  ...selectedItem.locationData,
+                  locationIds: [],
+                  primaryLocationId: null,
+                  isMultiLocation: false
+                }
+              });
+            } else if (updatedLocationIds.length === 1) {
+              // Convert to single location
+              const remainingLocationId = updatedLocationIds[0];
+              onUpdateItem(selectedItem.id, { 
+                locationId: remainingLocationId,
+                locationData: {
+                  ...selectedItem.locationData,
+                  locationIds: [],
+                  primaryLocationId: remainingLocationId,
+                  isMultiLocation: false
+                }
+              });
+            } else {
+              // Keep multi-location mode
+              onUpdateItem(selectedItem.id, { 
+                locationData: {
+                  ...selectedItem.locationData,
+                  locationIds: updatedLocationIds
+                }
+              });
+            }
+            
+            showMessage.success('Location removed');
+          }
+        };
+        
+        return (
+          <div className="property-group" style={{ marginTop: '2rem' }}>
+            <label className="property-label">📋 Storage Unit Location</label>
+            <div style={{ 
+              padding: '1rem', 
+              background: 'rgba(74, 222, 128, 0.1)', 
+              borderRadius: '6px',
+              fontSize: '0.85rem',
+              border: '1px solid rgba(74, 222, 128, 0.3)',
+              backdropFilter: 'blur(10px)'
+            }}>
+              <div style={{ marginBottom: '0.5rem', color: '#86efac' }}>
+                <strong>Type:</strong> {isSingleSkuUnit ? 'Single SKU Storage Unit' : 'Multi-SKU Storage Unit'}
+              </div>
+              <div style={{ marginBottom: '0.5rem', color: '#86efac' }}>
+                <strong>Location Mode:</strong> {isMultiLocation ? 'Multi-Location' : 'Single Location'}
+              </div>
+              <div style={{ marginBottom: '0.5rem', color: '#86efac' }}>
+                <strong>Total Locations:</strong> {totalCompartments}
+              </div>
+              <div style={{ marginBottom: '0.5rem', color: '#86efac' }}>
+                <strong>Occupied:</strong> {occupiedCount}
+              </div>
+              <div style={{ marginBottom: '1rem', color: '#86efac' }}>
+                <strong>Available:</strong> {totalCompartments - occupiedCount}
+              </div>
+              
+              {/* Location Status Grid */}
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.8rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                  Location Status {isMultiLocation ? `(${totalCompartments} locations)` : ''}:
+                </div>
+                
+                {isMultiLocation ? (
+                  // Multi-location grid display
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${Math.min(totalCompartments, 4)}, 1fr)`,
+                    gap: '4px',
+                    maxWidth: '200px'
+                  }}>
+                    {locationIds.map((locationId, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          border: '1px solid #4ade80',
+                          borderRadius: '2px',
+                          backgroundColor: '#4ade80',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.5rem',
+                          color: 'white',
+                          cursor: 'pointer',
+                          position: 'relative'
+                        }}
+                        onClick={() => {
+                          const newLocationId = prompt('Edit Location ID:', locationId);
+                          if (newLocationId !== null && newLocationId.trim() !== locationId) {
+                            updateStorageUnitLocation(newLocationId.trim(), index);
+                          }
+                        }}
+                        title={`Location: ${locationId}\nClick to edit`}
+                      >
+                        <span style={{ fontSize: '0.8rem' }}>✓</span>
+                        <span style={{ fontSize: '0.4rem', fontWeight: 'bold' }}>{index + 1}</span>
+                      </div>
+                    ))}
+                    {totalCompartments < 8 && (
+                      <div
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          border: '1px dashed #4ade80',
+                          borderRadius: '2px',
+                          backgroundColor: 'rgba(224, 247, 250, 0.5)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.6rem',
+                          color: '#166534',
+                          cursor: 'pointer'
+                        }}
+                        onClick={addNewLocation}
+                        title="Add new location"
+                      >
+                        +
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // Single location display
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <div
+                      style={{
+                        width: '20px',
+                        height: '20px',
+                        border: '1px solid #4ade80',
+                        borderRadius: '2px',
+                        backgroundColor: occupiedCount ? '#4ade80' : 'rgba(224, 247, 250, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.6rem',
+                        color: occupiedCount ? 'white' : '#166534',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => {
+                        const currentLocationId = selectedItem.locationId || selectedItem.locationData?.primaryLocationId || '';
+                        const newLocationId = prompt(
+                          occupiedCount ? 'Edit Location ID:' : 'Assign Location ID:', 
+                          currentLocationId
+                        );
+                        if (newLocationId !== null && newLocationId.trim() !== currentLocationId) {
+                          updateStorageUnitLocation(newLocationId.trim());
+                        }
+                      }}
+                      title={occupiedCount 
+                        ? `Current Location: ${selectedItem.locationId || selectedItem.locationData?.primaryLocationId}\nClick to edit` 
+                        : 'Empty storage unit\nClick to assign location'
+                      }
+                    >
+                      {occupiedCount ? '✓' : '○'}
+                    </div>
+                    <span style={{ fontSize: '0.8rem', color: '#166534' }}>
+                      {occupiedCount ? 'Location Assigned' : 'No Location Assigned'}
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Location Details */}
+              {occupiedCount > 0 && (
+                <div style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.8rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                    Location Details {isMultiLocation ? `(${totalCompartments} locations)` : ''}:
+                  </div>
+                  <div style={{ 
+                    maxHeight: '200px', 
+                    overflowY: 'auto', 
+                    border: '1px solid #4ade80', 
+                    borderRadius: '4px',
+                    backgroundColor: 'rgba(74, 222, 128, 0.05)'
+                  }}>
+                    {isMultiLocation ? (
+                      // Multi-location details
+                      locationIds.map((locationId, index) => (
+                        <div key={index} style={{
+                          padding: '0.5rem',
+                          borderBottom: index < locationIds.length - 1 ? '1px solid rgba(74, 222, 128, 0.3)' : 'none',
+                          fontSize: '0.75rem',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <div>
+                            <div style={{ fontWeight: 'bold', color: '#166534' }}>
+                              Location {index + 1}: {locationId}
+                            </div>
+                            <div style={{ color: '#666', fontSize: '0.7rem', marginTop: '2px' }}>
+                              Status: {selectedItem.locationData?.status || 'planned'}
+                            </div>
+                            {selectedItem.locationData?.tags && selectedItem.locationData.tags[index] && (
+                              <div style={{ color: '#666', fontSize: '0.7rem' }}>
+                                Tag: {selectedItem.locationData.tags[index]}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <button
+                              onClick={() => {
+                                const newLocationId = prompt('Edit Location ID:', locationId);
+                                if (newLocationId !== null && newLocationId.trim() !== locationId) {
+                                  updateStorageUnitLocation(newLocationId.trim(), index);
+                                }
+                              }}
+                              style={{
+                                padding: '4px 8px',
+                                fontSize: '0.7rem',
+                                backgroundColor: '#4ade80',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                              title="Edit location ID"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => removeLocation(index)}
+                              style={{
+                                padding: '4px 8px',
+                                fontSize: '0.7rem',
+                                backgroundColor: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                              title="Remove location"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      // Single location details
+                      <div style={{ 
+                        padding: '0.5rem', 
+                        fontSize: '0.75rem'
+                      }}>
+                        <div style={{ fontWeight: 'bold', color: '#166534' }}>
+                          Location: {selectedItem.locationId || selectedItem.locationData?.primaryLocationId}
+                        </div>
+                        <div style={{ color: '#666', fontSize: '0.75rem', marginTop: '2px' }}>
+                          Status: {selectedItem.locationData?.status || 'planned'}
+                        </div>
+                        {selectedItem.locationData?.category && (
+                          <div style={{ color: '#666', fontSize: '0.75rem' }}>
+                            Category: {selectedItem.locationData.category}
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                          <button
+                            onClick={() => {
+                              const currentLocationId = selectedItem.locationId || selectedItem.locationData?.primaryLocationId || '';
+                              const newLocationId = prompt('Edit Location ID:', currentLocationId);
+                              if (newLocationId !== null && newLocationId.trim() !== currentLocationId) {
+                                updateStorageUnitLocation(newLocationId.trim());
+                              }
+                            }}
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '0.7rem',
+                              backgroundColor: '#4ade80',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}
+                            title="Edit location ID"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm('Remove location assignment from this storage unit?')) {
+                                const oldLocationId = selectedItem.locationId || selectedItem.locationData?.primaryLocationId;
+                                if (oldLocationId) {
+                                  globalIdCache.removeId(oldLocationId);
+                                }
+                                onUpdateItem(selectedItem.id, { 
+                                  locationId: null,
+                                  locationData: {
+                                    ...selectedItem.locationData,
+                                    primaryLocationId: null
+                                  }
+                                });
+                                showMessage.success('Location assignment removed');
+                              }
+                            }}
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '0.7rem',
+                              backgroundColor: '#ef4444',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}
+                            title="Remove location assignment"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="property-group">
         <label className="property-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Package size={14} color="#6b7280" />

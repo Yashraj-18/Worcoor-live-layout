@@ -347,26 +347,61 @@ const SavedLayoutRenderer = ({
                     cursor: onItemClick ? 'pointer' : 'default'
                   }}
                 >
-                  <WarehouseItem
-                    item={item}
-                    isSelected={false}
-                    onSelect={handleItemSelect}
-                    onUpdate={noop}
-                    onDelete={noop}
-                    zoomLevel={zoomLevel}
-                    snapToGrid={false}
-                    gridSize={60}
-                    onRequestSkuId={null}
-                    onRightClick={null}
-                    onInfoClick={null}
-                    stackMode={false}
-                    isReadOnly
-                    showLabels={showLabels}
-                    isHighlighted={highlightedKeySet.has(itemKey)}
-                    highlightedCompartments={highlightedCompartmentsMap[itemKey] || null}
-                    locationTagsMap={locationTagsMap}
-                    hideNonMatchingCompartments={hasActiveFilters}
-                  />
+                  {item.type === 'inner_boundary' ? (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: item.x,
+                        top: item.y,
+                        width: item.width,
+                        height: item.height,
+                        border: `2px solid #000000`,
+                        borderRadius: 6,
+                        backgroundColor: 'transparent',
+                        pointerEvents: 'none',
+                        zIndex: 2,
+                        boxSizing: 'border-box',
+                      }}
+                    >
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: 5,
+                          left: 8,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: '#000000',
+                          background: 'rgba(250,250,250,0.85)',
+                          padding: '1px 5px',
+                          borderRadius: 3,
+                          pointerEvents: 'none',
+                          userSelect: 'none',
+                        }}
+                      >
+                        {item.label}
+                      </span>
+                    </div>
+                  ) : (
+                    <WarehouseItem
+                      item={item}
+                      isSelected={false}
+                      onSelect={handleItemSelect}
+                      onUpdate={noop}
+                      onDelete={noop}
+                      zoomLevel={zoomLevel}
+                      snapToGrid={false}
+                      gridSize={60}
+                      onRequestSkuId={null}
+                      onRightClick={null}
+                      onInfoClick={null}
+                      stackMode={false}
+                      isReadOnly={true}
+                      isHighlighted={highlightedKeySet.has(itemKey)}
+                      highlightedCompartments={highlightedCompartmentsMap[itemKey] || null}
+                      locationTagsMap={locationTagsMap}
+                      hideNonMatchingCompartments={hasActiveFilters}
+                    />
+                  )}
                 </div>
               );
             })}

@@ -810,12 +810,12 @@ const WarehouseCanvas = ({
                       value={editingLabelValue}
                       onChange={(e) => setEditingLabelValue(e.target.value)}
                       onBlur={() => {
-                        onUpdateItem(item.id, { name: editingLabelValue });
+                        onUpdateItem(item.id, { name: editingLabelValue, label: editingLabelValue });
                         setEditingLabelId(null);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          onUpdateItem(item.id, { name: editingLabelValue });
+                          onUpdateItem(item.id, { name: editingLabelValue, label: editingLabelValue });
                           setEditingLabelId(null);
                         }
                         if (e.key === 'Escape') {
@@ -858,7 +858,7 @@ const WarehouseCanvas = ({
                         cursor: 'text',
                       }}
                     >
-                      {item.name}
+                      {item.label}
                     </span>
                   )}
                 </div>

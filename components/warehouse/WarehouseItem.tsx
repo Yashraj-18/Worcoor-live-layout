@@ -601,6 +601,11 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
               onClick={(event: any) => {
                 event.stopPropagation();
                 
+                // Always select the parent rack when clicking on compartments
+                if (onSelect) {
+                  onSelect(item.id);
+                }
+                
                 // In readonly mode, trigger item selection for location details (even for empty compartments)
                 if (isReadOnly && onSelect) {
                   console.log('Compartment clicked in readonly mode:', { item, compartmentId, row, col, compartmentData });
@@ -734,14 +739,9 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
   };
 
   const handleDoubleClick = (e: any) => {
+    // Disable double-click functionality completely
+    e.preventDefault();
     e.stopPropagation();
-    if (isReadOnly) {
-      return;
-    }
-    const newName = prompt('Enter new name:', item.name);
-    if (newName && newName !== item.name) {
-      onUpdate(item.id, { name: newName });
-    }
   };
 
   const handleRightClick = (e: any) => {
@@ -951,20 +951,6 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
       onMouseMove={handleItemMouseMove}
       onMouseLeave={handleItemMouseLeave}
     >
-      {/* Debug: Show component info */}
-      {(() => {
-        console.log('WarehouseItem rendering:', {
-          id: item.id,
-          type: item.type,
-          name: item.name,
-          position: { x: item.x, y: item.y },
-          dimensions: { width: item.width, height: item.height },
-          backgroundColor: isStorageUnitType ? storageUnitColor : item.color,
-          isHollow: item.isHollow,
-          showCompartments: item.showCompartments
-        });
-        return null;
-      })()}
       {/* Shape rendering for shape components */}
       {item.isShape && renderShapeComponent(item)}
 
@@ -1467,8 +1453,8 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
             labelText = 'Seating Area';
           } else if (item.type === 'booths') {
             labelText = 'Booths';
-          } else if (item.type === 'general_area') {
-            labelText = 'General Area';
+          } else if (item.type === 'inner_boundary') {
+            labelText = item.label;
           } else if (item.type === 'dispatch_gates') {
             labelText = 'Dispatch Gates';
           } else if (item.type === 'inbound_gates') {

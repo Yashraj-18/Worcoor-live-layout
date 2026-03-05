@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { useSocket } from './useSocket';
 
 interface LocationTagStatsPayload {
   unitId: string;
@@ -36,11 +36,9 @@ export function useWarehouseSocket(options: UseWarehouseSocketOptions) {
     onComponentUpdated,
   } = options;
 
-  const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Store callbacks in refs so they never trigger socket reconnection
+  // Store callbacks in refs so they never trigger event re-registration
   const callbackRefs = useRef({
     onLocationTagStatsUpdate,
     onLocationTagCreated,
@@ -51,7 +49,7 @@ export function useWarehouseSocket(options: UseWarehouseSocketOptions) {
     onComponentUpdated,
   });
 
-  // Keep callback refs up to date on every render without reconnecting
+  // Keep callback refs up to date on every render without re-registering listeners
   useEffect(() => {
     callbackRefs.current = {
       onLocationTagStatsUpdate,
@@ -64,74 +62,56 @@ export function useWarehouseSocket(options: UseWarehouseSocketOptions) {
     };
   });
 
-  // Socket connection — only re-runs if unitId or layoutId actually changes
+  // Use the shared singleton socket — no new io() connection created per caller.
+  // useSocket handles join-unit room via its own effect.
+  const { on, emit } = useSocket({ unitId });
+
+  // Join/leave warehouse-specific rooms — only re-runs when unitId or layoutId changes
   useEffect(() => {
-    const backendUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
-
-    const socket = io(backendUrl, {
-      withCredentials: true,
-      transports: ['websocket', 'polling'],
-    });
-
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      console.log('WebSocket connected');
-      setIsConnected(true);
-      setError(null);
-      if (unitId) socket.emit('join:unit', { unitId });
-      if (layoutId) socket.emit('join:layout', { layoutId });
-    });
-
-    socket.on('disconnect', () => {
-      console.log('WebSocket disconnected');
-      setIsConnected(false);
-    });
-
-    socket.on('connect_error', (err) => {
-      console.error('WebSocket connection error:', err);
-      setError(err.message);
-      setIsConnected(false);
-    });
-
-    socket.on('locationTag:statsUpdated', (data: LocationTagStatsPayload) => {
-      callbackRefs.current.onLocationTagStatsUpdate?.(data);
-    });
-
-    socket.on('locationTag:created', (data: any) => {
-      callbackRefs.current.onLocationTagCreated?.(data);
-    });
-
-    socket.on('locationTag:deleted', (data: any) => {
-      callbackRefs.current.onLocationTagDeleted?.(data);
-    });
-
-    socket.on('locationTag:updated', (data: any) => {
-      callbackRefs.current.onLocationTagUpdated?.(data);
-    });
-
-    socket.on('component:created', (data: any) => {
-      callbackRefs.current.onComponentCreated?.(data);
-    });
-
-    socket.on('component:deleted', (data: any) => {
-      callbackRefs.current.onComponentDeleted?.(data);
-    });
-
-    socket.on('component:updated', (data: any) => {
-      callbackRefs.current.onComponentUpdated?.(data);
-    });
+    if (unitId) emit('join:unit', { unitId });
+    if (layoutId) emit('join:layout', { layoutId });
 
     return () => {
-      if (unitId) socket.emit('leave:unit', { unitId });
-      if (layoutId) socket.emit('leave:layout', { layoutId });
-      socket.disconnect();
+      if (unitId) emit('leave:unit', { unitId });
+      if (layoutId) emit('leave:layout', { layoutId });
     };
-  }, [unitId, layoutId]); // ← Only these two — callbacks never cause reconnection
+  }, [unitId, layoutId, emit]);
+
+  // Register all event listeners once. Callbacks are always read from the ref
+  // so they never need to be in the dependency array.
+  useEffect(() => {
+    const unsubs = [
+      on('connect', () => setIsConnected(true)),
+      on('disconnect', () => setIsConnected(false)),
+      on<LocationTagStatsPayload>('locationTag:statsUpdated', (data) => {
+        callbackRefs.current.onLocationTagStatsUpdate?.(data);
+      }),
+      on('locationTag:created', (data) => {
+        callbackRefs.current.onLocationTagCreated?.(data);
+      }),
+      on('locationTag:deleted', (data) => {
+        callbackRefs.current.onLocationTagDeleted?.(data);
+      }),
+      on('locationTag:updated', (data) => {
+        callbackRefs.current.onLocationTagUpdated?.(data);
+      }),
+      on('component:created', (data) => {
+        callbackRefs.current.onComponentCreated?.(data);
+      }),
+      on('component:deleted', (data) => {
+        callbackRefs.current.onComponentDeleted?.(data);
+      }),
+      on('component:updated', (data) => {
+        callbackRefs.current.onComponentUpdated?.(data);
+      }),
+    ];
+
+    return () => {
+      unsubs.forEach((unsub) => unsub());
+    };
+  }, [on]); // `on` is stable (useCallback([]) in useSocket) — registers once
 
   return {
-    socket: socketRef.current,
     isConnected,
-    error,
   };
 }

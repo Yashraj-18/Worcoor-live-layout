@@ -40,6 +40,13 @@ interface TopNavbarProps {
   onNavigateToDashboard?: () => void;
   // Edit mode flag
   isEditMode?: boolean;
+  // Auto-refresh
+  autoRefreshSeconds?: number;
+  onAutoRefreshChange?: (seconds: number) => void;
+  onManualRefresh?: () => void;
+  isRefreshing?: boolean;
+  lastRefresh?: Date | null;
+  hasActiveLayout?: boolean;
 }
 
 const TopNavbar: React.FC<TopNavbarProps> = ({
@@ -77,6 +84,13 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
   onNavigateToDashboard,
   // Edit mode flag
   isEditMode = false,
+  // Auto-refresh
+  autoRefreshSeconds = 0,
+  onAutoRefreshChange,
+  onManualRefresh,
+  isRefreshing = false,
+  lastRefresh = null,
+  hasActiveLayout = false,
 }) => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
@@ -334,6 +348,79 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
                   <span className="status-count">{locationTags?.length || 0}</span>
                   <span className="status-label">tags</span>
                 </>
+              )}
+            </div>
+          )}
+
+          {/* Auto-refresh controls — only shown when a layout is open */}
+          {hasActiveLayout && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              marginLeft: '12px',
+              padding: '4px 8px',
+              background: 'rgba(255,255,255,0.07)',
+              borderRadius: '6px',
+              border: '1px solid rgba(255,255,255,0.12)',
+            }}>
+              {/* Interval selector */}
+              <select
+                value={autoRefreshSeconds}
+                onChange={(e) => onAutoRefreshChange?.(Number(e.target.value))}
+                disabled={isRefreshing}
+                title={autoRefreshSeconds > 0 ? `Auto-refreshing every ${autoRefreshSeconds}s` : 'Auto-refresh off'}
+                style={{
+                  fontSize: '11px',
+                  padding: '2px 4px',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  background: 'rgba(15,23,42,0.6)',
+                  color: autoRefreshSeconds > 0 ? '#22c55e' : '#94a3b8',
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
+              >
+                <option value={0}>Auto: Off</option>
+                <option value={30}>Auto: 30s</option>
+                <option value={60}>Auto: 1 min</option>
+                <option value={300}>Auto: 5 min</option>
+              </select>
+
+              {/* Manual refresh button */}
+              <button
+                onClick={() => onManualRefresh?.()}
+                disabled={isRefreshing}
+                title={isRefreshing ? 'Refreshing…' : 'Refresh components now'}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: isRefreshing ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  padding: '2px 4px',
+                  opacity: isRefreshing ? 0.5 : 1,
+                  animation: isRefreshing ? 'spin 1s linear infinite' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                🔄
+              </button>
+
+              {/* Last-refreshed timestamp */}
+              {lastRefresh && !isRefreshing && (
+                <span style={{
+                  fontSize: '10px',
+                  color: '#64748b',
+                  whiteSpace: 'nowrap',
+                }}
+                  title={`Last refreshed: ${lastRefresh.toLocaleTimeString()}`}
+                >
+                  ✓ {lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+              )}
+              {isRefreshing && (
+                <span style={{ fontSize: '10px', color: '#60a5fa', whiteSpace: 'nowrap' }}>Refreshing…</span>
               )}
             </div>
           )}

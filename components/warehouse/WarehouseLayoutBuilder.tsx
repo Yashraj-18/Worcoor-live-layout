@@ -29,7 +29,6 @@ import { STACK_MODES, STACKABLE_COMPONENTS, STORAGE_ORIENTATION, COMPONENT_TYPES
 import { getComponentColor, forceRefreshStorageUnitColors } from '@/lib/warehouse/utils/componentColors';
 import { generateStorageUnitLabel, generateStorageComponentLabel, applyEnhancedLabeling } from '@/lib/warehouse/utils/componentLabeling';
 import { generateLocationCode, generateMockInventoryData } from '@/lib/warehouse/utils/locationUtils';
-import { simulateDataRefresh, DataCache } from '@/lib/warehouse/utils/dataRefresh';
 import { facilityHierarchy } from '@/lib/warehouse/utils/facilityHierarchy';
 import { shapeCreator } from '@/lib/warehouse/utils/shapeCreator';
 import { LayoutCropper } from '@/lib/warehouse/utils/layoutCropper';
@@ -88,8 +87,9 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   const [stackManager, setStackManager] = useState<any>({ visible: false, item: null });
   const [infoPopup, setInfoPopup] = useState<any>({ visible: false, x: 0, y: 0, item: null });
   const [zoneContextMenu, setZoneContextMenu] = useState<any>({ visible: false, x: 0, y: 0, zone: null });
-  const [dataCache] = useState(() => new DataCache(30000)); // 30 second refresh
-  const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [autoRefreshSeconds, setAutoRefreshSeconds] = useState<number>(0);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [centerCanvasTrigger, setCenterCanvasTrigger] = useState<number>(0);
@@ -365,24 +365,32 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
     }
   }, [initialOrgUnit, initialLayout]);
 
-  // Real-time data refresh effect
+  // Real refresh from backend — re-fetches live components for the active layout
+  const refreshFromBackend = useCallback(async () => {
+    if (!activeLayoutId) return;
+    setIsRefreshing(true);
+    try {
+      const backendComponents = await warehouseService.getComponents(activeLayoutId);
+      if (Array.isArray(backendComponents) && backendComponents.length > 0) {
+        const items = backendComponents.map(componentToItem);
+        setWarehouseItems(items);
+      }
+      setLastRefresh(new Date());
+    } catch (err) {
+      console.error('Auto-refresh failed:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [activeLayoutId]);
+
+  // Auto-refresh interval effect — only runs when a layout is open and interval is set
   useEffect(() => {
-    const refreshInterval = setInterval(() => {
-      setWarehouseItems(prev => {
-        // Safety check: ensure prev is an array
-        if (!Array.isArray(prev)) {
-          console.warn('warehouseItems is not an array during refresh, resetting to empty array');
-          return [];
-        }
-
-        const refreshed = simulateDataRefresh(prev);
-        setLastRefresh(Date.now());
-        return refreshed;
-      });
-    }, 30000); // Refresh every 30 seconds
-
-    return () => clearInterval(refreshInterval);
-  }, []);
+    if (!autoRefreshSeconds || !activeLayoutId) return;
+    const id = window.setInterval(() => {
+      void refreshFromBackend();
+    }, autoRefreshSeconds * 1000);
+    return () => window.clearInterval(id);
+  }, [autoRefreshSeconds, activeLayoutId, refreshFromBackend]);
 
   // Color correction effect - ensure all items have fixed colors
   useEffect(() => {
@@ -490,11 +498,6 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
     };
   }, [warehouseItems.length]);
 
-  // Manual refresh function
-  const handleManualRefresh = useCallback(() => {
-    setWarehouseItems(prev => simulateDataRefresh(prev));
-    setLastRefresh(Date.now());
-  }, []);
 
   // Create enhanced warehouse item - Reusable function for all component types
   const createEnhancedWarehouseItem = useCallback((
@@ -1772,6 +1775,12 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
               itemCount={warehouseItems.length}
               onNavigateToDashboard={handleNavigateToDashboard}
               isEditMode={!!activeLayoutId}
+              autoRefreshSeconds={autoRefreshSeconds}
+              onAutoRefreshChange={setAutoRefreshSeconds}
+              onManualRefresh={refreshFromBackend}
+              isRefreshing={isRefreshing}
+              lastRefresh={lastRefresh}
+              hasActiveLayout={!!activeLayoutId}
             />
 
             <div className="main-content">

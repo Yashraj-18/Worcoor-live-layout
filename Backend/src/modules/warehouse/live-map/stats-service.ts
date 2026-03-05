@@ -1,5 +1,8 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 
+import { db } from '../../../config/database.js';
+import { assets } from '../../../database/schema/index.js';
 import { LiveMapRepository } from './repository.js';
 
 export class LiveMapStatsService {
@@ -40,12 +43,26 @@ export class LiveMapStatsService {
     // Count unique SKU names
     const uniqueSkuNames = new Set(skusByLocationTag.map((sku) => sku.skuName));
 
+    // Count physical assets linked to any of this unit's location tags
+    const totalAssets = uniqueLocationTagIds.length > 0
+      ? (await db
+          .select({ count: sql<number>`cast(count(*) as integer)` })
+          .from(assets)
+          .where(
+            and(
+              eq(assets.organizationId, organizationId),
+              inArray(assets.locationTagId, uniqueLocationTagIds),
+            ),
+          )
+        )[0]?.count ?? 0
+      : 0;
+
     const stats = {
       unitId,
       totalLocationTags: uniqueLocationTagIds.length,
       totalSkus: uniqueSkuNames.size,
       totalComponents: allComponents.length,
-      totalAssets: allComponents.length,
+      totalAssets,
       timestamp: new Date().toISOString(),
     };
 

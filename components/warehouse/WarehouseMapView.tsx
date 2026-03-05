@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import WarehouseLayoutBuilder from '@/components/warehouse/WarehouseLayoutBuilder';
 import LocationDetailsPanel from '@/components/warehouse/LocationDetailsPanel';
@@ -195,8 +195,9 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     });
   }, [prefetchedLayouts, convertBackendLayout]);
 
-  // Load all layouts from backend API (replaces localStorage)
-  const refreshSavedLayouts = useCallback(async () => {
+  // Full structural load: fetches all units → layouts → components.
+  // Called once on mount and when a layoutSaved event fires (new/deleted layout).
+  const loadAllLayouts = useCallback(async () => {
     try {
       const units = await orgUnitService.list();
       const layoutArrays = await Promise.all(
@@ -223,7 +224,6 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
             };
             return convertBackendLayout(merged);
           } catch {
-            // Fall back to stale layoutData if components fetch fails
             return convertBackendLayout(bl);
           }
         })
@@ -235,6 +235,26 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     }
   }, [convertBackendLayout]);
 
+  // Lightweight live refresh: only re-fetches components for the currently open
+  // layout and patches that single entry in savedLayouts. Used by auto-refresh
+  // ticks to avoid the full 1+N+M request chain.
+  const refreshActiveLayoutComponents = useCallback(async (layoutId: string) => {
+    try {
+      const liveComponents = await warehouseService.getComponents(layoutId);
+      const liveItems = liveComponents.map(componentToItem);
+      setSavedLayouts(prev =>
+        prev.map(layout =>
+          layout.id === layoutId
+            ? { ...layout, layoutData: { ...layout.layoutData, items: liveItems } }
+            : layout
+        )
+      );
+    } catch (error) {
+      console.error('Failed to refresh active layout components:', error);
+      throw error;
+    }
+  }, []);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefreshMinutes, setAutoRefreshMinutes] = useState<number>(0);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
@@ -244,43 +264,15 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   const refreshLiveData = useCallback(async () => {
     setIsRefreshing(true);
     setRefreshError(null);
-    
-    // Store current selected layout before clearing
-    const currentSelectedLayout = selectedUnitForDemo;
-    
-    // Hard refresh: Clear all cached state first
-    setSavedLayouts([]);
-    setSearchResults([]);
-    setSelectedLocationTag('');
-    setSelectedSku('');
-    setSelectedAsset('');
-    setSelectedItem(null);
-    setGlobalSearchResults([]);
-    setGlobalSearchQuery('');
-    setSearchQuery('');
-    
     try {
-      // Fetch fresh data from backend
-      await refreshSavedLayouts();
-      
-      // Update last refresh timestamp
-      const now = new Date();
-      setLastRefreshTime(now);
-      
-      // Calculate next refresh time if auto-refresh is enabled
-      if (autoRefreshMinutes > 0) {
-        const nextTime = new Date(now.getTime() + autoRefreshMinutes * 60 * 1000);
-        setNextRefreshTime(nextTime);
+      // If a layout is open, only refresh its components (avoids 1+N+M chain).
+      // Fall back to full load when no layout is selected (e.g. list view).
+      if (selectedUnitForDemo) {
+        await refreshActiveLayoutComponents(selectedUnitForDemo);
+      } else {
+        await loadAllLayouts();
       }
-      
-      // Re-select the layout if there was one selected
-      if (currentSelectedLayout) {
-        setTimeout(() => {
-          setSelectedUnitForDemo(currentSelectedLayout);
-        }, 100);
-      }
-      
-      console.log('Live map data refreshed successfully');
+      setLastRefreshTime(new Date());
     } catch (error) {
       console.error('Failed to refresh live map data:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -288,35 +280,35 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshSavedLayouts, selectedUnitForDemo, autoRefreshMinutes]);
+  }, [selectedUnitForDemo, refreshActiveLayoutComponents, loadAllLayouts]);
 
-  // Auto-refresh interval effect
+  // Keep a stable ref to refreshLiveData so the interval never stale-closes over it
+  const refreshLiveDataRef = useRef(refreshLiveData);
+  useEffect(() => {
+    refreshLiveDataRef.current = refreshLiveData;
+  });
+
+  // Auto-refresh interval — only depends on autoRefreshMinutes so it never
+  // resets mid-countdown due to state changes inside refreshLiveData
   useEffect(() => {
     if (!autoRefreshMinutes) {
       setNextRefreshTime(null);
       return;
     }
 
-    // Calculate next refresh time when auto-refresh is enabled
-    if (lastRefreshTime) {
-      const nextTime = new Date(lastRefreshTime.getTime() + autoRefreshMinutes * 60 * 1000);
-      setNextRefreshTime(nextTime);
-    } else {
-      const nextTime = new Date(Date.now() + autoRefreshMinutes * 60 * 1000);
-      setNextRefreshTime(nextTime);
-    }
+    setNextRefreshTime(new Date(Date.now() + autoRefreshMinutes * 60 * 1000));
 
     const intervalMs = autoRefreshMinutes * 60 * 1000;
     const id = window.setInterval(() => {
       console.log(`Auto-refresh triggered (${autoRefreshMinutes} min interval)`);
-      void refreshLiveData();
+      void refreshLiveDataRef.current();
+      setNextRefreshTime(new Date(Date.now() + intervalMs));
     }, intervalMs);
 
     return () => {
       window.clearInterval(id);
-      console.log('Auto-refresh interval cleared');
     };
-  }, [autoRefreshMinutes, refreshLiveData, lastRefreshTime]);
+  }, [autoRefreshMinutes]);
 
   // Fetch location tags and SKUs from backend for the selected layout's unit
   const hydrateDropdownsFromBackend = useCallback(async (layout: WarehouseLayout | undefined) => {
@@ -393,17 +385,17 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   // Refresh savedLayouts whenever the layout builder saves (add/remove/update components)
   useEffect(() => {
     const handleLayoutSaved = () => {
-      void refreshSavedLayouts();
+      void loadAllLayouts();
     };
     window.addEventListener('layoutSaved', handleLayoutSaved);
     return () => {
       window.removeEventListener('layoutSaved', handleLayoutSaved);
     };
-  }, [refreshSavedLayouts]);
+  }, [loadAllLayouts]);
 
   useEffect(() => {
     setMounted(true);
-    void refreshSavedLayouts();
+    void loadAllLayouts();
     // Reset transition state when layoutId changes
     setIsTransitioning(false);
     
@@ -468,18 +460,6 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     window.open(url, '_blank', 'noopener,noreferrer');
   }, [selectedUnitForDemo]);
 
-  // Re-fetch layouts from backend when a layout is saved/updated elsewhere
-  useEffect(() => {
-    const handleLayoutSaved = () => {
-      void refreshSavedLayouts();
-    };
-
-    window.addEventListener('layoutSaved', handleLayoutSaved);
-
-    return () => {
-      window.removeEventListener('layoutSaved', handleLayoutSaved);
-    };
-  }, [refreshSavedLayouts]);
 
   // Extract dropdown options: assets from layout metadata, location tags + SKUs from backend
   const extractDropdownOptionsFromSelectedUnit = useCallback((layoutId: string | null) => {
@@ -2154,6 +2134,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                           }}
                           unitId={currentLayout?.unitId}
                           layoutId={currentLayout?.id}
+                          locationTags={locationTagsData}
                         />
                       </div>
                     );

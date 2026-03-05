@@ -19,6 +19,7 @@ interface WarehouseOverviewPanelProps {
   layoutData: WarehouseLayoutData;
   unitId?: string;
   layoutId?: string;
+  locationTags?: LocationTag[];
 }
 
 // Mirror of GRID_SIZE used in layoutComponentSummary
@@ -95,7 +96,7 @@ const deriveItemCapacity = (item: any): { maxCapacity: number; usedCapacity: num
   return { maxCapacity, usedCapacity };
 };
 
-const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverviewPanelProps) => {
+const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: locationTagsProp }: WarehouseOverviewPanelProps) => {
   // Real-time stats from API
   const [apiStats, setApiStats] = useState<{
     totalLocations: number;
@@ -105,24 +106,31 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
   } | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
 
-  // Location tags with volumetric data
-  const [locationTags, setLocationTags] = useState<LocationTag[]>([]);
+  // Location tags with volumetric data.
+  // When locationTagsProp is provided by the parent, use it directly (no extra fetch).
+  // When not provided, fall back to fetching independently.
+  const [fetchedLocationTags, setFetchedLocationTags] = useState<LocationTag[]>([]);
+  const locationTags: LocationTag[] = locationTagsProp ?? fetchedLocationTags;
 
-  // Fetch stats and location tags from API
+  // Fetch stats (and location tags when not provided by parent) from API
   const fetchStats = useCallback(async () => {
     if (!unitId) return;
 
     setIsLoadingStats(true);
     try {
-      const [statsResponse, tags] = await Promise.all([
+      // Only fetch location tags here when the parent hasn't supplied them
+      const requests: [Promise<Response>, Promise<LocationTag[]>?] = [
         fetch(`/api/units/${unitId}/live-map/stats`, {
           credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
         }),
-        locationTagService.listByUnit(unitId).catch(() => [] as LocationTag[])
-      ]);
+      ];
+
+      if (!locationTagsProp) {
+        requests.push(locationTagService.listByUnit(unitId).catch(() => [] as LocationTag[]));
+      }
+
+      const [statsResponse, tags] = await Promise.all(requests);
 
       if (statsResponse.ok) {
         const stats = await statsResponse.json();
@@ -134,39 +142,35 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId }: WarehouseOverv
         });
       }
 
-      setLocationTags(tags);
+      if (tags) {
+        setFetchedLocationTags(tags);
+      }
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     } finally {
       setIsLoadingStats(false);
     }
-  }, [unitId]);
+  }, [unitId, locationTagsProp]);
 
   // Fetch stats on mount and when unitId changes
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
 
-  // WebSocket connection for real-time updates
+  // WebSocket connection for real-time updates.
+  // onLocationTagStatsUpdate handles all stat changes (component create/delete/update
+  // and location tag changes) — the backend broadcasts locationTag:statsUpdated for
+  // all of these mutations, so no HTTP fallback is needed here.
   const { isConnected } = useWarehouseSocket({
     unitId: unitId || '',
     layoutId,
     onLocationTagStatsUpdate: (stats) => {
-      console.log('Received real-time location tag stats:', stats);
       setApiStats({
         totalLocations: stats.totalLocationTags,
         totalSkus: stats.totalSkus,
         totalComponents: stats.totalComponents,
         totalAssets: stats.totalAssets,
       });
-    },
-    onComponentCreated: () => {
-      console.log('Component created - refetching stats');
-      fetchStats();
-    },
-    onComponentDeleted: () => {
-      console.log('Component deleted - refetching stats');
-      fetchStats();
     },
   });
   // Calculate overview data from layout items

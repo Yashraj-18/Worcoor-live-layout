@@ -1,5 +1,8 @@
 import type { FastifyInstance } from 'fastify';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 
+import { db } from '../../../config/database.js';
+import { assets } from '../../../database/schema/index.js';
 import { LiveMapRepository } from './repository.js';
 import { emitLocationTagStats, type LocationTagStatsPayload } from '../../../realtime/handlers/index.js';
 
@@ -38,13 +41,28 @@ export class LiveMapWebSocketService {
       // Count unique SKU names (not just SKU IDs, as multiple records can have same SKU name)
       const uniqueSkuNames = new Set(skusByLocationTag.map((sku) => sku.skuName));
 
+      // Count physical assets linked to any of this unit's location tags
+      const locationTagIdList = Array.from(locationTagIds);
+      const totalAssets = locationTagIdList.length > 0
+        ? (await db
+            .select({ count: sql<number>`cast(count(*) as integer)` })
+            .from(assets)
+            .where(
+              and(
+                eq(assets.organizationId, organizationId),
+                inArray(assets.locationTagId, locationTagIdList),
+              ),
+            )
+          )[0]?.count ?? 0
+        : 0;
+
       const payload: LocationTagStatsPayload = {
         unitId,
         layoutId,
         totalLocationTags: locationTagIds.size,
         totalSkus: uniqueSkuNames.size,
         totalComponents: allComponents.length,
-        totalAssets: allComponents.length,
+        totalAssets,
         timestamp: new Date().toISOString(),
       };
 

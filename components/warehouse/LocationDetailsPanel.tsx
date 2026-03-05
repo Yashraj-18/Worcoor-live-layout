@@ -669,22 +669,11 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                           </div>
                           <div>
                             <div style={labelStyle}>Capacity</div>
-                            <div style={valueStyle}>{levelData.locationTag.capacity}</div>
+                            <div style={valueStyle}>{levelData.locationTag.capacity} {levelData.locationTag.unitOfMeasurement || 'units'}</div>
                           </div>
                           <div>
                             <div style={labelStyle}>Current Items</div>
                             <div style={valueStyle}>{levelData.locationTag.currentItems || 0}</div>
-                          </div>
-                          <div style={{ gridColumn: '1 / -1' }}>
-                            <div style={labelStyle}>Utilization</div>
-                            <div style={{
-                              ...valueStyle,
-                              color: (levelData.locationTag.utilizationPercentage || 0) > 90 ? '#ef4444'
-                                   : (levelData.locationTag.utilizationPercentage || 0) > 70 ? '#f59e0b'
-                                   : '#22c55e',
-                            }}>
-                              {(levelData.locationTag.utilizationPercentage || 0).toFixed(1)}%
-                            </div>
                           </div>
                           {levelData.locationTag.length && (
                             <div style={{ gridColumn: '1 / -1' }}>
@@ -724,16 +713,12 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                                 <div>
                                   <div style={labelStyle}>Quantity</div>
                                   <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: sku.quantity > 0 ? '#22c55e' : '#ef4444' }}>
-                                    {sku.quantity}
+                                    {sku.quantity} {sku.skuUnit}
                                   </div>
                                 </div>
                                 <div>
                                   <div style={labelStyle}>Category</div>
                                   <div style={valueStyle}>{sku.skuCategory}</div>
-                                </div>
-                                <div>
-                                  <div style={labelStyle}>Unit</div>
-                                  <div style={valueStyle}>{sku.skuUnit}</div>
                                 </div>
                                 <div>
                                   <div style={labelStyle}>Effective Date</div>
@@ -813,22 +798,11 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                           </div>
                           <div>
                             <div style={labelStyle}>Capacity</div>
-                            <div style={valueStyle}>{locationData.locationTag.capacity}</div>
+                            <div style={valueStyle}>{locationData.locationTag.capacity} {locationData.locationTag.unitOfMeasurement || 'units'}</div>
                           </div>
                           <div>
                             <div style={labelStyle}>Current Items</div>
                             <div style={valueStyle}>{locationData.locationTag.currentItems || 0}</div>
-                          </div>
-                          <div style={{ gridColumn: '1 / -1' }}>
-                            <div style={labelStyle}>Utilization</div>
-                            <div style={{
-                              ...valueStyle,
-                              color: (locationData.locationTag.utilizationPercentage || 0) > 90 ? '#ef4444'
-                                   : (locationData.locationTag.utilizationPercentage || 0) > 70 ? '#f59e0b'
-                                   : '#22c55e',
-                            }}>
-                              {(locationData.locationTag.utilizationPercentage || 0).toFixed(1)}%
-                            </div>
                           </div>
                           {locationData.locationTag.length && (
                             <div style={{ gridColumn: '1 / -1' }}>
@@ -868,16 +842,12 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                                 <div>
                                   <div style={labelStyle}>Quantity</div>
                                   <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: sku.quantity > 0 ? '#22c55e' : '#ef4444' }}>
-                                    {sku.quantity}
+                                    {sku.quantity} {sku.skuUnit}
                                   </div>
                                 </div>
                                 <div>
                                   <div style={labelStyle}>Category</div>
                                   <div style={valueStyle}>{sku.skuCategory}</div>
-                                </div>
-                                <div>
-                                  <div style={labelStyle}>Unit</div>
-                                  <div style={valueStyle}>{sku.skuUnit}</div>
                                 </div>
                                 <div>
                                   <div style={labelStyle}>Effective Date</div>
@@ -928,7 +898,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
                       <div>
                         <div style={labelStyle}>Capacity</div>
-                        <div style={valueStyle}>{locationTag.capacity}</div>
+                        <div style={valueStyle}>{locationTag.capacity} {locationTag.unitOfMeasurement || 'units'}</div>
                       </div>
                       <div>
                         <div style={labelStyle}>
@@ -936,19 +906,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                         </div>
                         <div style={{ ...valueStyle, color: isLive ? '#22c55e' : '#e2e8f0' }}>
                           {displayCurrentItems}
-                        </div>
-                      </div>
-
-                      <div style={{ gridColumn: '1 / -1' }}>
-                        <div style={labelStyle}>Utilization {isLive && <span style={{ color: '#22c55e' }}>●</span>}
-                        </div>
-                        <div style={{
-                          ...valueStyle,
-                          color: displayUtilizationPct > 90 ? '#ef4444'
-                               : displayUtilizationPct > 70 ? '#f59e0b'
-                               : '#22c55e',
-                        }}>
-                          {displayUtilizationPct.toFixed(1)}%
                         </div>
                       </div>
 
@@ -1002,13 +959,9 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                               <div style={valueStyle}>{sku.skuCategory}</div>
                             </div>
                             <div>
-                              <div style={labelStyle}>Unit</div>
-                              <div style={valueStyle}>{sku.skuUnit}</div>
-                            </div>
-                            <div>
                               <div style={labelStyle}>Quantity</div>
                               <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: sku.quantity > 0 ? '#22c55e' : '#ef4444' }}>
-                                {sku.quantity}
+                                {sku.quantity} {sku.skuUnit}
                               </div>
                             </div>
                             <div>

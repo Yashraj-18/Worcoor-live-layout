@@ -7,24 +7,45 @@ import { locationTagService } from '@/src/services/locationTags';
 import type { LocationTag } from '@/src/services/locationTags';
 import { skuService } from '@/src/services/skus';
 import type { Sku } from '@/src/services/skus';
-import { assetService } from '@/src/services/assets';
-import type { Asset } from '@/src/services/assets';
 import { useLocationSocket } from '@/hooks/useLocationSocket';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface LevelLocationMapping {
+  locationId?: string;
+  locId?: string;
+  levelId?: string;
+  level?: string;
+}
+
+interface CompartmentContent {
+  levelLocationMappings?: LevelLocationMapping[];
+  locationIds?: string[];
+  levelIds?: string[];
+  [key: string]: unknown;
+}
 
 interface SelectedItem {
   name?: string;
   label?: string;
   type?: string;
-  locationTagId?: string;
-  locationId?: string;
+  locationTagId?: string;  // real DB UUID  ← primary key we use
+  locationId?: string;     // display label only (e.g. "RACK-A-004")
+  // Multi-level support
+  selectedCompartmentId?: string;
+  selectedCompartmentRow?: number;
+  selectedCompartmentCol?: number;
+  selectedCompartment?: CompartmentContent;
+  levelLocationMappings?: LevelLocationMapping[];
+  locationIds?: string[];
+  levelIds?: string[];
+  compartmentContents?: Record<string, CompartmentContent>;
   [key: string]: unknown;
 }
 
 interface LocationDetailsPanelProps {
   selectedItem: SelectedItem;
-  unitId: string | null | undefined;
+  unitId: string | null | undefined;  // pass selectedUnitForDemo from WarehouseMapView
   onClose: () => void;
   isEmbedded?: boolean;
 }
@@ -34,7 +55,9 @@ interface LocationDetailsPanelProps {
 const fmt = (dateStr?: string | null) =>
   dateStr
     ? new Date(dateStr).toLocaleDateString('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
       })
     : 'N/A';
 
@@ -46,30 +69,75 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
   onClose,
   isEmbedded = false,
 }) => {
+  // 🔍 DEBUG: Log selectedItem data to understand structure
+  console.log('🔍 LocationDetailsPanel - selectedItem:', selectedItem);
+  console.log('🔍 selectedItem keys:', Object.keys(selectedItem || {}));
+  console.log('🔍 levelLocationMappings:', selectedItem?.levelLocationMappings);
+  console.log('🔍 locationIds:', selectedItem?.locationIds);
+  console.log('🔍 levelIds:', selectedItem?.levelIds);
+  console.log('🔍 compartmentContents:', selectedItem?.compartmentContents);
+
   const locationTagId = selectedItem?.locationTagId ?? null;
 
   const [locationTag, setLocationTag] = useState<LocationTag | null>(null);
   const [skus, setSkus]               = useState<Sku[]>([]);
-  const [assets, setAssets]           = useState<Asset[]>([]);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
 
+  // Multi-level state
+  const [isMultiLevel, setIsMultiLevel] = useState(false);
+  const [levelsData, setLevelsData]     = useState<any[]>([]);
+
+  // Live values pushed by WebSocket (override REST snapshot when received)
   const [liveCurrentItems, setLiveCurrentItems]     = useState<number | null>(null);
   const [liveUtilizationPct, setLiveUtilizationPct] = useState<number | null>(null);
+
+  // ── Multi-level detection logic ───────────────────────────────────────────
+
+  const detectMultiLevels = useCallback((item: SelectedItem) => {
+    console.log('🔍 Detecting multi-level for item:', item);
+    
+    // Check for compartment-specific multi-level
+    if (item.selectedCompartment?.levelLocationMappings && item.selectedCompartment.levelLocationMappings.length > 0) {
+      console.log('✅ Found multi-level in selectedCompartment.levelLocationMappings');
+      return {
+        isMultiLevel: true,
+        levels: item.selectedCompartment.levelLocationMappings
+      };
+    }
+    
+    // Check for compartment contents
+    if (item.compartmentContents) {
+      const compartments = Object.values(item.compartmentContents);
+      const firstCompartment = compartments[0];
+      if (firstCompartment?.levelLocationMappings && firstCompartment.levelLocationMappings.length > 0) {
+        console.log('✅ Found multi-level in compartmentContents');
+        return {
+          isMultiLevel: true,
+          levels: firstCompartment.levelLocationMappings
+        };
+      }
+    }
+    
+    console.log('❌ No multi-level detected');
+    return { isMultiLevel: false, levels: [] };
+  }, []);
 
   // ── Initial data fetch via REST ───────────────────────────────────────────
 
   useEffect(() => {
-    if (!locationTagId || !unitId) {
+    if (!unitId) {
       setLocationTag(null);
       setSkus([]);
-      setAssets([]);
+      setLevelsData([]);
       setLiveCurrentItems(null);
       setLiveUtilizationPct(null);
       return;
     }
 
     let cancelled = false;
+    const multiLevelInfo = detectMultiLevels(selectedItem);
+    console.log('🔍 Multi-level detection result:', multiLevelInfo);
 
     const fetchData = async () => {
       setLoading(true);
@@ -78,24 +146,121 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
       setLiveUtilizationPct(null);
 
       try {
-        // Fetch location tags, SKUs, and assets in parallel
-        const [allTags, skuResponse, assetResponse] = await Promise.all([
-          locationTagService.listByUnit(unitId),
-          skuService.list({ locationTagId, limit: 100 }),
-          assetService.list({ locationTagId, limit: 100 }),
-        ]);
+        if (multiLevelInfo.isMultiLevel) {
+          // Handle multi-level fetching
+          console.log('🚀 Fetching multi-level data for levels:', multiLevelInfo.levels);
+          
+          const locationTagIds = multiLevelInfo.levels
+            .map((level: LevelLocationMapping) => level.locationId || level.locId)
+            .filter((id: string | undefined): id is string => Boolean(id));
 
-        if (cancelled) return;
+          console.log('🔍 Multi-level location IDs found:', locationTagIds);
 
-        const tag = allTags.find((t) => t.id === locationTagId) ?? null;
-        setLocationTag(tag);
-        setSkus(skuResponse.items);
-        setAssets(assetResponse.items);
+          if (locationTagIds.length === 0) {
+            console.warn('⚠️ No valid location tag IDs found for multi-level item');
+            setIsMultiLevel(false);
+            setLevelsData([]);
+            return;
+          }
 
-        if (!tag) {
-          console.warn('LocationDetailsPanel: tag not found for id:', locationTagId);
+          // Fetch all location tags in parallel
+          const allTags = await locationTagService.listByUnit(unitId);
+          const matchedTags = allTags.filter(tag => 
+            locationTagIds.includes(tag.locationTagName)
+          );
+
+          console.log('🔍 Matched tags:', matchedTags.map(t => ({ id: t.id, name: t.locationTagName })));
+
+          // Fetch SKUs for all levels using matched UUIDs
+          const skuPromises = multiLevelInfo.levels.map(async (level: LevelLocationMapping, idx: number) => {
+            const locationCode = level.locationId || level.locId || '';
+            const matchedTag = matchedTags.find(tag => tag.locationTagName === locationCode);
+            
+            if (!matchedTag) {
+              console.log(`⚠️ No matching tag found for location code: ${locationCode}`);
+              return { items: [], levelIndex: idx };
+            }
+            
+            try {
+              const result = await skuService.list({ locationTagId: matchedTag.id, limit: 100 });
+              console.log('✅ Successfully fetched SKUs for location:', matchedTag.id, 'Count:', result.items.length);
+              return { ...result, levelIndex: idx };
+            } catch (err) {
+              console.error(`❌ Failed to fetch SKUs for location ${matchedTag.id}:`, err);
+              return { items: [], levelIndex: idx };
+            }
+          });
+          
+          const skuResponses = await Promise.allSettled(skuPromises);
+          const validSkuResponses = skuResponses.map((result) => {
+            if (result.status === 'fulfilled') {
+              return result.value;
+            } else {
+              console.error(`❌ SKU fetch failed:`, result.reason);
+              return { items: [], levelIndex: 0 };
+            }
+          });
+
+          // Set multi-level data
+          const newLevelsData = multiLevelInfo.levels.map((level: LevelLocationMapping, idx: number) => {
+            const locationCode = level.locationId || level.locId || '';
+            const matchedTag = matchedTags.find(tag => tag.locationTagName === locationCode);
+            const skuResponse = validSkuResponses.find(resp => resp.levelIndex === idx);
+            
+            if (!matchedTag) {
+              console.warn(`⚠️ No matching tag found for level ${idx} with code: ${locationCode}`);
+            }
+            
+            return {
+              locationTag: matchedTag || null,
+              skus: skuResponse?.items || [],
+              levelInfo: {
+                levelId: level.levelId || level.level || `L${idx + 1}`,
+                locationId: locationCode,
+                levelIndex: idx
+              }
+            };
+          });
+          
+          console.log('✅ Multi-level data assembled:', newLevelsData.map(d => ({
+            level: d.levelInfo.levelId,
+            locationId: d.levelInfo.locationId,
+            hasTag: !!d.locationTag,
+            tagId: d.locationTag?.id || 'none',
+            skuCount: d.skus.length
+          })));
+          
+          setLevelsData(newLevelsData);
+          setIsMultiLevel(true);
+          setLocationTag(null); // Clear single-level data
+          setSkus([]);
+        } else {
+          // Handle single-level (existing logic)
+          if (!locationTagId) {
+            setLocationTag(null);
+            setSkus([]);
+            return;
+          }
+
+          const [allTags, skuResponse] = await Promise.all([
+            locationTagService.listByUnit(unitId),
+            skuService.list({ locationTagId, limit: 100 }),
+          ]);
+
+          if (cancelled) return;
+
+          const tag = allTags.find((t) => t.id === locationTagId) ?? null;
+          setLocationTag(tag);
+          setSkus(skuResponse.items);
+          setIsMultiLevel(false);
+          setLevelsData([]);
+        }
+
+        if (!multiLevelInfo.isMultiLevel && !selectedItem?.locationTagId) {
+          console.warn('LocationDetailsPanel: tag not found');
         }
       } catch (err) {
+        console.error('Data fetch error:', err);
         if (!cancelled) setError((err as Error).message);
       } finally {
         if (!cancelled) setLoading(false);
@@ -103,8 +268,10 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
     };
 
     fetchData();
-    return () => { cancelled = true; };
-  }, [locationTagId, unitId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedItem, unitId, detectMultiLevels, locationTagId]);
 
   // ── WebSocket: live updates ───────────────────────────────────────────────
 
@@ -119,15 +286,17 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
   }, [locationTagId]);
 
   const handleLocationUpdated = useCallback((data) => {
+    console.log('🔄 location:updated', data);
     setLiveCurrentItems(data.current_items);
     setLiveUtilizationPct(data.utilization_percentage);
-    refreshSkus();
+    refreshSkus(); // re-fetch SKU list so quantities update too
   }, [refreshSkus]);
 
   const handleInventoryChanged = useCallback((data) => {
+    console.log('🔄 inventory:changed', data);
     setLiveCurrentItems(data.current_items);
     setLiveUtilizationPct(data.utilization_percentage);
-    refreshSkus();
+    refreshSkus(); // re-fetch SKU list so quantities update too
   }, [refreshSkus]);
 
   useLocationSocket({
@@ -137,7 +306,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
     onInventoryChanged: handleInventoryChanged,
   });
 
-  // ── Derived display values ────────────────────────────────────────────────
+  // ── Derived display values (socket overrides REST snapshot) ───────────────
 
   const displayCurrentItems   = liveCurrentItems   ?? locationTag?.currentItems          ?? 0;
   const displayUtilizationPct = liveUtilizationPct ?? locationTag?.utilizationPercentage ?? 0;
@@ -190,6 +359,8 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
   const displayName =
     selectedItem?.name || selectedItem?.label || selectedItem?.locationId || selectedItem?.type || 'Component';
 
+  // ── Render ────────────────────────────────────────────────────────────────
+
   if (!selectedItem) return null;
 
   return (
@@ -205,7 +376,17 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
               <span style={{
                 fontSize: '0.65rem', background: '#22c55e', color: 'white',
                 padding: '2px 6px', borderRadius: '999px', fontWeight: 600, marginLeft: 4,
-              }}>LIVE</span>
+              }}>
+                LIVE
+              </span>
+            )}
+            {isMultiLevel && (
+              <span style={{
+                fontSize: '0.65rem', background: '#667eea', color: 'white',
+                padding: '2px 6px', borderRadius: '999px', fontWeight: 600, marginLeft: 4,
+              }}>
+                {levelsData.length} LEVELS
+              </span>
             )}
           </div>
           <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>{displayName}</div>
@@ -227,16 +408,19 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
       {/* ── Body ── */}
       <div style={contentStyle}>
 
-        {/* Compartment Info Banner */}
+        {/* Compartment Info Banner - shown when a specific compartment is clicked */}
         {selectedItem?.selectedCompartmentId && (
           <div style={{
             ...sectionStyle,
             background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
-            borderColor: '#60a5fa', marginBottom: '1rem',
+            borderColor: '#60a5fa',
+            marginBottom: '1rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
               <Package size={16} style={{ color: '#60a5fa' }} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e2e8f0' }}>Compartment Selected</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e2e8f0' }}>
+                Compartment Selected
+              </span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.85rem' }}>
               <div>
@@ -258,7 +442,9 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
         {/* No Data Available */}
         {selectedItem?.selectedCompartmentId && !locationTagId && (
           <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}><PackageOpen size={32} /></div>
+            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
+              <PackageOpen size={32} />
+            </div>
             <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>No Data Available</div>
             <div style={{ fontSize: '0.85rem' }}>This compartment does not have a location tag assigned.</div>
           </div>
@@ -282,176 +468,296 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
           </div>
         )}
 
-        {/* No locationTagId */}
+        {/* No locationTagId on the component (but NOT a compartment - compartments have their own message above) */}
         {!loading && !error && !locationTagId && !selectedItem?.selectedCompartmentId && (
           <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}><PackageOpen size={32} /></div>
+            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
+              <PackageOpen size={32} />
+            </div>
             <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>No Location Tag Assigned</div>
             <div style={{ fontSize: '0.85rem' }}>This component has no location tag linked to it.</div>
           </div>
         )}
 
-        {/* Tag not found */}
+        {/* locationTagId present but not found in unit's tags */}
         {!loading && !error && locationTagId && !locationTag && (
           <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}><PackageOpen size={32} /></div>
+            <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
+              <PackageOpen size={32} />
+            </div>
             <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Tag Not Found</div>
             <div style={{ fontSize: '0.85rem', wordBreak: 'break-all' }}>ID: {locationTagId}</div>
           </div>
         )}
 
         {/* ── Real data ── */}
-        {!loading && !error && locationTag && (
+        {!loading && !error && (
           <>
-            {/* Location Tag Section */}
-            <div style={sectionStyle}>
-              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <MapPin size={16} /> Location Tag Information
-              </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <div style={labelStyle}>Location Tag Name</div>
-                  <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{locationTag.locationTagName}</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Capacity</div>
-                  <div style={valueStyle}>{locationTag.capacity}</div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Current Items {isLive && <span style={{ color: '#22c55e' }}>●</span>}</div>
-                  <div style={{ ...valueStyle, color: isLive ? '#22c55e' : '#e2e8f0' }}>{displayCurrentItems}</div>
-                </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <div style={labelStyle}>Utilization {isLive && <span style={{ color: '#22c55e' }}>●</span>}</div>
+            {isMultiLevel ? (
+              // Multi-level display
+              levelsData.map((levelData, index) => (
+                <div key={levelData.levelInfo.locationId} style={{ marginBottom: '2rem' }}>
+                  {/* Level Header */}
                   <div style={{
-                    ...valueStyle,
-                    color: displayUtilizationPct > 90 ? '#ef4444'
-                         : displayUtilizationPct > 70 ? '#f59e0b'
-                         : '#22c55e',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    marginBottom: '1rem',
+                    fontWeight: 'bold',
+                    fontSize: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
                   }}>
-                    {displayUtilizationPct.toFixed(1)}%
+                    <Package size={18} />
+                    {levelData.levelInfo.levelId}: {levelData.locationTag?.locationTagName || 'Unknown Location'}
                   </div>
-                </div>
-                {locationTag.length && (
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <div style={labelStyle}>Dimensions (L × B × H)</div>
-                    <div style={valueStyle}>
-                      {locationTag.length} × {locationTag.breadth} × {locationTag.height} {locationTag.unitOfMeasurement}
-                    </div>
-                  </div>
-                )}
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <div style={labelStyle}>Created At</div>
-                  <div style={valueStyle}>{fmt(locationTag.createdAt)}</div>
-                </div>
-              </div>
-            </div>
 
-            {/* SKU Section */}
-            <div style={sectionStyle}>
-              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Package size={16} /> SKU Information
-                <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>
-                  {skus.length} SKU{skus.length !== 1 ? 's' : ''}
-                </span>
-              </h4>
-              {skus.length === 0 ? (
-                <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
-                  No SKUs assigned to this location
-                </div>
-              ) : (
-                skus.map((sku, idx) => (
-                  <div
-                    key={sku.id}
-                    style={{
-                      marginBottom: idx < skus.length - 1 ? '1rem' : 0,
-                      paddingBottom: idx < skus.length - 1 ? '1rem' : 0,
-                      borderBottom: idx < skus.length - 1 ? '1px solid hsl(215.3 25.1% 32.6%)' : 'none',
-                    }}
-                  >
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                      <div style={{ gridColumn: '1 / -1' }}>
-                        <div style={labelStyle}>SKU Name</div>
-                        <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{sku.skuName}</div>
-                      </div>
-                      <div>
-                        <div style={labelStyle}>Category</div>
-                        <div style={valueStyle}>{sku.skuCategory}</div>
-                      </div>
-                      <div>
-                        <div style={labelStyle}>Unit</div>
-                        <div style={valueStyle}>{sku.skuUnit}</div>
-                      </div>
-                      <div>
-                        <div style={labelStyle}>Quantity</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: sku.quantity > 0 ? '#22c55e' : '#ef4444' }}>
-                          {sku.quantity}
+                  {levelData.locationTag ? (
+                    <>
+                      {/* Location Tag Info for this level */}
+                      <div style={sectionStyle}>
+                        <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa' }}>
+                          📍 {levelData.levelInfo.levelId} Location Details
+                        </h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                          <div style={{ gridColumn: '1 / -1' }}>
+                            <div style={labelStyle}>Location Tag Name</div>
+                            <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>
+                              {levelData.locationTag.locationTagName}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={labelStyle}>Capacity</div>
+                            <div style={valueStyle}>{levelData.locationTag.capacity}</div>
+                          </div>
+                          <div>
+                            <div style={labelStyle}>Current Items</div>
+                            <div style={valueStyle}>{levelData.locationTag.currentItems || 0}</div>
+                          </div>
+                          <div style={{ gridColumn: '1 / -1' }}>
+                            <div style={labelStyle}>Utilization</div>
+                            <div style={{
+                              ...valueStyle,
+                              color: (levelData.locationTag.utilizationPercentage || 0) > 90 ? '#ef4444'
+                                   : (levelData.locationTag.utilizationPercentage || 0) > 70 ? '#f59e0b'
+                                   : '#22c55e',
+                            }}>
+                              {(levelData.locationTag.utilizationPercentage || 0).toFixed(1)}%
+                            </div>
+                          </div>
+                          {levelData.locationTag.length && (
+                            <div style={{ gridColumn: '1 / -1' }}>
+                              <div style={labelStyle}>Dimensions (L × B × H)</div>
+                              <div style={valueStyle}>
+                                {levelData.locationTag.length} × {levelData.locationTag.breadth} × {levelData.locationTag.height} {levelData.locationTag.unitOfMeasurement}
+                              </div>
+                            </div>
+                          )}
+                          <div style={{ gridColumn: '1 / -1' }}>
+                            <div style={labelStyle}>Created At</div>
+                            <div style={valueStyle}>{fmt(levelData.locationTag.createdAt)}</div>
+                          </div>
                         </div>
                       </div>
-                      <div>
-                        <div style={labelStyle}>Effective Date</div>
-                        <div style={valueStyle}>{fmt(sku.effectiveDate)}</div>
+
+                      {/* SKU Info for this level */}
+                      <div style={sectionStyle}>
+                        <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa' }}>
+                          📦 {levelData.levelInfo.levelId} SKU Information
+                          <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>
+                            {levelData.skus.length} SKU{levelData.skus.length !== 1 ? 's' : ''}
+                          </span>
+                        </h4>
+                        {levelData.skus.length === 0 ? (
+                          <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
+                            No SKUs assigned to {levelData.levelInfo.levelId}
+                          </div>
+                        ) : (
+                          levelData.skus.map((sku) => (
+                            <div key={sku.id} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid hsl(215.3 25.1% 32.6%)' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                  <div style={labelStyle}>SKU Name</div>
+                                  <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{sku.skuName}</div>
+                                </div>
+                                <div>
+                                  <div style={labelStyle}>Quantity</div>
+                                  <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: sku.quantity > 0 ? '#22c55e' : '#ef4444' }}>
+                                    {sku.quantity}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div style={labelStyle}>Category</div>
+                                  <div style={valueStyle}>{sku.skuCategory}</div>
+                                </div>
+                                <div>
+                                  <div style={labelStyle}>Unit</div>
+                                  <div style={valueStyle}>{sku.skuUnit}</div>
+                                </div>
+                                <div>
+                                  <div style={labelStyle}>Effective Date</div>
+                                  <div style={valueStyle}>{fmt(sku.effectiveDate)}</div>
+                                </div>
+                                <div>
+                                  <div style={labelStyle}>Expiry Date</div>
+                                  <div style={valueStyle}>{fmt(sku.expiryDate)}</div>
+                                </div>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                  <div style={labelStyle}>Created At</div>
+                                  <div style={valueStyle}>{fmt(sku.createdAt)}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </div>
-                      <div>
-                        <div style={labelStyle}>Expiry Date</div>
-                        <div style={valueStyle}>{fmt(sku.expiryDate)}</div>
+                    </>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                      <PackageOpen size={32} />
+                      <div style={{ fontWeight: 600, marginBottom: '0.5rem', marginTop: '1rem' }}>
+                        {levelData.levelInfo.levelId} - No Location Tag Found
                       </div>
-                      <div style={{ gridColumn: '1 / -1' }}>
-                        <div style={labelStyle}>Created At</div>
-                        <div style={valueStyle}>{fmt(sku.createdAt)}</div>
+                      <div style={{ fontSize: '0.85rem' }}>
+                        Location ID: {levelData.levelInfo.locationId}
                       </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Asset Section */}
-            <div style={sectionStyle}>
-              <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Archive size={16} /> Asset Information
-                <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>
-                  {assets.length} Asset{assets.length !== 1 ? 's' : ''}
-                </span>
-              </h4>
-
-              {assets.length === 0 ? (
-                <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
-                  No assets assigned to this location
+                  )}
                 </div>
-              ) : (
-                assets.map((asset, idx) => (
-                  <div
-                    key={asset.id}
-                    style={{
-                      marginBottom: idx < assets.length - 1 ? '1rem' : 0,
-                      paddingBottom: idx < assets.length - 1 ? '1rem' : 0,
-                      borderBottom: idx < assets.length - 1 ? '1px solid hsl(215.3 25.1% 32.6%)' : 'none',
-                    }}
-                  >
+              ))
+            ) : (
+              // Single-level display (existing logic)
+              locationTag && (
+                <>
+                  {/* Location Tag Section */}
+                  <div style={sectionStyle}>
+                    <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <MapPin size={16} /> Location Tag Information
+                    </h4>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+
                       <div style={{ gridColumn: '1 / -1' }}>
-                        <div style={labelStyle}>Asset Name</div>
-                        <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{asset.assetName}</div>
+                        <div style={labelStyle}>Location Tag Name</div>
+                        <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{locationTag.locationTagName}</div>
+                      </div>
+
+                      <div>
+                        <div style={labelStyle}>Capacity</div>
+                        <div style={valueStyle}>{locationTag.capacity}</div>
                       </div>
                       <div>
-                        <div style={labelStyle}>Asset ID</div>
-                        <div style={valueStyle}>{asset.assetId ?? '—'}</div>
+                        <div style={labelStyle}>
+                          Current Items {isLive && <span style={{ color: '#22c55e' }}>●</span>}
+                        </div>
+                        <div style={{ ...valueStyle, color: isLive ? '#22c55e' : '#e2e8f0' }}>
+                          {displayCurrentItems}
+                        </div>
                       </div>
-                      <div>
-                        <div style={labelStyle}>Asset Type</div>
-                        <div style={valueStyle}>{asset.assetType}</div>
+
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <div style={labelStyle}>Utilization {isLive && <span style={{ color: '#22c55e' }}>●</span>}
+                        </div>
+                        <div style={{
+                          ...valueStyle,
+                          color: displayUtilizationPct > 90 ? '#ef4444'
+                               : displayUtilizationPct > 70 ? '#f59e0b'
+                               : '#22c55e',
+                        }}>
+                          {displayUtilizationPct.toFixed(1)}%
+                        </div>
                       </div>
+
+                      {locationTag.length && (
+                        <div style={{ gridColumn: '1 / -1' }}>
+                          <div style={labelStyle}>Dimensions (L × B × H)</div>
+                          <div style={valueStyle}>
+                            {locationTag.length} × {locationTag.breadth} × {locationTag.height} {locationTag.unitOfMeasurement}
+                          </div>
+                        </div>
+                      )}
+
                       <div style={{ gridColumn: '1 / -1' }}>
                         <div style={labelStyle}>Created At</div>
-                        <div style={valueStyle}>{fmt(asset.createdAt)}</div>
+                        <div style={valueStyle}>{fmt(locationTag.createdAt)}</div>
                       </div>
+
                     </div>
                   </div>
-                ))
-              )}
-            </div>
 
+                  {/* SKU Section */}
+                  <div style={sectionStyle}>
+                    <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Package size={16} /> SKU Information
+                      <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>
+                        {skus.length} SKU{skus.length !== 1 ? 's' : ''}
+                      </span>
+                    </h4>
+
+                    {skus.length === 0 ? (
+                      <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
+                        No SKUs assigned to this location
+                      </div>
+                    ) : (
+                      skus.map((sku, idx) => (
+                        <div
+                          key={sku.id}
+                          style={{
+                            marginBottom: idx < skus.length - 1 ? '1rem' : 0,
+                            paddingBottom: idx < skus.length - 1 ? '1rem' : 0,
+                            borderBottom: idx < skus.length - 1 ? '1px solid hsl(215.3 25.1% 32.6%)' : 'none',
+                          }}
+                        >
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                              <div style={labelStyle}>SKU Name</div>
+                              <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{sku.skuName}</div>
+                            </div>
+                            <div>
+                              <div style={labelStyle}>Category</div>
+                              <div style={valueStyle}>{sku.skuCategory}</div>
+                            </div>
+                            <div>
+                              <div style={labelStyle}>Unit</div>
+                              <div style={valueStyle}>{sku.skuUnit}</div>
+                            </div>
+                            <div>
+                              <div style={labelStyle}>Quantity</div>
+                              <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: sku.quantity > 0 ? '#22c55e' : '#ef4444' }}>
+                                {sku.quantity}
+                              </div>
+                            </div>
+                            <div>
+                              <div style={labelStyle}>Effective Date</div>
+                              <div style={valueStyle}>{fmt(sku.effectiveDate)}</div>
+                            </div>
+                            <div>
+                              <div style={labelStyle}>Expiry Date</div>
+                              <div style={valueStyle}>{fmt(sku.expiryDate)}</div>
+                            </div>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                              <div style={labelStyle}>Created At</div>
+                              <div style={valueStyle}>{fmt(sku.createdAt)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Asset Section */}
+                  <div style={sectionStyle}>
+                    <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Archive size={16} /> Asset Information
+                    </h4>
+                    <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
+                      Asset data not linked to this location tag
+                    </div>
+                  </div>
+                </>
+              )
+            )}
           </>
         )}
       </div>

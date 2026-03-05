@@ -62,11 +62,13 @@ Worcoor-Layout-Mapping/          ← Frontend (Next.js) root
 - **Tailwind CSS** + Radix UI components
 - **React Hook Form** + Zod validation
 - **Recharts** for data visualization
+- **Socket.IO Client** for real-time updates
 
 ### Backend (`Backend/`)
 - **Fastify** HTTP framework
 - **PostgreSQL** with Drizzle ORM
 - **JWT** authentication
+- **Socket.IO** for WebSocket connections
 - **Supabase** (hosted Postgres)
 
 ## Setup
@@ -101,14 +103,16 @@ Default credentials are configured during initial database setup. Refer to the s
 
 ## Key Features
 
-- JWT-based user authentication
+- JWT-based user authentication with role-based access control
 - Organizational unit management (warehouses, offices, production)
 - Location tag tracking with L×B×H dimensions and capacity calculation
 - SKU inventory management with effective/expiry dates
 - Asset management with location assignment
-- Interactive warehouse layout builder with rack visualization
+- Interactive warehouse layout builder with drag-and-drop rack visualization
+- Real-time WebSocket updates for live map statistics and component changes
+- Configurable auto-refresh for warehouse data (1-60 minute intervals)
 - Bulk data import via CSV or Excel (SKUs, Location Tags, Assets)
-- Multi-tenant data isolation
+- Multi-tenant data isolation with organization-scoped queries
 
 ## API Documentation
 

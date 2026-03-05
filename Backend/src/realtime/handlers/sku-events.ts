@@ -73,6 +73,8 @@ export type LocationUpdatedPayload = {
 
 export type InventoryChangedPayload = {
   unit_id: string;
+  location_tag_id: string;
+  current_items: number;
   utilization_percentage: number;
 };
 

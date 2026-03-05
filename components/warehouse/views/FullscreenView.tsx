@@ -1,13 +1,13 @@
 // @ts-nocheck
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import SavedLayoutRenderer, { getLayoutItemKey } from './SavedLayoutRenderer';
+import SavedLayoutRenderer, { getLayoutItemKey } from '../SavedLayoutRenderer';
 import { inferVerticalRackLevelCount } from '../../lib/warehouse/utils/verticalRackUtils';
 import summarizeStorageComponents from '../../lib/warehouse/utils/layoutComponentSummary';
-import locationDataService from '../services/locationDataService';
-import LocationDetailsPanel from './LocationDetailsPanel';
+import locationDataService from '../../lib/warehouse/services/locationDataService';
+import LocationDetailsPanel from '../LocationDetailsPanel';
 import WarehouseOverviewPanel from '../WarehouseOverviewPanel';
 import TooltipProvider from '../TooltipProvider';
-import layoutComponentsMock from '../data/layoutComponentsMock.json';
+import layoutComponentsMock from '../../lib/warehouse/data/layoutComponentsMock.json';
 import { useWarehouseSocket } from '../../hooks/useWarehouseSocket';
 
 const renderDemoLayout = (demoData) => (
@@ -1811,6 +1811,7 @@ const FullscreenMap = () => {
             {showInfoPanel && selectedItem && (
               <LocationDetailsPanel
                 selectedItem={selectedItem}
+                unitId={unitId}
                 onClose={() => setShowInfoPanel(false)}
                 isEmbedded={true}
               />

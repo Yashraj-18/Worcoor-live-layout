@@ -8,6 +8,8 @@ import SavedLayoutRenderer, { getLayoutItemKey } from '@/components/warehouse/Sa
 import summarizeStorageComponents from '../../../lib/warehouse/utils/layoutComponentSummary';
 import layoutComponentsMock from '@/warehouse/data/layoutComponentsMock.json';
 import { RefreshCw } from 'lucide-react';
+import { orgUnitService } from '@/src/services/orgUnits';
+import { warehouseService } from '@/src/services/warehouseService';
 
 const WarehouseMapView = ({ facilityData }) => {
   const router = useRouter();
@@ -2516,6 +2518,7 @@ const WarehouseMapView = ({ facilityData }) => {
                       <div className="demo-map-info location-details-container">
                         <LocationDetailsPanel
                           selectedItem={selectedItem}
+                          unitId={selectedUnitForDemo}
                           onClose={() => {
                             setShowLocationDetails(false);
                             setSelectedItem(null);

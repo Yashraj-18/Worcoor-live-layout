@@ -191,14 +191,14 @@ export default function WarehouseManagementPage() {
         if (hasId || hasInv) totalUsed += 1;
       }
     });
-    return totalMax > 0 ? Math.round(Math.min(totalUsed, totalMax) / totalMax * 100) : 0;
+    return totalMax > 0 ? Math.round(Math.min(totalUsed, totalMax) / totalMax * 1000) / 10 : 0;
   };
 
   // Org-wide tag utilization for the Avg Tag Utilization summary card
   const allOrgTags = Object.values(locationTagsMap).flat();
   const orgTagTotal = allOrgTags.length;
   const orgTagInUse = allOrgTags.filter((tag) => tag.currentItems > 0).length;
-  const orgTagPct = orgTagTotal > 0 ? Math.round((orgTagInUse / orgTagTotal) * 100) : 0;
+  const orgTagPct = orgTagTotal > 0 ? Math.round((orgTagInUse / orgTagTotal) * 1000) / 10 : 0;
 
   const avgTagUtilization = orgTagTotal > 0 ? orgTagPct : null;
 
@@ -317,7 +317,7 @@ export default function WarehouseManagementPage() {
             const placedTags = unitTags.filter((t) => placedTagIds.has(t.id));
             const unitTagInUse = placedTags.filter((t) => t.currentItems > 0).length;
             const unitTagTotal = unitTags.length;
-            const unitTagPct = unitTagTotal > 0 ? Math.round((unitTagInUse / unitTagTotal) * 100) : 0;
+            const unitTagPct = unitTagTotal > 0 ? Math.round((unitTagInUse / unitTagTotal) * 1000) / 10 : 0;
             const tagStats = { pct: unitTagPct, inUse: unitTagInUse, total: unitTagTotal };
             const slotCapacity = (() => {
               const items: any[] = (layout as any).layoutData?.items ?? [];

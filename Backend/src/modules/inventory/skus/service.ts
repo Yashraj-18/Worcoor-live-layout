@@ -13,13 +13,6 @@ import { LiveMapWebSocketService } from '../../warehouse/live-map/websocket-serv
 
 type SkuParams = { skuId: string };
 
-class CapacityValidationError extends Error {
-  constructor(public readonly code: 'LOCATION_TAG_NOT_FOUND' | 'CAPACITY_EXCEEDED') {
-    super(code);
-    this.name = 'CapacityValidationError';
-  }
-}
-
 export class SkusService {
   constructor(
     private readonly repository = new SkusRepository(),
@@ -34,67 +27,29 @@ export class SkusService {
     };
   }
 
-  private async assertSkuIdUnique(orgId: string, skuId: string, excludeSkuId?: string) {
-    const existing = await this.repository.findBySkuId(orgId, skuId);
-    if (existing && existing.id !== excludeSkuId) {
-      throw new Error('SKU_ID_NOT_UNIQUE');
+  private async ensureSkuNameConsistency(
+    orgId: string,
+    skuId: string,
+    skuName: string,
+    excludeSkuId?: string,
+  ) {
+    const existing = await this.repository.findBySkuId(orgId, skuId, excludeSkuId);
+    if (!existing) return;
+
+    const existingName = existing.skuName.trim().toLowerCase();
+    const incomingName = skuName.trim().toLowerCase();
+
+    if (existingName !== incomingName) {
+      throw new Error('SKU_NAME_MISMATCH');
     }
   }
 
   private async assertLocationTag(tagId: string, organizationId: string) {
     const tag = await this.locationTagsRepository.findById(tagId, organizationId);
     if (!tag) {
-      throw new CapacityValidationError('LOCATION_TAG_NOT_FOUND');
+      throw new Error('LOCATION_TAG_NOT_FOUND');
     }
     return tag;
-  }
-
-  private async assertCapacity(
-    locationTagId: string,
-    organizationId: string,
-    incomingQuantity: number,
-    excludeSkuId?: string,
-  ) {
-    const tag = await this.assertLocationTag(locationTagId, organizationId);
-    const current = await this.locationTagsRepository.getUsage(
-      locationTagId,
-      organizationId,
-      excludeSkuId,
-    );
-    if (current + incomingQuantity > tag.capacity) {
-      throw new CapacityValidationError('CAPACITY_EXCEEDED');
-    }
-    return tag;
-  }
-
-  private async ensureCapacity(
-    params: {
-      locationTagId: string;
-      organizationId: string;
-      incomingQuantity: number;
-      excludeSkuId?: string;
-    },
-    reply: FastifyReply,
-  ) {
-    try {
-      await this.assertCapacity(
-        params.locationTagId,
-        params.organizationId,
-        params.incomingQuantity,
-        params.excludeSkuId,
-      );
-      return true;
-    } catch (error) {
-      if (error instanceof CapacityValidationError) {
-        if (error.code === 'LOCATION_TAG_NOT_FOUND') {
-          reply.code(404).send({ error: 'Location tag not found' });
-        } else {
-          reply.code(400).send({ error: 'Location tag capacity exceeded' });
-        }
-        return false;
-      }
-      throw error;
-    }
   }
 
   // ── Helper: emit location + inventory socket events after any SKU change ──
@@ -186,23 +141,24 @@ export class SkusService {
   ) {
     const orgId = request.user.organizationId;
     if (request.body.locationTagId) {
-      const ok = await this.ensureCapacity(
-        {
-          locationTagId: request.body.locationTagId,
-          organizationId: orgId,
-          incomingQuantity: request.body.quantity,
-        },
-        reply,
-      );
-      if (!ok) return;
+      try {
+        await this.assertLocationTag(request.body.locationTagId, orgId);
+      } catch (error) {
+        if (error instanceof Error && error.message === 'LOCATION_TAG_NOT_FOUND') {
+          return reply.code(404).send({ error: 'Location tag not found' });
+        }
+        throw error;
+      }
     }
 
     if (request.body.skuId) {
       try {
-        await this.assertSkuIdUnique(orgId, request.body.skuId);
+        await this.ensureSkuNameConsistency(orgId, request.body.skuId, request.body.skuName);
       } catch (error) {
-        if (error instanceof Error && error.message === 'SKU_ID_NOT_UNIQUE') {
-          return reply.code(409).send({ error: 'SKU ID already in use' });
+        if (error instanceof Error && error.message === 'SKU_NAME_MISMATCH') {
+          return reply.code(400).send({
+            error: 'SKU ID is already linked to a different product name within this organization',
+          });
         }
         throw error;
       }
@@ -242,28 +198,31 @@ export class SkusService {
 
     const nextLocationTagId =
       request.body.locationTagId !== undefined ? request.body.locationTagId : existing.locationTagId;
-    const nextQuantity =
-      request.body.quantity !== undefined ? request.body.quantity : Number(existing.quantity ?? 0);
 
     if (nextLocationTagId) {
-      const ok = await this.ensureCapacity(
-        {
-          locationTagId: nextLocationTagId,
-          organizationId: orgId,
-          incomingQuantity: nextQuantity,
-          excludeSkuId: skuId,
-        },
-        reply,
-      );
-      if (!ok) return;
+      try {
+        await this.assertLocationTag(nextLocationTagId, orgId);
+      } catch (error) {
+        if (error instanceof Error && error.message === 'LOCATION_TAG_NOT_FOUND') {
+          return reply.code(404).send({ error: 'Location tag not found' });
+        }
+        throw error;
+      }
     }
 
     if (request.body.skuId) {
       try {
-        await this.assertSkuIdUnique(orgId, request.body.skuId, skuId);
+        await this.ensureSkuNameConsistency(
+          orgId,
+          request.body.skuId,
+          request.body.skuName ?? existing.skuName,
+          skuId,
+        );
       } catch (error) {
-        if (error instanceof Error && error.message === 'SKU_ID_NOT_UNIQUE') {
-          return reply.code(409).send({ error: 'SKU ID already in use' });
+        if (error instanceof Error && error.message === 'SKU_NAME_MISMATCH') {
+          return reply.code(400).send({
+            error: 'SKU ID is already linked to a different product name within this organization',
+          });
         }
         throw error;
       }
@@ -335,16 +294,14 @@ export class SkusService {
       return reply.code(404).send({ error: 'SKU not found' });
     }
 
-    const ok = await this.ensureCapacity(
-      {
-        locationTagId: request.body.toLocationTagId,
-        organizationId: orgId,
-        incomingQuantity: Number(sku.quantity ?? 0),
-        excludeSkuId: skuId,
-      },
-      reply,
-    );
-    if (!ok) return;
+    try {
+      await this.assertLocationTag(request.body.toLocationTagId, orgId);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'LOCATION_TAG_NOT_FOUND') {
+        return reply.code(404).send({ error: 'Location tag not found' });
+      }
+      throw error;
+    }
 
     const updated = await this.repository.update(skuId, orgId, {
       locationTagId: request.body.toLocationTagId,

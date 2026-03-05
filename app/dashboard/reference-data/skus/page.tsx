@@ -31,9 +31,21 @@ import { orgUnitService, type OrgUnit } from "@/src/services/orgUnits"
 
 import { useToast } from "@/components/ui/use-toast"
 
+type LocationTagOption = {
+  value: string
+  label: string
+  unitId: string
+  unitName: string
+}
+
+type WarehouseOption = {
+  value: string
+  label: string
+}
+
 export default function SkuManagementPage() {
   const [skus, setSkus] = useState<Sku[]>([])
-  const [locationTags, setLocationTags] = useState<{ value: string; label: string }[]>([])
+  const [locationTags, setLocationTags] = useState<LocationTagOption[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -42,6 +54,7 @@ export default function SkuManagementPage() {
   const [search, setSearch] = useState("")
   const [selectedSku, setSelectedSku] = useState<Sku | null>(null)
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([])
+
   const [selectedUnitId, setSelectedUnitId] = useState<string>("all")
 
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -51,17 +64,20 @@ export default function SkuManagementPage() {
   const loadLocationTags = useCallback(async () => {
     try {
       const units = await orgUnitService.list()
-      setOrgUnits(units)
-      const tagOptions: { value: string; label: string }[] = []
+      const warehouseUnits = units.filter((unit) => unit.unitType === "warehouse")
+      setOrgUnits(warehouseUnits)
+      const tagOptions: LocationTagOption[] = []
 
       await Promise.all(
-        units.map(async (unit) => {
+        warehouseUnits.map(async (unit) => {
           try {
             const tags = await locationTagService.listByUnit(unit.id)
             tags.forEach((tag) => {
               tagOptions.push({
                 value: tag.id,
-                label: `${unit.unitName} • ${tag.locationTagName}`,
+                label: tag.locationTagName,
+                unitId: unit.id,
+                unitName: unit.unitName,
               })
             })
           } catch (error) {
@@ -108,10 +124,23 @@ export default function SkuManagementPage() {
   }, [isEditOpen])
 
   const getLocationTagLabel = (sku: Sku) => {
-    if (sku.locationTagName) return sku.locationTagName
     if (!sku.locationTagId) return "-"
-    return locationTags.find((tag) => tag.value === sku.locationTagId)?.label ?? sku.locationTagId
+    const tag = locationTags.find((option) => option.value === sku.locationTagId)
+    if (tag) {
+      return `${tag.unitName} • ${tag.label}`
+    }
+    if (sku.locationTagName) return sku.locationTagName
+    return sku.locationTagId
   }
+
+  const warehouseOptions = useMemo<WarehouseOption[]>(
+    () =>
+      orgUnits.map((unit) => ({
+        value: unit.id,
+        label: unit.unitId ? `${unit.unitId} - ${unit.unitName}` : unit.unitName,
+      })),
+    [orgUnits],
+  )
 
   const filteredSkus = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -314,7 +343,13 @@ export default function SkuManagementPage() {
               <DialogDescription>Add a new SKU to the inventory system.</DialogDescription>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto pt-4">
-              <SkuForm onSubmit={handleAddSku} onCancel={() => setIsAddOpen(false)} locationTags={locationTags} isSubmitting={isSubmitting} />
+              <SkuForm
+                onSubmit={handleAddSku}
+                onCancel={() => setIsAddOpen(false)}
+                locationTags={locationTags}
+                warehouses={warehouseOptions}
+                isSubmitting={isSubmitting}
+              />
             </div>
           </DialogContent>
         </Dialog>
@@ -348,6 +383,7 @@ export default function SkuManagementPage() {
                     setSelectedSku(null)
                   }}
                   locationTags={locationTags}
+                  warehouses={warehouseOptions}
                   isSubmitting={isSubmitting}
                 />
               )}

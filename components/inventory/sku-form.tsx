@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import { useEffect, useMemo, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -34,15 +34,37 @@ const skuFormSchema = z.object({
 // Explicitly define the form values type to match zod schema
 type SkuFormValues = z.infer<typeof skuFormSchema>
 
+type LocationTagOption = {
+  label: string
+  value: string
+  unitId: string
+  unitName: string
+}
+
+type WarehouseOption = {
+  label: string
+  value: string
+}
+
 interface SkuFormProps {
   initialData?: Partial<SkuFormValues>
   onSubmit: (data: SkuFormValues) => void
   onCancel: () => void
-  locationTags: { label: string; value: string }[]
+  locationTags: LocationTagOption[]
+  warehouses: WarehouseOption[]
+  defaultWarehouseId?: string
   isSubmitting?: boolean
 }
 
-export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags, isSubmitting }: SkuFormProps) {
+export function SkuForm({
+  initialData = {},
+  onSubmit,
+  onCancel,
+  locationTags,
+  warehouses,
+  defaultWarehouseId,
+  isSubmitting,
+}: SkuFormProps) {
   // Initialize form with default values or initial data
   const form = useForm<SkuFormValues>({
     resolver: zodResolver(skuFormSchema) as any,
@@ -57,6 +79,38 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags, is
       locationTagId: initialData?.locationTagId || undefined,
     },
   })
+
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>(defaultWarehouseId ?? "")
+
+  useEffect(() => {
+    if (initialData?.locationTagId) {
+      const matchedTag = locationTags.find((tag) => tag.value === initialData.locationTagId)
+      if (matchedTag) {
+        setSelectedWarehouseId(matchedTag.unitId)
+        return
+      }
+    }
+    if (defaultWarehouseId) {
+      setSelectedWarehouseId(defaultWarehouseId)
+    } else {
+      setSelectedWarehouseId("")
+    }
+  }, [defaultWarehouseId, initialData?.locationTagId, locationTags])
+
+  const filteredLocationTags = useMemo(() => {
+    if (!selectedWarehouseId) return []
+    return locationTags.filter((tag) => tag.unitId === selectedWarehouseId)
+  }, [locationTags, selectedWarehouseId])
+
+  const selectedWarehouseName = useMemo(() => {
+    if (!selectedWarehouseId) return null
+    return warehouses.find((wh) => wh.value === selectedWarehouseId)?.label ?? null
+  }, [selectedWarehouseId, warehouses])
+
+  const handleWarehouseChange = (warehouseId: string) => {
+    setSelectedWarehouseId(warehouseId)
+    form.setValue("locationTagId", undefined)
+  }
 
   // Submit handler
   const handleSubmit = (data: SkuFormValues) => {
@@ -182,33 +236,69 @@ export function SkuForm({ initialData = {}, onSubmit, onCancel, locationTags, is
                 )}
               />
             </div>
-            {/* Location Tag (optional) */}
-            <FormField control={form.control} name="locationTagId"
-              render={({ field }) => (
-                <FormItem className="space-y-1 gap-2">
-                  <FormLabel className="text-sm font-medium leading-none">Location Tag</FormLabel>
-                  <Select
-                    onValueChange={(val) => field.onChange(val === LOCATION_TAG_NONE_VALUE ? undefined : val)}
-                    value={field.value || LOCATION_TAG_NONE_VALUE}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="h-12 rounded-md border border-input bg-white/100 dark:bg-slate-800/80 dark:border-slate-700">
-                        <SelectValue placeholder="Select Location Tag" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={LOCATION_TAG_NONE_VALUE}>None</SelectItem>
-                      {locationTags.map((tag) => (
-                        <SelectItem key={tag.value} value={tag.value}>
-                          {tag.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormItem className="space-y-1 gap-2">
+                <FormLabel className="text-sm font-medium leading-none">Warehouse</FormLabel>
+                <Select value={selectedWarehouseId} onValueChange={handleWarehouseChange}>
+                  <FormControl>
+                    <SelectTrigger className="h-12 rounded-md border border-input bg-white/100 dark:bg-slate-800/80 dark:border-slate-700">
+                      <SelectValue placeholder="Select Warehouse" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="">Select Warehouse</SelectItem>
+                    {warehouses.map((warehouse) => (
+                      <SelectItem key={warehouse.value} value={warehouse.value}>
+                        {warehouse.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!selectedWarehouseId && (
+                  <p className="text-xs text-muted-foreground">Choose a warehouse to see its location tags.</p>
+                )}
+              </FormItem>
+              <FormField
+                control={form.control}
+                name="locationTagId"
+                render={({ field }) => (
+                  <FormItem className="space-y-1 gap-2">
+                    <FormLabel className="text-sm font-medium leading-none">
+                      Location Tag
+                      {selectedWarehouseName ? (
+                        <span className="block text-xs font-normal text-muted-foreground">{selectedWarehouseName}</span>
+                      ) : null}
+                    </FormLabel>
+                    <Select
+                      disabled={!selectedWarehouseId}
+                      onValueChange={(val) => field.onChange(val === LOCATION_TAG_NONE_VALUE ? undefined : val)}
+                      value={field.value || LOCATION_TAG_NONE_VALUE}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-12 rounded-md border border-input bg-white/100 dark:bg-slate-800/80 dark:border-slate-700">
+                          <SelectValue placeholder={selectedWarehouseId ? "Select Location Tag" : "Select Warehouse first"} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={LOCATION_TAG_NONE_VALUE}>None</SelectItem>
+                        {filteredLocationTags.length === 0 && selectedWarehouseId ? (
+                          <SelectItem value="__disabled__" disabled>
+                            No location tags
+                          </SelectItem>
+                        ) : (
+                          filteredLocationTags.map((tag) => (
+                            <SelectItem key={tag.value} value={tag.value}>
+                              {tag.label}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
         </div>
         <DialogFooter className="px-2 md:px-6 py-4">

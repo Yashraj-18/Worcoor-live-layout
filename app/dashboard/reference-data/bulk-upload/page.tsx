@@ -350,9 +350,8 @@ export default function BulkUploadPage() {
     setIsLoadingOrgUnits(true)
     try {
       const units = await orgUnitService.list()
-      const warehouseUnits = units.filter((unit) => unit.unitType === "warehouse")
       setOrgUnits(
-        warehouseUnits.map((unit) => ({
+        units.map((unit) => ({
           id: unit.id,
           unitCode: unit.unitId ?? null,
           unitName: unit.unitName,
@@ -362,8 +361,8 @@ export default function BulkUploadPage() {
           area: unit.area ?? null,
         })),
       )
-      if (!selectedOrgUnitId && warehouseUnits.length > 0) {
-        setSelectedOrgUnitId(warehouseUnits[0].id)
+      if (!selectedOrgUnitId && units.length > 0) {
+        setSelectedOrgUnitId(units[0].id)
       }
     } catch (error) {
       console.error("Failed to load org units", error)
@@ -705,7 +704,7 @@ export default function BulkUploadPage() {
         if (providedUnitCode) {
           const resolvedUnitId = resolveOrgUnitInternalIdByCode(providedUnitCode)
           if (!resolvedUnitId) {
-            rowErrors.push(`unit_id "${row.unit_id}" was not found among your warehouses`)
+            rowErrors.push(`unit_id "${row.unit_id}" was not found among your org units`)
             isValid = false
           }
         }
@@ -714,7 +713,7 @@ export default function BulkUploadPage() {
         if (providedLocationTagName) {
           const resolvedId = resolveLocationTagId(providedLocationTagName)
           if (!resolvedId) {
-            rowErrors.push(`location_tag_name "${row.location_tag_name}" was not found in the selected warehouse`)
+            rowErrors.push(`location_tag_name "${row.location_tag_name}" was not found in the selected org unit`)
             isValid = false
           }
         }
@@ -737,7 +736,7 @@ export default function BulkUploadPage() {
             if (providedLocationTagName) {
               const resolvedId = resolveLocationTagId(providedLocationTagName)
               if (!resolvedId) {
-                rowErrors.push(`location_tag_name "${row.location_tag_name}" was not found in the selected warehouse`)
+                rowErrors.push(`location_tag_name "${row.location_tag_name}" was not found in the selected org unit`)
                 isValid = false
               }
             }
@@ -855,7 +854,7 @@ export default function BulkUploadPage() {
               const normalizedLocationTagName = emptyToUndefined(row.location_tag_name)
               const resolvedLocationTagId = normalizedLocationTagName ? resolveLocationTagId(normalizedLocationTagName) : null
               if (normalizedLocationTagName && !resolvedLocationTagId) {
-                throw new Error(`Location tag "${row.location_tag_name}" not found for the selected warehouse`)
+                throw new Error(`Location tag "${row.location_tag_name}" not found for the selected org unit`)
               }
 
               if (operation === 'create') {
@@ -923,7 +922,7 @@ export default function BulkUploadPage() {
               const normalizedLocationTagName = emptyToUndefined(row.location_tag_name)
               const resolvedLocationTagId = normalizedLocationTagName ? resolveLocationTagId(normalizedLocationTagName) : null
               if (normalizedLocationTagName && !resolvedLocationTagId) {
-                throw new Error(`Location tag "${row.location_tag_name}" not found for the selected warehouse`)
+                throw new Error(`Location tag "${row.location_tag_name}" not found for the selected org unit`)
               }
 
               if (operation === 'create') {
@@ -984,7 +983,7 @@ export default function BulkUploadPage() {
                 ? resolveOrgUnitInternalIdByCode(providedUnitCode)
                 : unitId
               if (!resolvedUnitId) {
-                throw new Error(`unit_id "${row.unit_id ?? 'N/A'}" could not be matched to any warehouse`)
+                throw new Error(`unit_id "${row.unit_id ?? 'N/A'}" could not be matched to any org unit`)
               }
               const payload: CreateLocationTagInput = {
                 unitId: resolvedUnitId,
@@ -1034,7 +1033,7 @@ export default function BulkUploadPage() {
       if (locationTags === null) {
         toast({
           title: 'Location tags unavailable',
-          description: 'Could not load location tags for the selected warehouse. Please try again.',
+          description: 'Could not load location tags for the selected org unit. Please try again.',
           variant: 'destructive',
         })
         return
@@ -1082,8 +1081,8 @@ export default function BulkUploadPage() {
     if (uploadType === 'skus' || uploadType === 'assets') {
       if (!selectedOrgUnitId) {
         toast({
-          title: 'Select a warehouse first',
-          description: 'Location tag names are specific to a warehouse. Please pick one to continue.',
+          title: 'Select an org unit first',
+          description: 'Location tag names are specific to an org unit. Please pick one to continue.',
           variant: 'destructive',
         })
         return
@@ -1093,7 +1092,7 @@ export default function BulkUploadPage() {
       if (locationTags === null) {
         toast({
           title: 'Location tags unavailable',
-          description: 'Could not load location tags for the selected warehouse. Please try again.',
+          description: 'Could not load location tags for the selected org unit. Please try again.',
           variant: 'destructive',
         })
         return
@@ -1432,7 +1431,7 @@ export default function BulkUploadPage() {
                 onClick={() => {
                   // Confirm operation - could trigger validation or proceed to next step
                   if (!selectedOrgUnitId) {
-                    toast({ title: 'No warehouse selected', description: 'Please select an organizational unit first.', variant: 'destructive' })
+                    toast({ title: 'No org unit selected', description: 'Please select an organizational unit first.', variant: 'destructive' })
                     return
                   }
                   if (!isOperationConfirmed) {
@@ -1832,7 +1831,7 @@ export default function BulkUploadPage() {
               ? displayedData.length > 0
                 ? `Showing ${displayedData.length} record${displayedData.length === 1 ? '' : 's'} for the selected org unit`
                 : 'No records found for the selected org unit yet'
-              : 'Select a warehouse to load existing records'}
+              : 'Select an org unit to load existing records'}
           </p>
         </div>
         

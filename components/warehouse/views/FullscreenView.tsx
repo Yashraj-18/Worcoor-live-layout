@@ -6,6 +6,7 @@ import summarizeStorageComponents from '../../lib/warehouse/utils/layoutComponen
 import locationDataService from '../services/locationDataService';
 import LocationDetailsPanel from './LocationDetailsPanel';
 import WarehouseOverviewPanel from '../WarehouseOverviewPanel';
+import TooltipProvider from '../TooltipProvider';
 import layoutComponentsMock from '../data/layoutComponentsMock.json';
 import { useWarehouseSocket } from '../../hooks/useWarehouseSocket';
 
@@ -1634,7 +1635,8 @@ const FullscreenMap = () => {
   const isEmptyCustomLayout = isCustomLayout && layoutData && Array.isArray(layoutData.items) && layoutData.items.length === 0;
 
   return (
-    <div className="fullscreen-map-container">
+    <TooltipProvider>
+      <div className="fullscreen-map-container">
       <div className="fullscreen-map-header">
         <div className="fullscreen-map-title">
           <h1>{unit.name}</h1>
@@ -1844,6 +1846,7 @@ const FullscreenMap = () => {
         </div>
       )}
     </div>
+    </TooltipProvider>
   );
 };
 

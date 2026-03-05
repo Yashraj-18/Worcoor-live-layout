@@ -10,8 +10,31 @@ import { renderShapeComponent } from '@/lib/warehouse/utils/shapeRenderer';
 import { getContextualLabel } from '@/lib/warehouse/utils/componentLabeling';
 import { inferVerticalRackLevelCount } from '@/lib/warehouse/utils/verticalRackUtils';
 import { getStorageComponentBorder, STORAGE_COMPONENT_BORDER_CONFIG, determineCapacityStatus } from '@/lib/warehouse/config/componentStatusColor';
-import HoverInfoTooltip from './HoverInfoTooltip';
+import { useWarehouseTooltip } from './WarehouseTooltip';
+import { useTooltip } from './TooltipProvider';
+import { buildItemTooltipContent, buildCompartmentTooltipContent } from './TooltipContentBuilders';
 import ResizeHandle from './ResizeHandle';
+
+// Conditional tooltip hook that only works in read-only mode
+const useConditionalTooltip = (isReadOnly: boolean) => {
+  try {
+    // Only try to use tooltip context if we're in read-only mode
+    return isReadOnly ? useTooltip() : {
+      showTooltip: () => {},
+      hideTooltip: () => {},
+      updateTooltipPosition: () => {},
+      isVisible: false
+    };
+  } catch (error) {
+    // Fallback for when TooltipProvider is not available (edit mode)
+    return {
+      showTooltip: () => {},
+      hideTooltip: () => {},
+      updateTooltipPosition: () => {},
+      isVisible: false
+    };
+  }
+};
 
 const getContrastColorForHex = (hexColor: any) => {
   if (!hexColor || typeof hexColor !== 'string') {
@@ -103,368 +126,80 @@ const WarehouseItem = ({
   locationTagsMap = {},
   hideNonMatchingCompartments = false
 }: any) => {
-  const [hoverTooltip, setHoverTooltip] = useState<any>(null);
-  const [hoveredCompartment, setHoveredCompartment] = useState<any>(null);
-
   const hasCompartments = Boolean(item.skuGrid && item.showCompartments);
+  const [hoveredCompartment, setHoveredCompartment] = useState<string | null>(null);
+  
+  // Tooltip functionality for live view and fullscreen preview
+  const { showTooltip, hideTooltip, updateTooltipPosition } = useConditionalTooltip(isReadOnly);
 
-  const getTooltipPosition = useCallback((eventLike: any) => {
-    if (!eventLike) {
-      return { top: 0, left: 0 };
-    }
-
-    const nativeEvent = eventLike.nativeEvent || eventLike;
-    const pageX = typeof nativeEvent.pageX === 'number'
-      ? nativeEvent.pageX
-      : (nativeEvent.clientX || 0) + (window.scrollX || 0);
-    const pageY = typeof nativeEvent.pageY === 'number'
-      ? nativeEvent.pageY
-      : (nativeEvent.clientY || 0) + (window.scrollY || 0);
-
-    const offsetX = 18;
-    const offsetY = 28;
-    const assumedWidth = 320;
-    const assumedHeight = 220;
-
-    let left = pageX + offsetX;
-    let top = pageY + offsetY;
-
-    const viewportRight = (window.scrollX || 0) + window.innerWidth;
-    const viewportBottom = (window.scrollY || 0) + window.innerHeight;
-
-    if (left + assumedWidth > viewportRight - 8) {
-      left = pageX - assumedWidth - offsetX;
-    }
-
-    if (top + assumedHeight > viewportBottom - 8) {
-      top = pageY - assumedHeight - offsetY;
-    }
-
-    left = Math.max((window.scrollX || 0) + 8, left);
-    top = Math.max((window.scrollY || 0) + 8, top);
-
-    return { top, left };
-  }, []);
-
-  const showTooltip = useCallback((eventLike: any, content: any, variant: any = 'occupied', context: any = 'item') => {
-    if (!eventLike || !content) {
+  // Item tooltip handlers
+  const handleItemMouseEnter = useCallback((event: React.MouseEvent) => {
+    // Only show tooltips in read-only mode (live view, fullscreen preview)
+    if (!isReadOnly || item.type === 'square_boundary') {
       return;
     }
 
-    const position = getTooltipPosition(eventLike);
-    setHoverTooltip({
-      ...position,
-      content,
-      variant,
-      context
+    const content = buildItemTooltipContent({ 
+      item, 
+      inventoryData: item.inventoryData, 
+      capacity: item.capacity 
     });
-  }, [getTooltipPosition]);
-
-  const hideTooltip = useCallback(() => {
-    setHoverTooltip(null);
-  }, []);
-
-  const renderDetailRow = useCallback((label: any, value: any, key: any) => (
-    <div className="hover-card__metric" key={key || label}>
-      <span className="hover-card__metric-label">{label}</span>
-      <span className="hover-card__metric-value">{value ?? '—'}</span>
-    </div>
-  ), []);
-
-  const buildCompartmentTooltipContent = useCallback((rowIndex: number, colIndex: number, compartmentData: any) => {
-    const baseMeta = {
-      row: rowIndex + 1,
-      column: colIndex + 1
-    };
-
-    const isHorizontalStorage = item.type === 'sku_holder';
-    const compartmentTitle = isHorizontalStorage ? 'Horizontal Space' : 'Storage Space';
-    const hasAssignment = Boolean(compartmentData);
-
-    const {
-      locationId,
-      uniqueId,
-      isMultiLocation,
-      locationIds,
-      tags,
-      levelLocationMappings,
-      maxCapacity: compartmentDefinedCapacity
-    } = compartmentData || {};
-
-    const resolvedLocationIds = Array.isArray(locationIds) ? locationIds.filter(Boolean) : [];
-    const resolvedMappings = Array.isArray(levelLocationMappings)
-      ? levelLocationMappings.filter((mapping: any) => mapping && mapping.locationId)
-      : [];
-    const primaryLocation = hasAssignment
-      ? locationId || uniqueId || resolvedLocationIds[0] || 'N/A'
-      : 'Unassigned';
-
-    const resolvedPairs = (() => {
-      if (!hasAssignment) {
-        return [];
-      }
-
-      if (resolvedMappings.length > 0) {
-        return resolvedMappings.map((mapping: any, idx: number) => {
-          const levelLabel = mapping.levelId || tags?.[idx] || `L${idx + 1}`;
-          return `${levelLabel}: ${mapping.locationId}`;
-        });
-      }
-
-      if (isMultiLocation && resolvedLocationIds.length > 0) {
-        return resolvedLocationIds.map((id: any, idx: number) => {
-          const levelLabel = tags?.[idx];
-          return levelLabel ? `${levelLabel}: ${id}` : id;
-        });
-      }
-
-      return [];
-    })();
-
-    const locationLabel = (() => {
-      if (!hasAssignment) {
-        return primaryLocation;
-      }
-
-      if (item.type === 'vertical_sku_holder' && resolvedPairs.length > 0) {
-        return resolvedPairs.join(' • ');
-      }
-
-      return primaryLocation;
-    })();
-
-    let capacity = 1;
-    if (typeof compartmentDefinedCapacity === 'number' && compartmentDefinedCapacity > 0) {
-      capacity = compartmentDefinedCapacity;
-    } else if (hasAssignment && isMultiLocation && resolvedLocationIds.length > 0) {
-      capacity = resolvedLocationIds.length;
-    }
-
-    const occupiedCount = hasAssignment
-      ? (isMultiLocation && resolvedLocationIds.length > 0 ? resolvedLocationIds.length : 1)
-      : 0;
-    const availableCount = Math.max(capacity - occupiedCount, 0);
-    const utilizationPercent = capacity > 0 ? Math.round((occupiedCount / capacity) * 100) : 0;
-
-    const headerClassName = hasAssignment
-      ? 'hover-card__header'
-      : 'hover-card__header hover-card__header--subtle';
-    const bodyClassName = hasAssignment
-      ? 'hover-card__body'
-      : 'hover-card__body hover-card__body--compact';
-
-    return (
-      <div className="hover-card hover-card--compartment">
-        <div className={headerClassName}>
-          <div className="hover-card__title">{compartmentTitle}</div>
-          <div className="hover-card__meta">Row {baseMeta.row} · Column {baseMeta.column}</div>
-        </div>
-        <div className={bodyClassName}>
-          <div className="hover-card__metric-grid">
-            {renderDetailRow('Location', locationLabel, 'location')}
-          </div>
-
-          <div className="hover-card__section">
-            <div className="hover-card__section-label">Capacity</div>
-            <div className="hover-card__progress-group">
-              <div className="hover-card__progress-labels">
-                <span>Available / Max</span>
-                <span>{availableCount} / {capacity}</span>
-              </div>
-              <div className="hover-card__progress">
-                <div
-                  className="hover-card__progress-value"
-                  style={{
-                    width: `${Math.min(100, Math.max(0, utilizationPercent))}%`,
-                    backgroundColor: '#f97316'
-                  }}
-                />
-              </div>
-              <div className="hover-card__progress-labels">
-                <span>Utilization</span>
-                <span>{utilizationPercent}%</span>
-              </div>
-            </div>
-          </div>
-
-          {hasAssignment && isMultiLocation && resolvedLocationIds.length > 0 && item.type !== 'vertical_sku_holder' && (
-            <div className="hover-card__section">
-              <div className="hover-card__section-label">Assigned Locations</div>
-              <div className="hover-card__chip-row">
-                {resolvedLocationIds.map((id: any, idx: number) => (
-                  <span className="hover-card__chip" key={`${id}-${idx}`}>
-                    {id}
-                    {tags && tags[idx] && <span className="hover-card__chip-tag">{tags[idx]}</span>}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {!hasAssignment && (
-            <div className="hover-card__empty-state">Click to assign a SKU to this space.</div>
-          )}
-        </div>
-      </div>
+    
+    showTooltip(
+      `item-${item.id}`,
+      content,
+      event,
+      'item',
+      1 // priority
     );
-  }, [item.type, renderDetailRow]);
+  }, [isReadOnly, item, showTooltip]);
 
-  const buildItemTooltipContent = useCallback(() => {
-    const title = getContextualLabel(item) || item.name || 'Warehouse Component';
-    const subtitleParts = [];
-    if (item.autoLabel && item.autoLabel !== title) {
-      subtitleParts.push(item.autoLabel);
-    }
-    if (item.locationCode) {
-      subtitleParts.push(item.locationCode);
-    }
-
-    const baseColor = item.customColor || item.color || getComponentColor(item.type, item.category) || '#334155';
-    const headerGradientStart = adjustHexColor(baseColor, 0.08);
-    const headerGradientEnd = adjustHexColor(baseColor, -0.16);
-    const headerTextColor = getContrastColorForHex(baseColor);
-
-    const nicelyFormattedType = item.type ? item.type.replace(/_/g, ' ') : 'Component';
-    const rows = [];
-
-    rows.push(['Type', toTitleCase(nicelyFormattedType)]);
-
-    if (item.locationTag) {
-      rows.push(['Location Tag', item.locationTag]);
-    }
-
-    const inventoryEntries: any[] = item.inventoryData?.inventory || [];
-    const isStorageComponent = ['storage_unit', 'sku_holder', 'vertical_sku_holder', 'storage_zone', 'container_unit', 'open_storage_space'].includes(item.type);
-    const maxCapacity = isStorageComponent ? (item.inventoryData?.capacity ?? item.capacity ?? null) : null;
-    const totalInventoryQuantity = inventoryEntries.reduce((sum: number, entry: any) => {
-      const value = entry?.availableQuantity ?? entry?.quantity ?? 0;
-      return sum + (typeof value === 'number' ? value : 0);
-    }, 0);
-    const availableCapacity = maxCapacity !== null ? Math.max(maxCapacity - totalInventoryQuantity, 0) : null;
-    const storedItems = inventoryEntries
-      .map((entry: any) => entry?.skuName || entry?.sku || entry?.skuCode)
-      .filter(Boolean);
-    const uniqueStoredItems = Array.from(new Set(storedItems));
-
-    if (isStorageComponent) {
-      rows.push([
-        'Available / Max Capacity',
-        maxCapacity !== null ? `${availableCapacity} / ${maxCapacity}` : '—'
-      ]);
-      rows.push([
-        'Current Inventory',
-        maxCapacity !== null ? totalInventoryQuantity : (inventoryEntries.length > 0 ? totalInventoryQuantity : '—')
-      ]);
-      rows.push([
-        'Items Stored',
-        uniqueStoredItems.length > 0
-          ? uniqueStoredItems.slice(0, 3).join(', ') + (uniqueStoredItems.length > 3 ? '…' : '')
-          : 'None'
-      ]);
-    }
-
-    return (
-      <div className="hover-card hover-card--item">
-        <div
-          className="hover-card__header"
-          style={{
-            background: `linear-gradient(135deg, ${headerGradientStart}, ${headerGradientEnd})`,
-            color: headerTextColor
-          }}
-        >
-          <div className="hover-card__title">{title}</div>
-          {subtitleParts.length > 0 && (
-            <div className="hover-card__meta">{subtitleParts.join(' • ')}</div>
-          )}
-        </div>
-
-        <div className="hover-card__body">
-          {rows.length > 0 && (
-            <div className="hover-card__section">
-              <div className="hover-card__section-label">Details</div>
-              <div className="hover-card__metric-grid">
-                {rows.map(([label, value], index) => renderDetailRow(label, value, `${label}-${index}`))}
-              </div>
-            </div>
-          )}
-
-          {inventoryEntries.length > 0 && (
-            <div className="hover-card__section">
-              <div className="hover-card__section-label">Current Inventory ({inventoryEntries.length} SKU{inventoryEntries.length > 1 ? 's' : ''})</div>
-              <ul className="hover-card__inventory-list">
-                {inventoryEntries.slice(0, 5).map((entry, idx) => (
-                  entry && (
-                    <li className="hover-card__inventory-item" key={`${entry.sku || entry.locationId}-${idx}`}>
-                      <div className="hover-card__inventory-name">{entry.sku || entry.locationId || `SKU-${idx + 1}`}</div>
-                      <div className="hover-card__inventory-qty">
-                        Qty: {entry.quantity ?? entry.qty ?? '—'}
-                        {entry.reserved ? ` (${entry.reserved} reserved)` : ''}
-                      </div>
-                    </li>
-                  )
-                ))}
-                {inventoryEntries.length > 5 && (
-                  <li className="hover-card__inventory-more">+{inventoryEntries.length - 5} more…</li>
-                )}
-              </ul>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }, [item, renderDetailRow]);
-
-const handleItemMouseEnter = useCallback((event: any) => {
-    // TEMPORARILY DISABLED: Hover tooltips disabled
-    return;
-
-    if (item.type === 'square_boundary') {
-      return;
-    }
-
-    if (hasCompartments) {
-      return;
-    }
-
-    const content = buildItemTooltipContent();
-    if (!content) {
-      return;
-    }
-
-    const variant = 'empty'; // Simplified - always use empty variant
-    showTooltip(event, content, variant, 'item');
-  }, [buildItemTooltipContent, hasCompartments, item.occupancyStatus, item.type, showTooltip, isReadOnly]);
-
-  const handleItemMouseMove = useCallback((event: any) => {
-    // Only show tooltips in read-only mode (viewer), not in edit mode (layout builder)
-    if (!isReadOnly) {
-      return;
-    }
-
-    if (item.type === 'square_boundary' || hasCompartments || !hoverTooltip || hoverTooltip.context !== 'item') {
-      return;
-    }
-    const content = buildItemTooltipContent();
-    if (!content) {
-      return;
-    }
-    showTooltip(event, content, hoverTooltip.variant, 'item');
-  }, [buildItemTooltipContent, hasCompartments, hoverTooltip, item.type, showTooltip, isReadOnly]);
+  const handleItemMouseMove = useCallback((event: React.MouseEvent) => {
+    if (!isReadOnly) return;
+    updateTooltipPosition(event);
+  }, [isReadOnly, updateTooltipPosition]);
 
   const handleItemMouseLeave = useCallback(() => {
-    // Only hide tooltips if we're in read-only mode
-    if (isReadOnly) {
-      hideTooltip();
-    }
-  }, [hideTooltip, isReadOnly]);
+    if (!isReadOnly) return;
+    hideTooltip(`item-${item.id}`);
+  }, [isReadOnly, item.id, hideTooltip]);
 
-const handleCompartmentHover = useCallback((event: any, compartmentData: any, rowIndex: number, colIndex: number) => {
-    // TEMPORARILY DISABLED: Compartment hover tooltips disabled
-    return;
-    const content = buildCompartmentTooltipContent(rowIndex, colIndex, compartmentData);
-    const variant = compartmentData ? 'occupied' : 'empty';
-    showTooltip(event, content, variant, 'compartment');
-  }, [buildCompartmentTooltipContent, showTooltip, isReadOnly]);
+  // Compartment tooltip handlers
+  const handleCompartmentMouseEnter = useCallback((event: React.MouseEvent, compartmentData: any, rowIndex: number, colIndex: number) => {
+    // Set hovered compartment for visual feedback
+    setHoveredCompartment(`${rowIndex}-${colIndex}`);
+    
+    // Only show tooltips in read-only mode
+    if (!isReadOnly) return;
+
+    const content = buildCompartmentTooltipContent({
+      item,
+      compartmentData,
+      rowIndex,
+      colIndex
+    });
+
+    showTooltip(
+      `compartment-${item.id}-${rowIndex}-${colIndex}`,
+      content,
+      event,
+      'compartment',
+      2 // higher priority for compartments
+    );
+  }, [isReadOnly, item, showTooltip, setHoveredCompartment]);
+
+  const handleCompartmentMouseMove = useCallback((event: React.MouseEvent) => {
+    if (!isReadOnly) return;
+    updateTooltipPosition(event);
+  }, [isReadOnly, updateTooltipPosition]);
+
+  const handleCompartmentMouseLeave = useCallback((rowIndex: number, colIndex: number) => {
+    // Clear hovered compartment
+    setHoveredCompartment(null);
+    
+    if (!isReadOnly) return;
+    hideTooltip(`compartment-${item.id}-${rowIndex}-${colIndex}`);
+  }, [isReadOnly, item.id, hideTooltip, setHoveredCompartment]);
 
   const renderCompartmentGrid = useCallback(() => {
     if (!hasCompartments) {
@@ -589,14 +324,12 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
           return (
             <g
               key={compartmentId}
-              onMouseEnter={(event: any) => {
-                setHoveredCompartment(compartmentId);
-                handleCompartmentHover(event, compartmentData, row, col);
+              onMouseEnter={(event: React.MouseEvent) => {
+                handleCompartmentMouseEnter(event, compartmentData, row, col);
               }}
-              onMouseMove={(event: any) => handleCompartmentHover(event, compartmentData, row, col)}
+              onMouseMove={handleCompartmentMouseMove}
               onMouseLeave={() => {
-                setHoveredCompartment(null);
-                hideTooltip();
+                handleCompartmentMouseLeave(row, col);
               }}
               onClick={(event: any) => {
                 event.stopPropagation();
@@ -674,7 +407,7 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
         })}
       </svg>
     );
-  }, [hasCompartments, item, highlightedCompartments, hoveredCompartment, handleCompartmentHover, hideTooltip, onUpdate, onRequestSkuId]);
+  }, [hasCompartments, item, highlightedCompartments, hoveredCompartment, handleCompartmentMouseEnter, handleCompartmentMouseMove, handleCompartmentMouseLeave, onUpdate, onRequestSkuId]);
 
   const [{ isDragging }, drag] = useDrag({
     type: DRAG_TYPES.WAREHOUSE_ITEM,
@@ -1388,7 +1121,6 @@ const handleCompartmentHover = useCallback((event: any, compartmentData: any, ro
 
       {/* SKU compartment grid rendering for SKU Holder components */}
       {renderCompartmentGrid()}
-      {hoverTooltip && <HoverInfoTooltip tooltip={hoverTooltip} />}
       
       {/* Resize handles for horizontal and vertical racks */}
       <ResizeHandle

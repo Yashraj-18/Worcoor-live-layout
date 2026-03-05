@@ -1700,13 +1700,13 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       id: uuidv4(),
       type: 'inner_boundary',
       name: `Zone ${innerBoundaryCount + 1}`,
+      label: `Zone ${innerBoundaryCount + 1}`,
       x: minX,
       y: minY,
       width: maxX - minX,
       height: maxY - minY,
-      boundedItemIds: [...selectedItemIds],
-      color: '#4A90E2',
-      padding,
+      boundedItemIds: selectedItemIds,
+      color: getComponentColor('inner_boundary'),
       containerLevel: 1,
     };
 
@@ -1986,7 +1986,11 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
           })}
           locationTags={locationTags}
           isLoadingLocationTags={isLoadingLocationTags}
-          allowMultipleIds={true}
+          allowMultipleIds={pendingSkuRequest ? (() => {
+            const item = warehouseItems.find(item => item.id === pendingSkuRequest.itemId);
+            // Disable multiple IDs for horizontal storage racks (sku_holder)
+            return item?.type !== 'sku_holder';
+          })() : false}
         />
 
         {/* Multi Location ID Selector Modal for Vertical Storage Racks */}

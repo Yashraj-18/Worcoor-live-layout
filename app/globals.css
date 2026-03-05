@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Warehouse Tooltip Styles */
+@import '../styles/warehouse-tooltip.css';
+
 /* Fix for radix dropdown content positioning */
 [data-radix-popper-content-wrapper] {
   transition: none !important;

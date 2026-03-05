@@ -5,6 +5,7 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import WarehouseItem from './WarehouseItem';
+import TooltipProvider from './TooltipProvider';
 
 const noop = () => {};
 const DEFAULT_PADDING = 0;
@@ -289,7 +290,8 @@ const SavedLayoutRenderer = ({
               height: '100%'
             }}
           >
-            {adjustedItems.map((item, index) => {
+            <TooltipProvider>
+              {adjustedItems.map((item, index) => {
               const itemKey = item.__layoutKey || getLayoutItemKey(item);
               const isFaded = hasActiveFilters && !filteredKeySet.has(itemKey);
               
@@ -405,6 +407,7 @@ const SavedLayoutRenderer = ({
                 </div>
               );
             })}
+            </TooltipProvider>
           </div>
         </div>
       </DndProvider>

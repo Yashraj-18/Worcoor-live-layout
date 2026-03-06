@@ -7,11 +7,12 @@ const env = loadEnv();
 
 // Use postgres.js with prepare: false for Supabase transaction pooler compatibility
 const client = postgres(env.DATABASE_URL, {
-  max: 10,
+  max: 5,
   prepare: false, // Required for Supabase transaction pooler
   ssl: 'require',
-  idle_timeout: 20,
-  connect_timeout: 10,
+  idle_timeout: 60,
+  connect_timeout: 30,
+  max_lifetime: 1800,
 });
 
 export const db = drizzle(client, {

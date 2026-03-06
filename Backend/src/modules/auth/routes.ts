@@ -52,6 +52,33 @@ export async function authRoutes(app: FastifyInstance) {
     },
   });
 
+  app.get(
+    '/me',
+    {
+      preHandler: [app.authenticate],
+      schema: {
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              user: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  email: { type: 'string' },
+                  role: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      return service.me(request, reply);
+    },
+  );
+
   app.post(
     '/logout',
     async (request: FastifyRequest, reply: FastifyReply) => {

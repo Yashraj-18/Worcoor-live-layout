@@ -31,13 +31,12 @@ export function handleConnection(socket: AuthenticatedSocket) {
     }
   });
 
-  socket.on('join:unit', async (data: any) => {
-    const { unitId } = data ?? {};
-    if (!unitId || typeof unitId !== 'string') return;
+  socket.on('join:unit', requireUnitAccess(async (socket, data) => {
+    const unitId = data?.unit_id ?? data?.unitId;
     socket.join(getUnitRoom(unitId));
     socket.currentUnit = unitId;
     console.log(`User ${socket.userId} joined unit room: ${unitId}`);
-  });
+  }));
 
   socket.on('leave:unit', (data: any) => {
     const { unitId } = data ?? {};

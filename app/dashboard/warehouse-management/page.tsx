@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/src/utils/AuthContext';
 import { Map, LayoutDashboard, Warehouse, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PageTitle } from '@/components/page-title';
 import WarehouseMapView from '@/components/warehouse/WarehouseMapView';
-import { warehouseService, componentToItem } from '@/src/services/warehouseService';
+import { warehouseService } from '@/src/services/warehouseService';
 import { orgUnitService, type OrgUnit } from '@/src/services/orgUnits';
 import { locationTagService, type LocationTag } from '@/src/services/locationTags';
 import { notification } from '@/src/services/notificationService';
@@ -20,6 +21,7 @@ import '@/styles/warehouse.css';
 
 export default function WarehouseManagementPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
   const [layouts, setLayouts] = useState<Layout[]>([]);
   const [locationTagsMap, setLocationTagsMap] = useState<Record<string, LocationTag[]>>({});
@@ -32,43 +34,30 @@ export default function WarehouseManagementPage() {
     setIsLoadingLayouts(true);
     setError(null);
     try {
+      console.log('🏢 Current user organization:', user?.organizationName, '(', user?.organizationId, ')');
       const units = await orgUnitService.list();
       setOrgUnits(units);
       
       const layoutResponses = await Promise.all(
         units.map(async (unit) => {
           try {
-            return await warehouseService.getLayouts(unit.id);
+            console.log(`Fetching layouts for unit: ${unit.unitName} (${unit.id})`);
+            const layouts = await warehouseService.getLayouts(unit.id);
+            console.log(`✅ Fetched ${layouts.length} layouts for unit ${unit.unitName}`);
+            return layouts;
           } catch (layoutsError) {
-            console.warn(`Failed to fetch layouts for unit ${unit.unitName}`, layoutsError);
+            console.error(`❌ Failed to fetch layouts for unit ${unit.unitName}:`, layoutsError);
             return [] as Layout[];
           }
         })
       );
       
       const allLayouts = layoutResponses.flat();
-
-      // Merge live components into each layout's layoutData.items so
-      // utilizationFor() reflects real-time state from the components table
-      const layoutsWithLiveItems = await Promise.all(
-        allLayouts.map(async (layout) => {
-          try {
-            const liveComponents = await warehouseService.getComponents(layout.id);
-            const liveItems = liveComponents.map(componentToItem);
-            return {
-              ...layout,
-              layoutData: {
-                ...((layout as any).layoutData || {}),
-                items: liveItems,
-              },
-            } as Layout;
-          } catch {
-            return layout;
-          }
-        })
-      );
-
-      setLayouts(layoutsWithLiveItems);
+      console.log(`📊 Total layouts fetched: ${allLayouts.length}`);
+      if (allLayouts.length > 0) {
+        console.log('First layout sample:', allLayouts[0]);
+      }
+      setLayouts(allLayouts);
 
       // Fetch location tags from Reference Data for each unit
       const tagsMap: Record<string, LocationTag[]> = {};

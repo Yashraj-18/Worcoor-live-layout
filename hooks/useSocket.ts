@@ -33,6 +33,12 @@ interface UseSocketOptions {
   unitId?: string | null; // joins the unit room when provided
 }
 
+// Track active unit room subscriptions (unitId → ref count).
+// Multiple callers with the same unitId share one join-unit/leave-unit lifecycle.
+const unitRefCounts = new Map<string, number>();
+// One stable joinRoom handler per unitId so socket.off() works correctly.
+const unitJoinHandlers = new Map<string, () => void>();
+
 export const useSocket = (options: UseSocketOptions = {}) => {
   const { unitId } = options;
   const socketRef = useRef<Socket | null>(null);
@@ -41,26 +47,39 @@ export const useSocket = (options: UseSocketOptions = {}) => {
     const socket = getSocket();
     socketRef.current = socket;
 
-    const joinRoom = () => {
-      if (unitId) {
+    if (!unitId) return;
+
+    const prev = unitRefCounts.get(unitId) ?? 0;
+    unitRefCounts.set(unitId, prev + 1);
+
+    if (prev === 0) {
+      // First caller for this unitId — register one join handler
+      const joinRoom = () => {
         socket.emit('join-unit', { unit_id: unitId });
         console.log('📡 Joined unit room:', unitId);
-      }
-    };
+      };
+      unitJoinHandlers.set(unitId, joinRoom);
 
-    // Join immediately if already connected
-    if (socket.connected) {
-      joinRoom();
+      if (socket.connected) {
+        joinRoom();
+      }
+      socket.on('connect', joinRoom);
     }
 
-    // Re-join on reconnect (socket drops and comes back)
-    socket.on('connect', joinRoom);
-
     return () => {
-      socket.off('connect', joinRoom);
-      if (unitId) {
+      const current = unitRefCounts.get(unitId) ?? 1;
+      if (current <= 1) {
+        // Last caller unmounting — deregister handler and leave room
+        unitRefCounts.delete(unitId);
+        const handler = unitJoinHandlers.get(unitId);
+        if (handler) {
+          socket.off('connect', handler);
+          unitJoinHandlers.delete(unitId);
+        }
         socket.emit('leave-unit', { unit_id: unitId });
         console.log('📡 Left unit room:', unitId);
+      } else {
+        unitRefCounts.set(unitId, current - 1);
       }
     };
   }, [unitId]);

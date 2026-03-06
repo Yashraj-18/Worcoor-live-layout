@@ -192,31 +192,50 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
 
   // Handle org unit selection
   const handleOrgUnitSelect = useCallback(async (selection: any) => {
-    const { orgUnit } = selection;
-    const newLayoutName = `${orgUnit.name} Layout`;
-
-    // In create mode (no active layout), check if this org unit already has a layout.
-    // Edit mode skips this check — the org unit is already locked to the existing layout.
-    if (!activeLayoutId) {
-      try {
-        const existingLayouts = await warehouseService.getLayouts(orgUnit.id);
-        if (existingLayouts && existingLayouts.length > 0) {
-          // A layout already exists for this org unit — block and show warning
-          setExistingLayoutForUnit({ id: existingLayouts[0].id, name: existingLayouts[0].layoutName || newLayoutName });
-          setExistingLayoutWarningVisible(true);
-          return; // Do NOT update selectedOrgUnit
-        }
-      } catch (err) {
-        console.warn('⚠️ Could not check existing layouts for org unit:', err);
-        // On error, allow the selection to proceed so as not to block the user
+    try {
+      console.log('🏢 handleOrgUnitSelect called with:', selection);
+      const { orgUnit } = selection;
+      
+      if (!orgUnit || !orgUnit.id || !orgUnit.name) {
+        console.error('❌ Invalid orgUnit in selection:', orgUnit);
+        showMessage.error('Invalid organizational unit selected');
+        return;
       }
-    }
+      
+      const newLayoutName = `${orgUnit.name} Layout`;
+      console.log(`📝 New layout name: ${newLayoutName}`);
 
-    setSelectedOrgUnit(orgUnit);
-    setSelectedOrgMap(null);
-    setLayoutName(newLayoutName);
-    setLayoutNameSet(true);
-    fetchLocationTagsForOrgUnit(orgUnit);
+      // In create mode (no active layout), check if this org unit already has a layout.
+      // Edit mode skips this check — the org unit is already locked to the existing layout.
+      if (!activeLayoutId) {
+        try {
+          console.log(`🔍 Checking for existing layouts for unit: ${orgUnit.id}`);
+          const existingLayouts = await warehouseService.getLayouts(orgUnit.id);
+          console.log(`✅ Found ${existingLayouts?.length || 0} existing layouts`);
+          
+          if (existingLayouts && existingLayouts.length > 0) {
+            // A layout already exists for this org unit — block and show warning
+            console.log('⚠️ Layout already exists, showing warning');
+            setExistingLayoutForUnit({ id: existingLayouts[0].id, name: existingLayouts[0].layoutName || newLayoutName });
+            setExistingLayoutWarningVisible(true);
+            return; // Do NOT update selectedOrgUnit
+          }
+        } catch (err) {
+          console.error('❌ Error checking existing layouts:', err);
+          // On error, allow the selection to proceed so as not to block the user
+        }
+      }
+
+      console.log('✅ Setting selected org unit:', orgUnit);
+      setSelectedOrgUnit(orgUnit);
+      setSelectedOrgMap(null);
+      setLayoutName(newLayoutName);
+      setLayoutNameSet(true);
+      fetchLocationTagsForOrgUnit(orgUnit);
+    } catch (error) {
+      console.error('❌ Fatal error in handleOrgUnitSelect:', error);
+      showMessage.error('Failed to select organizational unit. Please try again.');
+    }
   }, [activeLayoutId, fetchLocationTagsForOrgUnit]);
 
   // -----------------------------------------------------------------------
@@ -1753,8 +1772,6 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
           <MainDashboard onNavigateToBuilder={handleNavigateToBuilder} />
         ) : (
           <>
-            {/* Debug: Log what's being passed to TopNavbar */}
-            {console.log('WarehouseLayoutBuilder - Passing to TopNavbar - selectedOrgUnit:', selectedOrgUnit)}
             <TopNavbar
               layoutName={layoutName}
               selectedOrgUnit={selectedOrgUnit}
@@ -1784,11 +1801,42 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
             />
 
             <div className="main-content">
-              {/* Debug: Log warehouseItems state */}
-              {console.log('WarehouseCanvas - warehouseItems:', warehouseItems)}
-              {console.log('WarehouseCanvas - warehouseItems length:', warehouseItems.length)}
-              {console.log('WarehouseCanvas - warehouseItems sample:', warehouseItems[0])}
               <ComponentPanel />
+
+              {!selectedOrgUnit && (
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '320px',
+                  right: '320px',
+                  bottom: '40px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                  backdropFilter: 'blur(4px)',
+                  zIndex: 50,
+                  borderRadius: '8px',
+                  pointerEvents: 'none',
+                }}>
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '2rem',
+                    border: '1px solid rgba(59,130,246,0.4)',
+                    borderRadius: '12px',
+                    background: 'rgba(30,41,59,0.95)',
+                    maxWidth: '420px',
+                  }}>
+                    <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🏗️</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.5rem' }}>
+                      Select an Organizational Unit
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#94a3b8', lineHeight: 1.6 }}>
+                      Use the <strong style={{ color: '#60a5fa' }}>Org Unit</strong> dropdown in the top navigation bar to select a unit before placing components on the canvas.
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <WarehouseCanvas
                 items={warehouseItems}

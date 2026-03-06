@@ -19,6 +19,7 @@ type AuthRepositoryMocks = {
 function createRepositoryMock(): AuthRepositoryMocks {
   return {
     findUserByEmail: vi.fn(),
+    findUserById: vi.fn(),
     createOrganization: vi.fn(),
     createUser: vi.fn(),
     setResetToken: vi.fn(),

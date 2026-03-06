@@ -66,16 +66,16 @@ export function useWarehouseSocket(options: UseWarehouseSocketOptions) {
   // useSocket handles join-unit room via its own effect.
   const { on, emit } = useSocket({ unitId });
 
-  // Join/leave warehouse-specific rooms — only re-runs when unitId or layoutId changes
+  // Join/leave layout room only — unit room is already joined by useSocket({ unitId })
+  // via the legacy join-unit event. Emitting join:unit here would cause a double
+  // room-join and an extra DB query through requireUnitAccess on every mount.
   useEffect(() => {
-    if (unitId) emit('join:unit', { unitId });
     if (layoutId) emit('join:layout', { layoutId });
 
     return () => {
-      if (unitId) emit('leave:unit', { unitId });
       if (layoutId) emit('leave:layout', { layoutId });
     };
-  }, [unitId, layoutId, emit]);
+  }, [layoutId, emit]);
 
   // Register all event listeners once. Callbacks are always read from the ref
   // so they never need to be in the dependency array.

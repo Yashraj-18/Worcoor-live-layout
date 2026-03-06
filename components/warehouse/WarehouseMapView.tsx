@@ -195,8 +195,10 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     });
   }, [prefetchedLayouts, convertBackendLayout]);
 
-  // Full structural load: fetches all units → layouts → components.
+  // Full structural load: fetches all units → layouts.
   // Called once on mount and when a layoutSaved event fires (new/deleted layout).
+  // Components are NOT fetched here — they are loaded lazily per-layout by
+  // refreshActiveLayoutComponents when the user opens a specific layout.
   const loadAllLayouts = useCallback(async () => {
     try {
       const units = await orgUnitService.list();
@@ -206,29 +208,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         )
       );
       const allBackendLayouts = layoutArrays.flat();
-
-      // For each layout, fetch live components from the components table and
-      // merge them into layoutData.items so utilization reflects real-time state
-      // (layoutData JSONB is only updated on Save, components table is always live)
-      const converted = await Promise.all(
-        allBackendLayouts.map(async (bl: any) => {
-          try {
-            const liveComponents = await warehouseService.getComponents(bl.id);
-            const liveItems = liveComponents.map(componentToItem);
-            const merged = {
-              ...bl,
-              layoutData: {
-                ...(bl.layoutData || {}),
-                items: liveItems,
-              },
-            };
-            return convertBackendLayout(merged);
-          } catch {
-            return convertBackendLayout(bl);
-          }
-        })
-      );
-
+      const converted = allBackendLayouts.map(convertBackendLayout);
       setSavedLayouts(converted);
     } catch (error) {
       console.error('Failed to load layouts from backend:', error);
@@ -411,6 +391,13 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       // Don't show modal yet — wait until layout data is available
     }
   }, [layoutId]);
+
+  // When a layout is opened, fetch its live components immediately so the view
+  // always shows the current state from the components table (not stale JSONB).
+  useEffect(() => {
+    if (!selectedUnitForDemo) return;
+    void refreshActiveLayoutComponents(selectedUnitForDemo);
+  }, [selectedUnitForDemo, refreshActiveLayoutComponents]);
 
   // Show the modal once the target layout is actually available in savedLayouts
   useEffect(() => {

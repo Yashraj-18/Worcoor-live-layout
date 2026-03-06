@@ -101,14 +101,14 @@ export class SkusService {
       const liveMapRepository = new LiveMapRepository();
       const wsService = new LiveMapWebSocketService(liveMapRepository, request.server);
       
-      // Get unit's layouts to find the first layout ID
       const unitData = await liveMapRepository.getUnitWithLayouts(tag.unitId, organizationId);
       if (!unitData || !unitData.layouts.length) return;
-      
-      // Use the first layout ID (units typically have one primary layout)
-      const layoutId = unitData.layouts[0].id;
-      
-      await wsService.broadcastLocationTagStats(tag.unitId, organizationId, layoutId);
+
+      await Promise.all(
+        unitData.layouts.map((layout) =>
+          wsService.broadcastLocationTagStats(tag.unitId, organizationId, layout.id),
+        ),
+      );
     } catch (err) {
       // Non-critical: log but don't fail the request
       console.error('Failed to broadcast SKU stats:', err);

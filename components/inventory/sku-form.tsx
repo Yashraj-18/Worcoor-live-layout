@@ -246,7 +246,6 @@ export function SkuForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">Select Warehouse</SelectItem>
                     {warehouses.map((warehouse) => (
                       <SelectItem key={warehouse.value} value={warehouse.value}>
                         {warehouse.label}

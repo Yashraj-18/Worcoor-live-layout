@@ -71,6 +71,24 @@ export class AuthRepository {
     return result[0] ?? null;
   }
 
+  async findUserById(userId: string): Promise<AuthUser | null> {
+    const result = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        passwordHash: users.passwordHash,
+        role: users.role,
+        organizationId: organizations.id,
+        organizationName: organizations.name,
+      })
+      .from(users)
+      .innerJoin(organizations, eq(users.organizationId, organizations.id))
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    return result[0] ?? null;
+  }
+
   async clearResetTokenAndUpdatePassword(userId: string, newPasswordHash: string) {
     await db
       .update(users)

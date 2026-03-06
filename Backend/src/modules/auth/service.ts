@@ -33,7 +33,7 @@ export class AuthService {
       sameSite: 'none',
       secure: true,
       path: '/',
-      maxAge: 86400000, // 24 hours in milliseconds
+      maxAge: 86400, // 24 hours in seconds
     });
   }
 
@@ -133,6 +133,27 @@ export class AuthService {
     await this.repository.clearResetTokenAndUpdatePassword(user.id, newPasswordHash);
 
     return { message: 'Password reset successfully' };
+  }
+
+  async me(request: FastifyRequest, reply: FastifyReply) {
+    const { userId } = request.user;
+    const user = await this.repository.findUserById(userId);
+
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      organization: {
+        id: user.organizationId,
+        name: user.organizationName,
+      },
+    };
   }
 
   async logout(_request: FastifyRequest, reply: FastifyReply) {

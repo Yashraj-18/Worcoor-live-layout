@@ -88,55 +88,35 @@ const DraggableComponent: React.FC<DraggableComponentProps> = ({ component }) =>
   const ref = useRef<HTMLDivElement>(null);
 
   const [{ isDragging }, drag, preview] = useDrag({
-
     type: DRAG_TYPES.COMPONENT,
-
-    item: {
-
-      ...component,
-
-      // Ensure all required properties are included
-
-      type: component.type,
-
-      name: component.name,
-
-      icon: component.icon || '',
-
-      color: component.color,
-
-      defaultSize: component.defaultSize || { width: 50, height: 50 },
-
-      description: component.description,
-
-      drawingTool: component.drawingTool || false,
-
-      priority: component.priority || 'medium'
-
+    item: () => {
+      console.log('👋 Drag started for component:', component.name);
+      return {
+        ...component,
+        type: component.type,
+        name: component.name,
+        icon: component.icon || '',
+        color: component.color,
+        defaultSize: component.defaultSize || { width: 50, height: 50 },
+        description: component.description,
+        drawingTool: component.drawingTool || false,
+        priority: component.priority || 'medium'
+      };
     },
-
     collect: (monitor: any) => ({
-
       isDragging: monitor.isDragging(),
-
     }),
-
-    canDrag: () => true,
-
+    canDrag: () => {
+      console.log('✅ canDrag check for:', component.name);
+      return true;
+    },
     end: (item, monitor) => {
-
-      // Reset any visual states after drag ends
-
       if (!monitor.didDrop()) {
-
-        // Handle failed drop if needed
-
-        console.log('Drop failed for:', item.name);
-
+        console.log('❌ Drop failed for:', item.name);
+      } else {
+        console.log('✅ Drop succeeded for:', item.name);
       }
-
     }
-
   });
 
 

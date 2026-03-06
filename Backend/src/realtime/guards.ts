@@ -8,7 +8,7 @@ export function requireUnitAccess(
 ): (socket: AuthenticatedSocket, data: any) => Promise<void> {
   return async (socket: AuthenticatedSocket, data: any) => {
     try {
-      const { unit_id } = data;
+      const { unit_id } = data ?? {};
 
       if (!unit_id || typeof unit_id !== 'string') {
         socket.emit('error', { message: 'Invalid unit_id' });

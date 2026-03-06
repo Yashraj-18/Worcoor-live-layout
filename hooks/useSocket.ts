@@ -4,7 +4,7 @@ import { io, Socket } from 'socket.io-client';
 let globalSocket: Socket | null = null;
 
 const getSocket = (): Socket => {
-  if (!globalSocket || !globalSocket.connected) {
+  if (!globalSocket) {
     const apiUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
     globalSocket = io(apiUrl, {
       withCredentials: true,

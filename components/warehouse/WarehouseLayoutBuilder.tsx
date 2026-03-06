@@ -1661,7 +1661,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       maxY = Math.max(maxY, item.y + (item.height || 80));
     });
 
-    const padding = 60;
+    const padding = 30;
     const boundary = {
       id: uuidv4(),
       type: 'square_boundary',

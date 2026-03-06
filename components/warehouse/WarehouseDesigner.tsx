@@ -116,8 +116,8 @@ const WarehouseDesigner = ({ onBack, initialLayout = null }) => {
       maxY = Math.max(maxY, item.y + (item.height || 80));
     });
 
-    // Add padding around components (60px to align with grid)
-    const padding = 60;
+    // Add padding around components (30px to align with grid)
+    const padding = 30;
     const boundaryX = Math.max(0, minX - padding);
     const boundaryY = Math.max(0, minY - padding);
     const boundaryWidth = Math.ceil((maxX - minX + padding * 2) / 60) * 60; // Snap to 60px grid

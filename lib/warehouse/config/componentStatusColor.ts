@@ -83,9 +83,9 @@ export const STORAGE_COMPONENT_STATUS_COLORS: Record<string, string> = {
  * - unknown (Black): No location tags attached (default in layout editor)
  */
 export const CAPACITY_BORDER_COLORS: CapacityBorderColors = {
-  full: '#4CAF50',      // Green - Location tags attached + SKUs assigned
+  full: '#2E7D32',      // Dark Green - Location tags attached + SKUs assigned
   partial: '#FF9800',   // Orange - Partially used (not currently in use)
-  empty: '#F44336',     // Red - Location tags attached but no SKUs assigned
+  empty: '#C62828',     // Dark Red - Location tags attached but no SKUs assigned
   unknown: '#000000',   // Black - No location tags attached (default)
 };
 

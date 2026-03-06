@@ -619,7 +619,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
         )}
 
         {/* locationTagId present but not found in unit's tags */}
-        {!loading && !error && locationTagId && !locationTag && (
+        {!loading && !error && locationTagId && !locationTag && !isMultiLevel && !isMultiLocation && (
           <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
             <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
               <PackageOpen size={32} />
@@ -670,10 +670,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                           <div>
                             <div style={labelStyle}>Capacity</div>
                             <div style={valueStyle}>{levelData.locationTag.capacity} {levelData.locationTag.unitOfMeasurement || 'units'}</div>
-                          </div>
-                          <div>
-                            <div style={labelStyle}>Current Items</div>
-                            <div style={valueStyle}>{levelData.locationTag.currentItems || 0}</div>
                           </div>
                           {levelData.locationTag.length && (
                             <div style={{ gridColumn: '1 / -1' }}>
@@ -800,10 +796,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                             <div style={labelStyle}>Capacity</div>
                             <div style={valueStyle}>{locationData.locationTag.capacity} {locationData.locationTag.unitOfMeasurement || 'units'}</div>
                           </div>
-                          <div>
-                            <div style={labelStyle}>Current Items</div>
-                            <div style={valueStyle}>{locationData.locationTag.currentItems || 0}</div>
-                          </div>
                           {locationData.locationTag.length && (
                             <div style={{ gridColumn: '1 / -1' }}>
                               <div style={labelStyle}>Dimensions (L × B × H)</div>
@@ -899,14 +891,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                       <div>
                         <div style={labelStyle}>Capacity</div>
                         <div style={valueStyle}>{locationTag.capacity} {locationTag.unitOfMeasurement || 'units'}</div>
-                      </div>
-                      <div>
-                        <div style={labelStyle}>
-                          Current Items {isLive && <span style={{ color: '#22c55e' }}>●</span>}
-                        </div>
-                        <div style={{ ...valueStyle, color: isLive ? '#22c55e' : '#e2e8f0' }}>
-                          {displayCurrentItems}
-                        </div>
                       </div>
 
                       {locationTag.length && (

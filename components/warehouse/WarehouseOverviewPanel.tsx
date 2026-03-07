@@ -197,6 +197,18 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
     const uniqueLocationTags = new Set<string>();
     const allSkus = new Set<string>();
 
+    // Build lookup maps for backend location tags (by id and by name) so we only
+    // count tags that actually exist in the database.
+    const locationTagLookup = new Map<string, LocationTag>();
+    locationTags.forEach((tag) => {
+      if (tag.id) {
+        locationTagLookup.set(tag.id, tag);
+      }
+      if (tag.locationTagName) {
+        locationTagLookup.set(tag.locationTagName.trim(), tag);
+      }
+    });
+
     // ── Collect unique location tags and SKUs ──────────────────────────────────
     items.forEach((item: any) => {
       // Collect SKUs from item properties
@@ -231,38 +243,19 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
     // ── Per-location-tag volumetric capacity (L × B × H from database) ──
     // Each item with a locationTag gets mapped to its volumetric dimensions from the location tags table.
     const tagMap = new Map<string, {
-      locationTagName: string;
-      length: number | null;
-      breadth: number | null;
-      height: number | null;
-      unitOfMeasurement: string | null;
-      capacity: number;
+      tag: LocationTag;
       usedCapacity: number;
-      hasSku: boolean;
     }>();
 
-    const addToTag = (tag: string, tagData: LocationTag | undefined, used: number, hasSku: boolean) => {
-      if (!tag) return;
-      const existing = tagMap.get(tag);
+    const addToTag = (tagData: LocationTag | undefined, used: number) => {
+      if (!tagData) return;
+      const existing = tagMap.get(tagData.id);
       if (existing) {
         existing.usedCapacity += used;
-        if (hasSku) existing.hasSku = true; // Set to true if any compartment has SKU
       } else {
-        const length = tagData?.length ?? null;
-        const breadth = tagData?.breadth ?? null;
-        const height = tagData?.height ?? null;
-        const capacity = tagData?.capacity ?? 0;
-        const locationTagName = tagData?.locationTagName ?? tag;
-
-        tagMap.set(tag, {
-          locationTagName,
-          length,
-          breadth,
-          height,
-          unitOfMeasurement: tagData?.unitOfMeasurement ?? null,
-          capacity,
+        tagMap.set(tagData.id, {
+          tag: tagData,
           usedCapacity: used,
-          hasSku
         });
       }
     };
@@ -289,14 +282,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
           const compartmentTagName: string = (content.locationId || content.primaryLocationId || '').toString().trim();
 
           if (compartmentTagName) {
-            // Find the corresponding location tag data from the database
-            const tagData = locationTags.find(t =>
-              t.locationTagName === compartmentTagName ||
-              t.id === compartmentTagName
-            );
-
-            // Check if the location tag from database has SKUs (currentItems > 0 means SKUs are assigned)
-            const hasSku = tagData ? (tagData.currentItems > 0) : false;
+            const tagData = locationTagLookup.get(compartmentTagName);
 
             // Calculate quantity for this compartment
             let qty = 1;
@@ -308,7 +294,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
               qty = content.levelLocationMappings.length;
             }
 
-            addToTag(compartmentTagName, tagData, qty, hasSku);
+            addToTag(tagData, qty);
           }
         });
       } else {
@@ -318,29 +304,29 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
           (item.locationTag?.locationTagName || item.locationTag?.name || item.locationTagId || item.locationId || item.primaryLocationId || '').toString().trim();
 
         if (tagName) {
-          const tagData = locationTags.find(t =>
-            t.locationTagName === tagName ||
-            t.id === item.locationTagId
-          );
-
-          // Check if the location tag from database has SKUs (currentItems > 0 means SKUs are assigned)
-          const hasSku = tagData ? (tagData.currentItems > 0) : false;
-
-          addToTag(tagName, tagData, usedCapacity, hasSku);
+          const tagData = locationTagLookup.get(tagName);
+          addToTag(tagData, usedCapacity);
         }
       }
     });
 
-    const locationTagData = Array.from(tagMap.entries()).map(([locationId, data]) => {
+    const locationTagData = Array.from(tagMap.values()).map(({ tag, usedCapacity }) => {
+      const capacity = tag.capacity ?? 0;
+      const currentItems = tag.currentItems ?? 0;
+      const utilizationPercentage = typeof tag.utilizationPercentage === 'number'
+        ? Math.round(tag.utilizationPercentage)
+        : (capacity > 0 ? Math.round(Math.min(currentItems / capacity, 1) * 100) : 0);
+
       return {
-        locationId: data.locationTagName,
-        length: data.length,
-        breadth: data.breadth,
-        height: data.height,
-        unitOfMeasurement: data.unitOfMeasurement,
-        capacity: data.capacity,
-        usedCapacity: data.usedCapacity,
-        utilizationPercentage: data.hasSku ? 100 : 0,
+        locationId: tag.locationTagName ?? tag.id,
+        length: tag.length,
+        breadth: tag.breadth,
+        height: tag.height,
+        unitOfMeasurement: tag.unitOfMeasurement,
+        capacity,
+        usedCapacity,
+        utilizationPercentage,
+        currentItems,
       };
     });
 
@@ -414,8 +400,13 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
     };
   }, [layoutData]);
 
-  // Use calculated stats (API stats are shown separately with live indicator)
-  const displayStats = overviewData;
+  // Prefer real API stats for summary metrics when available, fall back to canvas-derived data
+  const displayStats = useMemo(() => ({
+    ...overviewData,
+    totalLocations: apiStats?.totalLocations ?? overviewData.totalLocations,
+    totalSkus: apiStats?.totalSkus ?? overviewData.totalSkus,
+    totalComponents: apiStats?.totalComponents ?? overviewData.totalComponents,
+  }), [overviewData, apiStats]);
 
   // Same styling as LocationDetailsPanel
   const panelStyle: React.CSSProperties = {
@@ -471,6 +462,10 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
     fontWeight: '600',
     marginBottom: '0.5rem'
   };
+
+  const placedTagCount = displayStats.locationTagData.length;
+  const placedTagInUseCount = displayStats.locationTagData.filter((t: any) => t.utilizationPercentage > 0).length;
+  const placedTagUtilPercent = placedTagCount > 0 ? Math.round((placedTagInUseCount / placedTagCount) * 100) : 0;
 
   return (
     <div style={panelStyle} className="animate-slide-up">
@@ -638,7 +633,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
                   stroke="#f59e0b"
                   strokeWidth="12"
                   strokeDasharray={`${2 * Math.PI * 50}`}
-                  strokeDashoffset={`${2 * Math.PI * 50 * (1 - (locationTags.length > 0 ? displayStats.locationTagData.filter((t: any) => t.utilizationPercentage > 0).length / locationTags.length : 0))}`}
+                  strokeDashoffset={`${2 * Math.PI * 50 * (1 - (placedTagCount > 0 ? placedTagInUseCount / placedTagCount : 0))}`}
                   style={{ transition: 'stroke-dashoffset 0.5s ease' }}
                 />
               </svg>
@@ -652,11 +647,11 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
                 fontWeight: 'bold',
                 color: '#f59e0b'
               }}>
-                {locationTags.length > 0 ? Math.round((displayStats.locationTagData.filter((t: any) => t.utilizationPercentage > 0).length / locationTags.length) * 100) : 0}%
+                {placedTagUtilPercent}%
               </div>
             </div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.5rem' }}>
-              {displayStats.locationTagData.filter((t: any) => t.utilizationPercentage > 0).length} of {locationTags.length} tags in use
+              {placedTagInUseCount} of {placedTagCount} placed tags in use
             </div>
           </div>
 

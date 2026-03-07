@@ -183,13 +183,37 @@ export default function WarehouseManagementPage() {
     return totalMax > 0 ? Math.round(Math.min(totalUsed, totalMax) / totalMax * 1000) / 10 : 0;
   };
 
-  // Org-wide tag utilization for the Avg Tag Utilization summary card
-  const allOrgTags = Object.values(locationTagsMap).flat();
-  const orgTagTotal = allOrgTags.length;
-  const orgTagInUse = allOrgTags.filter((tag) => tag.currentItems > 0).length;
-  const orgTagPct = orgTagTotal > 0 ? Math.round((orgTagInUse / orgTagTotal) * 1000) / 10 : 0;
+  // Per-layout tag utilization (only tags actually placed on maps)
+  const layoutTagStats = useMemo(() => {
+    return layouts.map((layout) => {
+      const unitTags = locationTagsMap[layout.unitId] ?? [];
+      const canvasItems: any[] = (layout as any).layoutData?.items ?? [];
+      const placedTagIds = new Set(
+        canvasItems
+          .map((item: any) => item.locationTagId)
+          .filter((tagId: unknown): tagId is string => typeof tagId === 'string' && tagId.length > 0),
+      );
+      const placedTags = unitTags.filter((tag) => placedTagIds.has(tag.id));
+      const total = placedTags.length;
+      const inUse = placedTags.filter((tag) => tag.currentItems > 0).length;
+      const pct = total > 0 ? Math.round((inUse / total) * 1000) / 10 : 0;
+      return { layoutId: layout.id, total, inUse, pct };
+    });
+  }, [layouts, locationTagsMap]);
 
-  const avgTagUtilization = orgTagTotal > 0 ? orgTagPct : null;
+  const layoutTagStatsMap = useMemo(() => {
+    const map: Record<string, { total: number; inUse: number; pct: number }> = {};
+    layoutTagStats.forEach((stat) => {
+      map[stat.layoutId] = stat;
+    });
+    return map;
+  }, [layoutTagStats]);
+
+  const totalPlacedTags = layoutTagStats.reduce((sum, stat) => sum + stat.total, 0);
+  const totalInUseTags = layoutTagStats.reduce((sum, stat) => sum + stat.inUse, 0);
+  const avgTagUtilization = totalPlacedTags > 0
+    ? Math.round((totalInUseTags / totalPlacedTags) * 1000) / 10
+    : null;
 
   const isEmptyState = !isLoadingLayouts && layouts.length === 0;
 

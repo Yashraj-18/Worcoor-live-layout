@@ -80,8 +80,8 @@ export const buildItemTooltipContent = (data: ItemTooltipData): React.ReactNode 
   // Add location information if available
   // Note: Location ID is now shown in the dedicated Location Tags section
   
-  // Enhanced location tag handling for multiple tags
-  if (item.locationTag) {
+  // Enhanced location tag handling for multiple tags (only for storage components)
+  if (isStorageComponent && item.locationTag) {
     if (Array.isArray(item.locationTag)) {
       // Multiple location tags
       rows.push(['Location Tags', item.locationTag.join(', ')]);
@@ -94,7 +94,7 @@ export const buildItemTooltipContent = (data: ItemTooltipData): React.ReactNode 
         rows.push(['Location Tag', item.locationTag]);
       }
     }
-  } else {
+  } else if (isStorageComponent) {
     // Check for other possible location tag properties
     const possibleTagProps = ['locationTags', 'tags', 'assignedLocations', 'locationIds'];
     for (const prop of possibleTagProps) {
@@ -118,12 +118,14 @@ export const buildItemTooltipContent = (data: ItemTooltipData): React.ReactNode 
     }
   }
 
-  // Enhanced inventory data with real data integration
+  // Enhanced inventory data with real data integration (only for storage components)
   let inventoryEntries: any[] = [];
   let maxCapacity = null;
   let totalInventoryQuantity = 0;
 
-  if (realLocationData) {
+  if (!isStorageComponent) {
+    // Non-storage components: skip all inventory/capacity logic
+  } else if (realLocationData) {
     // Use real location data
     maxCapacity = realLocationData.max_capacity || item.capacity || capacity;
     totalInventoryQuantity = realLocationData.available_quantity || 0;
@@ -140,7 +142,7 @@ export const buildItemTooltipContent = (data: ItemTooltipData): React.ReactNode 
       }];
     }
   } else {
-    // Fallback to item inventory data
+    // Fallback to item inventory data (storage components only)
     inventoryEntries = inventoryData?.inventory || [];
     maxCapacity = inventoryData?.capacity ?? capacity ?? item.capacity ?? null;
     totalInventoryQuantity = inventoryEntries.reduce((sum: number, entry: any) => {
@@ -206,8 +208,9 @@ export const buildItemTooltipContent = (data: ItemTooltipData): React.ReactNode 
     }
   }
 
-  // Extract all location tags for display in a dedicated section
+  // Extract all location tags for display in a dedicated section (storage components only)
   const allLocationTags = (() => {
+    if (!isStorageComponent) return [];
     const tags: string[] = [];
     
     // Debug: Log all possible tag sources
@@ -281,7 +284,7 @@ export const buildItemTooltipContent = (data: ItemTooltipData): React.ReactNode 
           </div>
         )}
 
-        {inventoryEntries.length > 0 && (
+        {isStorageComponent && inventoryEntries.length > 0 && (
           <div className="warehouse-tooltip__section">
             <div className="warehouse-tooltip__section-label">Inventory</div>
             <ul className="warehouse-tooltip__inventory-list">

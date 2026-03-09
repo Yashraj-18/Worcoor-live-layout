@@ -8,7 +8,7 @@
  * Current Implementation: All variants use 'transparent' with status-based borders
  * Status-based borders represent location tag and SKU assignment status:
  * - Green: Location tags attached to component AND SKUs assigned to those location tags
- * - Orange: Partially used (currently commented out/not in use)
+ * - Orange: Partially configured - some location tags have SKUs, others don't
  * - Red: Location tags attached to component BUT no SKUs assigned
  * - Black: No location tags attached (default in layout editor)
  * 
@@ -46,7 +46,7 @@ export interface StorageComponentBorderConfig {
 export interface CapacityBorderColors {
   /** Green - Location tags attached AND SKUs assigned */
   full: string;
-  /** Orange - Partially used (not currently in use) */
+  /** Orange - Partially configured - some location tags have SKUs, others don't */
   partial: string;
   /** Red - Location tags attached BUT no SKUs assigned */
   empty: string;
@@ -78,14 +78,14 @@ export const STORAGE_COMPONENT_STATUS_COLORS: Record<string, string> = {
  * Capacity-based border colors
  * Colors represent location tag and SKU assignment status:
  * - full (Green): Location tags attached AND SKUs assigned to those location tags
- * - partial (Orange): Currently not in use (commented out)
+ * - partial (Orange): Partially configured - some location tags have SKUs, others don't
  * - empty (Red): Location tags attached BUT no SKUs assigned
  * - unknown (Black): No location tags attached (default in layout editor)
  */
 export const CAPACITY_BORDER_COLORS: CapacityBorderColors = {
-  full: '#2E7D32',      // Dark Green - Location tags attached + SKUs assigned
-  partial: '#FF9800',   // Orange - Partially used (not currently in use)
-  empty: '#C62828',     // Dark Red - Location tags attached but no SKUs assigned
+  full: '#1B5E20',      // Darker Green - Higher contrast for full status
+  partial: '#E65100',   // Darker Orange - Higher contrast for partial status  
+  empty: '#B71C1C',     // Darker Red - Higher contrast for empty status
   unknown: '#000000',   // Black - No location tags attached (default)
 };
 
@@ -128,17 +128,17 @@ export const getStorageComponentBorder = (
   hasLocation: boolean, 
   capacityStatus?: CapacityStatus
 ): string => {
-  // If no location assigned, use gray border
+  // If no location assigned, use thin gray border
   if (!hasLocation) {
     return `1px solid ${CAPACITY_BORDER_COLORS.unknown}`;
   }
   
-  // If location assigned, use capacity-based color
+  // If location assigned, use thick capacity-based color for better visibility
   const color = capacityStatus 
     ? getCapacityBorderColor(capacityStatus)
     : STORAGE_COMPONENT_BORDER_CONFIG.color;
   
-  return `2px solid ${color}`;
+  return `4px solid ${color}`;  // 4px for better visibility
 };
 
 /**
@@ -179,6 +179,115 @@ export const determineCapacityStatus = (
   
   // Location tags attached BUT no SKUs assigned - needs SKU assignment
   return 'empty';
-  
-  // Note: 'partial' status is currently not in use (commented out)
+};
+
+/**
+ * Enhanced capacity status determination for multi-location components
+ * Evaluates all location tags to determine accurate status
+ * @param locationIds - Array of location IDs assigned to the component
+ * @param locationTagsMap - Backend location tags data with SKU counts
+ * @returns CapacityStatus based on comprehensive evaluation of all locations
+ */
+export const determineCapacityStatusForMultiLocation = (
+  locationIds: string[],
+  locationTagsMap: Record<string, any>
+): CapacityStatus => {
+  // No location IDs provided
+  if (!locationIds || locationIds.length === 0) {
+    return 'unknown';  // Black - no locations
+  }
+
+  // Get valid location tags from backend
+  const locationTags = locationIds
+    .map(id => locationTagsMap[id])
+    .filter(tag => tag !== undefined && tag !== null);
+
+  // No valid location tags found in backend
+  if (locationTags.length === 0) {
+    return 'unknown';  // Black - no valid location tags
+  }
+
+  // Count locations with SKUs assigned
+  const locationsWithSkus = locationTags.filter(tag => tag.currentItems > 0);
+  const totalLocations = locationTags.length;
+  const locationsWithSkusCount = locationsWithSkus.length;
+
+  // All locations have SKUs assigned - fully configured
+  if (locationsWithSkusCount === totalLocations) {
+    return 'full';     // Green - all have SKUs
+  } 
+  // No locations have SKUs assigned - completely empty
+  else if (locationsWithSkusCount === 0) {
+    return 'empty';    // Red - none have SKUs
+  } 
+  // Mixed scenario - some have SKUs, some don't
+  else {
+    return 'partial';  // Orange - partially configured
+  }
+};
+
+/**
+ * Extract all location IDs from a component (handles both single and multi-location)
+ * @param item - Component item data
+ * @param compartmentData - Optional compartment data for rack compartments
+ * @returns Array of all location IDs
+ */
+export const extractAllLocationIds = (
+  item: any, 
+  compartmentData?: any
+): string[] => {
+  const locationIds: string[] = [];
+
+  // For compartments (rack storage)
+  if (compartmentData) {
+    // Add single location IDs
+    if (compartmentData.locationId) {
+      locationIds.push(compartmentData.locationId);
+    }
+    if (compartmentData.primaryLocationId) {
+      locationIds.push(compartmentData.primaryLocationId);
+    }
+    if (compartmentData.uniqueId) {
+      locationIds.push(compartmentData.uniqueId);
+    }
+    
+    // Add array of location IDs (multi-location support)
+    if (Array.isArray(compartmentData.locationIds)) {
+      locationIds.push(...compartmentData.locationIds);
+    }
+    
+    // Add location IDs from level mappings (vertical racks)
+    if (Array.isArray(compartmentData.levelLocationMappings)) {
+      compartmentData.levelLocationMappings.forEach((mapping: any) => {
+        const locId = mapping?.locationId || mapping?.locId;
+        if (locId) {
+          locationIds.push(locId);
+        }
+      });
+    }
+  } 
+  // For storage units and other components
+  else {
+    // Add single location IDs
+    if (item.locationId) {
+      locationIds.push(item.locationId);
+    }
+    if (item.locationData?.primaryLocationId) {
+      locationIds.push(item.locationData.primaryLocationId);
+    }
+    if (item.inventoryData?.locationId) {
+      locationIds.push(item.inventoryData.locationId);
+    }
+    if (item.inventoryData?.uniqueId) {
+      locationIds.push(item.inventoryData.uniqueId);
+    }
+    
+    // Add array of location IDs (multi-location support)
+    if (Array.isArray(item.locationData?.locationIds)) {
+      locationIds.push(...item.locationData.locationIds);
+    }
+  }
+
+  // Remove duplicates and filter out empty strings
+  return [...new Set(locationIds.filter(id => id && id.trim() !== ''))];
 };

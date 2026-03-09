@@ -685,7 +685,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                           </div>
                           <div>
                             <div style={labelStyle}>Capacity</div>
-                            <div style={valueStyle}>{levelData.locationTag.capacity} {levelData.locationTag.unitOfMeasurement || 'units'}</div>
+                            <div style={valueStyle}>{levelData.locationTag.capacity} cubic {levelData.locationTag.unitOfMeasurement || 'meters'}</div>
                           </div>
                           {levelData.locationTag.length && (
                             <div style={{ gridColumn: '1 / -1' }}>
@@ -855,7 +855,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                           </div>
                           <div>
                             <div style={labelStyle}>Capacity</div>
-                            <div style={valueStyle}>{locationData.locationTag.capacity} {locationData.locationTag.unitOfMeasurement || 'units'}</div>
+                            <div style={valueStyle}>{locationData.locationTag.capacity} cubic {locationData.locationTag.unitOfMeasurement || 'meters'}</div>
                           </div>
                           {locationData.locationTag.length && (
                             <div style={{ gridColumn: '1 / -1' }}>
@@ -996,7 +996,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
                       <div>
                         <div style={labelStyle}>Capacity</div>
-                        <div style={valueStyle}>{locationTag.capacity} {locationTag.unitOfMeasurement || 'units'}</div>
+                        <div style={valueStyle}>{locationTag.capacity} cubic {locationTag.unitOfMeasurement || 'meters'}</div>
                       </div>
 
                       {locationTag.length && (

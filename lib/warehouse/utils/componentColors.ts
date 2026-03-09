@@ -98,5 +98,11 @@ export const COLOR_LEGEND: Record<string, Record<string, ColorLegendItem>> = {
     'Container Unit': { color: '#00BCD4', description: 'Container units' },
     'Zone Divider': { color: '#795548', description: 'Zone dividers' },
     'Area Boundary': { color: '#607D8B', description: 'Area boundaries' }
+  },
+  'Status Indicators': {
+    'Fully Configured': { color: '#1B5E20', description: 'All location tags have SKUs assigned (4px Dark Green border)' },
+    'Partially Configured': { color: '#E65100', description: 'Some location tags have SKUs assigned (4px Dark Orange border)' },
+    'Not Configured': { color: '#B71C1C', description: 'Location tags exist but no SKUs assigned (4px Dark Red border)' },
+    'No Location Tags': { color: '#000000', description: 'No location tags attached (1px Black border)' }
   }
 };

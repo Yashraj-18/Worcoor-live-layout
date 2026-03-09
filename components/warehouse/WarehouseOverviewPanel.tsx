@@ -615,7 +615,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#94a3b8' }}>Capacity:</span>
                       <span style={{ color: '#e2e8f0', fontWeight: '600' }}>
-                        {location.capacity} {location.unitOfMeasurement || 'units'}
+                        {location.capacity} cubic {location.unitOfMeasurement || 'meters'}
                       </span>
                     </div>
                   </div>

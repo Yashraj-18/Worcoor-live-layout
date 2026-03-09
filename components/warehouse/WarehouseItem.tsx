@@ -9,7 +9,7 @@ import { getComponentColor } from '@/lib/warehouse/utils/componentColors';
 import { renderShapeComponent } from '@/lib/warehouse/utils/shapeRenderer';
 import { getContextualLabel } from '@/lib/warehouse/utils/componentLabeling';
 import { inferVerticalRackLevelCount } from '@/lib/warehouse/utils/verticalRackUtils';
-import { getStorageComponentBorder, STORAGE_COMPONENT_BORDER_CONFIG, determineCapacityStatus } from '@/lib/warehouse/config/componentStatusColor';
+import { getStorageComponentBorder, STORAGE_COMPONENT_BORDER_CONFIG, determineCapacityStatus, determineCapacityStatusForMultiLocation, extractAllLocationIds } from '@/lib/warehouse/config/componentStatusColor';
 import { useWarehouseTooltip } from './WarehouseTooltip';
 import { useTooltip } from './TooltipProvider';
 import { buildItemTooltipContent, buildCompartmentTooltipContent } from './TooltipContentBuilders';
@@ -299,27 +299,26 @@ const WarehouseItem = ({
           const y = row * (cellHeight + gap);
 
           // Use status-based border colors for storage racks
-          // Determine capacity status based on location tags and SKU assignments
-          const hasLocationTags = Boolean(compartmentData?.locationId || compartmentData?.uniqueId || compartmentData?.primaryLocationId || (compartmentData?.locationIds && compartmentData.locationIds.length > 0));
+          // Enhanced: Determine capacity status based on ALL location tags using new multi-location logic
+          const allLocationIds = extractAllLocationIds(item, compartmentData);
+          const capacityStatus = allLocationIds.length > 1 
+            ? determineCapacityStatusForMultiLocation(allLocationIds, locationTagsMap)
+            : (() => {
+                // Fallback to single location logic for backward compatibility
+                const hasLocationTags = Boolean(compartmentData?.locationId || compartmentData?.uniqueId || compartmentData?.primaryLocationId || (compartmentData?.locationIds && compartmentData.locationIds.length > 0));
+                const compartmentLocationId = compartmentData?.locationId || compartmentData?.primaryLocationId;
+                const compartmentLocationTag = compartmentLocationId ? locationTagsMap[compartmentLocationId] : null;
+                const hasSkusAssigned = Boolean(compartmentLocationTag && compartmentLocationTag.currentItems > 0);
+                return determineCapacityStatus(hasLocationTags, hasSkusAssigned);
+              })();
 
-          // Check if SKUs are assigned to the location tag (from database)
-          // Look up the specific location tag for this compartment
-          const compartmentLocationId = compartmentData?.locationId || compartmentData?.primaryLocationId;
-          const compartmentLocationTag = compartmentLocationId ? locationTagsMap[compartmentLocationId] : null;
-
-          // ONLY check backend location tag data - currentItems field indicates SKUs assigned
-          const hasSkusAssigned = Boolean(
-            compartmentLocationTag && compartmentLocationTag.currentItems > 0
-          );
-
-          const capacityStatus = determineCapacityStatus(hasLocationTags, hasSkusAssigned);
           const borderStyle = isReadOnly
-            ? getStorageComponentBorder(hasLocationTags, capacityStatus)
+            ? getStorageComponentBorder(allLocationIds.length > 0, capacityStatus)
             : '1px solid #000000';
 
-          // Extract color and width from border string (e.g., "2px solid #000000")
+          // Extract color and width from border string (e.g., "4px solid #000000")
           const borderMatch = borderStyle.match(/(\d+)px\s+solid\s+(#[0-9A-Fa-f]{6})/);
-          const borderWidth = borderMatch ? parseInt(borderMatch[1]) : (hasLocationData ? 2 : 1);
+          const borderWidth = borderMatch ? parseInt(borderMatch[1]) : 4;  // Use 4px default to match our function
           const borderColor = borderMatch ? borderMatch[2] : '#000000';
 
           const label = resolveLabel(compartmentData);
@@ -621,24 +620,24 @@ const WarehouseItem = ({
     ? `${resolvedLocationId} +${locationIdCount - 1}`
     : resolvedLocationId;
 
-  // Calculate capacity status for storage units based on location tags and SKU assignments
-  const hasLocationTagsForUnit = Boolean(
-    item?.locationId ||
-    item?.locationData?.primaryLocationId ||
-    item?.inventoryData?.locationId ||
-    item?.inventoryData?.uniqueId ||
-    (item?.locationData?.locationIds && item.locationData.locationIds.length > 0)
-  );
-
-  // Look up the location tag from backend to check SKU assignment
-  const unitLocationId = item?.locationId || item?.locationData?.primaryLocationId || item?.inventoryData?.locationId || item?.inventoryData?.uniqueId;
-  const unitLocationTag = unitLocationId ? locationTagsMap[unitLocationId] : null;
-
-  // ONLY check backend location tag data - currentItems field indicates SKUs assigned
-  const hasSkusAssignedForUnit = Boolean(
-    unitLocationTag && unitLocationTag.currentItems > 0
-  );
-  const storageUnitCapacityStatus = determineCapacityStatus(hasLocationTagsForUnit, hasSkusAssignedForUnit);
+  // Calculate capacity status for storage units using enhanced multi-location logic
+  const allUnitLocationIds = extractAllLocationIds(item);
+  const storageUnitCapacityStatus = allUnitLocationIds.length > 1
+    ? determineCapacityStatusForMultiLocation(allUnitLocationIds, locationTagsMap)
+    : (() => {
+        // Fallback to single location logic for backward compatibility
+        const hasLocationTagsForUnit = Boolean(
+          item?.locationId ||
+          item?.locationData?.primaryLocationId ||
+          item?.inventoryData?.locationId ||
+          item?.inventoryData?.uniqueId ||
+          (item?.locationData?.locationIds && item.locationData.locationIds.length > 0)
+        );
+        const unitLocationId = item?.locationId || item?.locationData?.primaryLocationId || item?.inventoryData?.locationId || item?.inventoryData?.uniqueId;
+        const unitLocationTag = unitLocationId ? locationTagsMap[unitLocationId] : null;
+        const hasSkusAssignedForUnit = Boolean(unitLocationTag && unitLocationTag.currentItems > 0);
+        return determineCapacityStatus(hasLocationTagsForUnit, hasSkusAssignedForUnit);
+      })();
 
   // Simple fallback color
   const statusColor = '#ddd';
@@ -704,7 +703,7 @@ const WarehouseItem = ({
             alignItems: 'center',
             justifyContent: 'center',
             border: isReadOnly
-              ? getStorageComponentBorder(hasLocationTagsForUnit, storageUnitCapacityStatus)
+              ? getStorageComponentBorder(allUnitLocationIds.length > 0, storageUnitCapacityStatus)
               : '1px solid #000000',
             borderRadius: STORAGE_COMPONENT_BORDER_CONFIG.borderRadius,
             backgroundColor: 'transparent',

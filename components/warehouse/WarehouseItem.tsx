@@ -567,6 +567,9 @@ const WarehouseItem = ({
   const isSingleSkuStorageComponent = Boolean(isStorageUnitType && item?.hasSku && item?.singleSku);
   const isStorageComponentType = isStorageUnitType || isSingleSkuStorageComponent || isOpenStorageSpaceType || isStorageZoneType || isContainerUnitType;
 
+// Enhanced storage component detection for all storage-related types that should have status borders
+const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageComponent || isOpenStorageSpaceType || isStorageZoneType || isContainerUnitType;
+
   const isContained = item.containerId;
   const containerLevel = item.containerLevel || 0;
   const isMainBoundary = containerLevel === 1;
@@ -620,11 +623,36 @@ const WarehouseItem = ({
     ? `${resolvedLocationId} +${locationIdCount - 1}`
     : resolvedLocationId;
 
+  console.log('🔍 Component Type Debug:', {
+  itemId: item.id,
+  itemName: item.name,
+  originalType: item.type,
+  normalizedType: normalizedType,
+  isStorageUnitType,
+  isStorageZoneType,
+  isStorageComponentType,
+  isStorageRack,
+  locationData: item.locationData
+});
+
   // Calculate capacity status for storage units using enhanced multi-location logic
   const allUnitLocationIds = extractAllLocationIds(item);
+  console.log('🔍 Storage Unit Debug:', {
+    itemId: item.id,
+    itemName: item.name,
+    allUnitLocationIds,
+    locationData: item.locationData,
+    locationTagsMapKeys: Object.keys(locationTagsMap),
+    shouldUseMultiLocation: allUnitLocationIds.length > 1
+  });
+  
   const storageUnitCapacityStatus = allUnitLocationIds.length > 1
-    ? determineCapacityStatusForMultiLocation(allUnitLocationIds, locationTagsMap)
+    ? (() => {
+        console.log('🚀 Using MULTI-LOCATION logic for', allUnitLocationIds);
+        return determineCapacityStatusForMultiLocation(allUnitLocationIds, locationTagsMap);
+      })()
     : (() => {
+        console.log('🔄 Using SINGLE location logic');
         // Fallback to single location logic for backward compatibility
         const hasLocationTagsForUnit = Boolean(
           item?.locationId ||
@@ -636,8 +664,20 @@ const WarehouseItem = ({
         const unitLocationId = item?.locationId || item?.locationData?.primaryLocationId || item?.inventoryData?.locationId || item?.inventoryData?.uniqueId;
         const unitLocationTag = unitLocationId ? locationTagsMap[unitLocationId] : null;
         const hasSkusAssignedForUnit = Boolean(unitLocationTag && unitLocationTag.currentItems > 0);
+        console.log('🔍 Single Location Debug:', {
+          hasLocationTagsForUnit,
+          unitLocationId,
+          unitLocationTag,
+          hasSkusAssignedForUnit,
+          capacityStatus: determineCapacityStatus(hasLocationTagsForUnit, hasSkusAssignedForUnit)
+        });
         return determineCapacityStatus(hasLocationTagsForUnit, hasSkusAssignedForUnit);
       })();
+      
+  console.log('🔍 Final Storage Unit Status:', {
+    allUnitLocationIdsCount: allUnitLocationIds.length,
+    storageUnitCapacityStatus
+  });
 
   // Simple fallback color
   const statusColor = '#ddd';
@@ -667,7 +707,9 @@ const WarehouseItem = ({
               isSpareUnit ? 'none' :
                 isContainer ? 'none' :
                   'none')),
-        border: isIconOnly ? 'none' : (isStorageComponentType || isSpareUnit ? 'none' :
+        border: isIconOnly ? 'none' : ((shouldHaveStorageStatusBorder && !isStorageRack) ? 
+          (isReadOnly ? getStorageComponentBorder(allUnitLocationIds.length > 0, storageUnitCapacityStatus) : '1px solid #000000') :
+          isSpareUnit ? 'none' :
           isStorageRack ? 'none' :
             (normalizedType === 'square_boundary' ? '4px solid #000000' :
               (isMainBoundary ? '4px solid #263238' :

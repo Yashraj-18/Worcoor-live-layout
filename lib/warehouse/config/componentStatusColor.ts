@@ -192,36 +192,87 @@ export const determineCapacityStatusForMultiLocation = (
   locationIds: string[],
   locationTagsMap: Record<string, any>
 ): CapacityStatus => {
+  console.log('🔍 Multi-Location Status Debug:', {
+    inputLocationIds: locationIds,
+    locationTagsMapAvailable: Object.keys(locationTagsMap),
+    fullLocationTagsMap: locationTagsMap
+  });
+  
   // No location IDs provided
   if (!locationIds || locationIds.length === 0) {
+    console.log('❌ No location IDs provided');
     return 'unknown';  // Black - no locations
   }
 
   // Get valid location tags from backend
   const locationTags = locationIds
-    .map(id => locationTagsMap[id])
+    .map(id => {
+      const tag = locationTagsMap[id];
+      console.log(`🔍 Looking for location "${id}" in map:`, tag ? 'FOUND' : 'NOT FOUND');
+      if (tag) {
+        console.log(`📊 Location "${id}" data:`, {
+          id: tag.id,
+          name: tag.locationTagName,
+          currentItems: tag.currentItems,
+          capacity: tag.capacity
+        });
+      }
+      return tag;
+    })
     .filter(tag => tag !== undefined && tag !== null);
 
-  // No valid location tags found in backend
-  if (locationTags.length === 0) {
+  console.log('🔍 Processed location tags:', {
+    requestedIds: locationIds,
+    foundTags: locationTags.map(tag => ({
+      id: tag.id,
+      name: tag.locationTagName,
+      currentItems: tag.currentItems
+    }))
+  });
+
+  // Check if we have missing locations (requested but not found in map)
+  const missingLocationCount = locationIds.length - locationTags.length;
+  console.log(`🔍 Missing locations: ${missingLocationCount} out of ${locationIds.length}`);
+
+  // If no location tags found at all, return unknown
+  if (locationTags.length === 0 && missingLocationCount === 0) {
+    console.log('❌ No valid location tags found in backend');
     return 'unknown';  // Black - no valid location tags
   }
 
   // Count locations with SKUs assigned
   const locationsWithSkus = locationTags.filter(tag => tag.currentItems > 0);
-  const totalLocations = locationTags.length;
+  const totalLocations = locationIds.length; // Use requested count, not found count
   const locationsWithSkusCount = locationsWithSkus.length;
+
+  console.log('🔍 SKU Analysis:', {
+    totalLocations,
+    locationsWithSkusCount,
+    locationsWithoutSkusCount: totalLocations - locationsWithSkusCount,
+    missingLocationCount,
+    locationsWithSkus: locationsWithSkus.map(tag => ({
+      name: tag.locationTagName,
+      currentItems: tag.currentItems
+    })),
+    locationsWithoutSkus: locationTags.filter(tag => tag.currentItems <= 0).map(tag => ({
+      name: tag.locationTagName,
+      currentItems: tag.currentItems
+    }))
+  });
 
   // All locations have SKUs assigned - fully configured
   if (locationsWithSkusCount === totalLocations) {
+    console.log('✅ All locations have SKUs - returning FULL');
     return 'full';     // Green - all have SKUs
   } 
   // No locations have SKUs assigned - completely empty
   else if (locationsWithSkusCount === 0) {
+    console.log('❌ No locations have SKUs - returning EMPTY');
     return 'empty';    // Red - none have SKUs
   } 
-  // Mixed scenario - some have SKUs, some don't
+  // Mixed scenario - some have SKUs, some don't (including missing locations)
   else {
+    console.log('🟡 Mixed scenario - returning PARTIAL');
     return 'partial';  // Orange - partially configured
   }
 };

@@ -57,6 +57,11 @@ interface WarehouseItem {
   id?: string;
   sku?: string;
   skuId?: string;
+  // Compartment selection properties (added by SavedLayoutRenderer)
+  selectedCompartment?: CompartmentContent;
+  selectedCompartmentId?: string;
+  selectedCompartmentRow?: number;
+  selectedCompartmentCol?: number;
 }
 
 interface CompartmentContent {

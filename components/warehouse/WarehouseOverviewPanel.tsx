@@ -212,6 +212,10 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
     });
 
     // ── Collect unique location tags and SKUs ──────────────────────────────────
+    const addLocationTag = (id: any) => {
+      if (id && typeof id === 'string') uniqueLocationTags.add(id.trim());
+    };
+
     items.forEach((item: any) => {
       // Collect SKUs from item properties
       if (item.sku) allSkus.add(item.sku);
@@ -224,15 +228,39 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
         });
       }
 
+      // Item-level location tags
+      addLocationTag(item.locationId);
+      addLocationTag(item.primaryLocationId);
+      if (Array.isArray(item.locationIds)) {
+        item.locationIds.forEach(addLocationTag);
+      }
+
+      // Item-level levelLocationMappings (vertical racks)
+      if (Array.isArray(item.levelLocationMappings)) {
+        item.levelLocationMappings.forEach((m: any) => {
+          addLocationTag(m?.locationId || m?.locId);
+        });
+      }
+
       // Collect location tags and SKUs from compartment contents
       if (item.compartmentContents && typeof item.compartmentContents === 'object') {
         Object.values(item.compartmentContents).forEach((c: any) => {
           if (!c) return;
 
-          // Collect location tags from compartments
-          const compartmentLocationTag = c.locationId || c.primaryLocationId;
-          if (compartmentLocationTag) {
-            uniqueLocationTags.add(String(compartmentLocationTag).trim());
+          // Compartment-level location tags
+          addLocationTag(c.locationId);
+          addLocationTag(c.primaryLocationId);
+
+          // Multi-location compartments (locationIds array)
+          if (Array.isArray(c.locationIds)) {
+            c.locationIds.forEach(addLocationTag);
+          }
+
+          // Vertical rack level mappings (L1, L2, L3 each with own tag)
+          if (Array.isArray(c.levelLocationMappings)) {
+            c.levelLocationMappings.forEach((m: any) => {
+              addLocationTag(m?.locationId || m?.locId);
+            });
           }
 
           // Collect SKUs from compartments
@@ -286,35 +314,65 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
             content.primaryLocationId ||
             content.uniqueId ||
             (Array.isArray(content.locationIds) && content.locationIds.length > 0) ||
-            (Array.isArray(content.levelLocationMappings) && content.levelLocationMappings.length > 0);
+            (Array.isArray(content.levelLocationMappings) && content.levelLocationMappings.length > 0) ||
+            (Array.isArray(content.levelIds) && content.levelIds.length > 0);
 
           if (!hasContent) return;
 
-          // Extract location tag from compartment content, fallback to parent item's tag
-          const compartmentTagName: string = (content.locationId || content.primaryLocationId || '').toString().trim();
-          const activeTagName = compartmentTagName || itemTagName;
+          // Process each level mapping individually (vertical racks with L1, L2, L3)
+          if (Array.isArray(content.levelLocationMappings) && content.levelLocationMappings.length > 0) {
+            content.levelLocationMappings.forEach((mapping: any) => {
+              const locId = (mapping?.locationId || mapping?.locId || '').toString().trim();
+              if (locId) {
+                let tagData = locationTagLookup.get(locId);
+                if (!tagData) {
+                  tagData = { id: locId, locationTagName: locId, unitId: unitId || 'fallback' } as LocationTag;
+                  locationTagLookup.set(locId, tagData);
+                }
+                addToTag(tagData, 1);
+              }
+            });
+          } else if (Array.isArray(content.locationIds) && content.locationIds.length > 0) {
+            // Multi-location compartments (locationIds array)
+            content.locationIds.forEach((locId: string) => {
+              const trimmed = (locId || '').toString().trim();
+              if (trimmed) {
+                let tagData = locationTagLookup.get(trimmed);
+                if (!tagData) {
+                  tagData = { id: trimmed, locationTagName: trimmed, unitId: unitId || 'fallback' } as LocationTag;
+                  locationTagLookup.set(trimmed, tagData);
+                }
+                addToTag(tagData, 1);
+              }
+            });
+          } else {
+            // Single location tag per compartment
+            const compartmentTagName: string = (content.locationId || content.primaryLocationId || '').toString().trim();
+            const activeTagName = compartmentTagName || itemTagName;
 
-          if (activeTagName) {
-            let tagData = locationTagLookup.get(activeTagName);
-            if (!tagData) {
-              // Creating a lightweight placeholder if tag mapping hasn't loaded yet from DB
-              tagData = { id: activeTagName, locationTagName: activeTagName, unitId: unitId || 'fallback' } as LocationTag;
-              locationTagLookup.set(activeTagName, tagData);
+            if (activeTagName) {
+              let tagData = locationTagLookup.get(activeTagName);
+              if (!tagData) {
+                tagData = { id: activeTagName, locationTagName: activeTagName, unitId: unitId || 'fallback' } as LocationTag;
+                locationTagLookup.set(activeTagName, tagData);
+              }
+              addToTag(tagData, 1);
             }
-
-            // Calculate quantity for this compartment
-            let qty = 1;
-            if (typeof content.quantity === 'number' && content.quantity > 0) {
-              qty = content.quantity;
-            } else if (Array.isArray(content.locationIds) && content.locationIds.length > 0) {
-              qty = content.locationIds.length;
-            } else if (Array.isArray(content.levelLocationMappings) && content.levelLocationMappings.length > 0) {
-              qty = content.levelLocationMappings.length;
-            }
-
-            addToTag(tagData, qty);
           }
         });
+
+        // Also ensure the item-level tag makes it into tagMap if not already covered
+        // by compartments (e.g. a rack that has an item-level locationId alongside compartments)
+        if (itemTagName && !tagMap.has(itemTagName)) {
+          const existingByName = locationTagLookup.get(itemTagName);
+          if (existingByName && !tagMap.has(existingByName.id)) {
+            addToTag(existingByName, 0);
+          } else if (!existingByName) {
+            const tagData = { id: itemTagName, locationTagName: itemTagName, unitId: unitId || 'fallback' } as LocationTag;
+            locationTagLookup.set(itemTagName, tagData);
+            addToTag(tagData, 0);
+          }
+        }
       } else {
         // For non-compartmentalized items, process as before
         const { usedCapacity } = deriveItemCapacity(item);
@@ -389,7 +447,16 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
         const contents = item.compartmentContents || {};
         const occupiedKeys = Object.keys(contents).filter(k => {
           const c = contents[k];
-          return c && (c.sku || c.locationId || (Array.isArray(c.locationIds) && c.locationIds.length > 0));
+          return c && (
+            c.sku ||
+            c.primarySku ||
+            c.locationId ||
+            c.primaryLocationId ||
+            c.uniqueId ||
+            (Array.isArray(c.locationIds) && c.locationIds.length > 0) ||
+            (Array.isArray(c.levelLocationMappings) && c.levelLocationMappings.length > 0) ||
+            (Array.isArray(c.levelIds) && c.levelIds.length > 0)
+          );
         });
         fullShelves += occupiedKeys.length;
         emptyShelves += Math.max(0, compartments - occupiedKeys.length);
@@ -429,10 +496,13 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
     };
   }, [layoutData, locationTags]);
 
-  // Prefer real API stats for summary metrics when available, fall back to canvas-derived data
+  // Merge API stats with canvas-derived data.
+  // Location Tags Used comes from the canvas (which sees level mappings) — the backend
+  // stats endpoint only counts component-level locationTagId so it under-reports.
+  // Total SKUs and Total Components prefer backend numbers when available.
   const displayStats = useMemo(() => ({
     ...overviewData,
-    totalLocations: apiStats?.totalLocations ?? overviewData.totalLocations,
+    totalLocations: overviewData.totalLocations,
     totalSkus: apiStats?.totalSkus ?? overviewData.totalSkus,
     totalComponents: apiStats?.totalComponents ?? overviewData.totalComponents,
   }), [overviewData, apiStats]);
@@ -492,7 +562,10 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
     marginBottom: '0.5rem'
   };
 
-  const placedTagCount = displayStats.locationTagData.length;
+  // Use totalLocations (from uniqueLocationTags) as the total placed tag count so
+  // the donut matches Summary Metrics. locationTagData may have fewer entries when a
+  // tag is detected in the count but has no capacity data to map.
+  const placedTagCount = displayStats.totalLocations;
   const placedTagInUseCount = displayStats.locationTagData.filter((t: any) => t.utilizationPercentage > 0 || t.usedCapacity > 0).length;
   const placedTagUtilPercent = placedTagCount > 0 ? Math.round((placedTagInUseCount / placedTagCount) * 100) : 0;
 

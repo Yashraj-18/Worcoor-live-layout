@@ -183,129 +183,102 @@ export default function WarehouseManagementPage() {
     return totalMax > 0 ? Math.round(Math.min(totalUsed, totalMax) / totalMax * 1000) / 10 : 0;
   };
 
-  // Per-layout tag utilization (only tags actually placed on maps)
+  // Per-layout tag utilization using backend capacity-based utilization percentages.
+  // For each layout we collect every unique location tag placed on the canvas,
+  // look up its real utilizationPercentage from the backend LocationTag record,
+  // and compute the average across those tags for the layout.
   const layoutTagStats = useMemo(() => {
     return layouts.map((layout) => {
       const unitTags = locationTagsMap[layout.unitId] ?? [];
       const canvasItems: any[] = (layout as any).layoutData?.items ?? [];
 
-      const locationTagLookup = new globalThis.Map<string, string>();
+      // Build lookup: any string identifier → backend LocationTag object
+      const tagByKey = new globalThis.Map<string, LocationTag>();
       unitTags.forEach(tag => {
         if (tag.id) {
-          locationTagLookup.set(tag.id, tag.id);
-          if (tag.locationTagName) locationTagLookup.set(tag.locationTagName.trim(), tag.id);
-          if ((tag as any).name) locationTagLookup.set((tag as any).name.trim(), tag.id);
+          tagByKey.set(tag.id, tag);
+          if (tag.locationTagName) tagByKey.set(tag.locationTagName.trim(), tag);
+          if ((tag as any).name) tagByKey.set((tag as any).name.trim(), tag);
         }
       });
 
+      // Collect all unique placed tag IDs from the canvas
       const placedTagIds = new Set<string>();
-      const usedTagIds = new Set<string>();
 
-      const addTag = (id: any, isUsed: boolean) => {
+      const addTag = (id: any) => {
         if (!id || typeof id !== 'string') return;
         const cleanId = id.trim();
         if (!cleanId) return;
-        const canonicalId = locationTagLookup.get(cleanId) || cleanId;
-        placedTagIds.add(canonicalId);
-        if (isUsed) usedTagIds.add(canonicalId);
+        const backendTag = tagByKey.get(cleanId);
+        placedTagIds.add(backendTag?.id ?? cleanId);
       };
 
       canvasItems.forEach((item: any) => {
-        // Collect from component level
-        const itemTags = [
-          item.locationTag?.locationTagName,
-          item.locationTag?.name,
-          item.locationTagId,
-          item.locationId,
-          item.primaryLocationId,
-          item.locationCode
-        ].filter((id): id is string => typeof id === 'string' && id.trim().length > 0);
+        // Item-level tags
+        addTag(item.locationTag?.locationTagName);
+        addTag(item.locationTag?.name);
+        addTag(item.locationTagId);
+        addTag(item.locationId);
+        addTag(item.primaryLocationId);
+        addTag(item.locationCode);
 
-        // Let's determine if the item as a whole is "in use" based on map properties
-        let itemUsed = 0;
-        const RACKS = new Set(['sku_holder', 'vertical_sku_holder']);
-        if (RACKS.has(item.type)) {
-          if (item.compartmentContents && typeof item.compartmentContents === 'object') {
-            Object.values(item.compartmentContents).forEach((c: any) => {
-              if (!c) return;
-              let qty = 1;
-              if (typeof c.quantity === 'number' && c.quantity > 0) qty = c.quantity;
-              else if (Array.isArray(c.locationIds)) qty = Math.max(1, c.locationIds.length);
-              else if (Array.isArray(c.levelLocationMappings)) qty = Math.max(1, c.levelLocationMappings.length);
-              itemUsed += qty;
-            });
-          }
-        } else {
-          const hasId = (item.locationId || item.primaryLocationId || item.sku || '').toString().trim();
-          const hasInv = item.inventoryData && (
-            (Array.isArray(item.inventoryData.inventory) && item.inventoryData.inventory.length > 0) ||
-            (typeof item.inventoryData.utilization === 'number' && item.inventoryData.utilization > 0)
-          );
-          if (hasId || hasInv) itemUsed += 1;
-        }
-
-        if (itemUsed > 0) {
-          itemTags.forEach(t => addTag(t, true));
-        } else {
-          itemTags.forEach(t => addTag(t, false));
-        }
-
-        // Collect from arrays (multiple tags per component)
+        // Item-level arrays
         if (Array.isArray(item.locationIds)) {
-          item.locationIds.forEach((id: any) => {
-            addTag(id, itemUsed > 0);
-          });
+          item.locationIds.forEach((id: any) => addTag(id));
         }
 
-        // Collect from vertical storage mappings
+        // Item-level vertical rack mappings
         if (Array.isArray(item.levelLocationMappings)) {
-          item.levelLocationMappings.forEach((mapping: any) => {
-            const locId = mapping?.locationId || mapping?.locId;
-            addTag(locId, itemUsed > 0);
-          });
+          item.levelLocationMappings.forEach((m: any) => addTag(m?.locationId || m?.locId));
         }
 
-        // Collect from compartments (tags defined inside compartments)
+        // Compartment-level tags
         if (item.compartmentContents && typeof item.compartmentContents === 'object') {
           Object.values(item.compartmentContents).forEach((c: any) => {
             if (!c) return;
-            // Determine if THIS particular compartment is "in use"
-            const compHasContent = c.sku || c.primarySku || c.locationId || c.primaryLocationId || c.uniqueId ||
-              (Array.isArray(c.locationIds) && c.locationIds.length > 0) ||
-              (Array.isArray(c.levelLocationMappings) && c.levelLocationMappings.length > 0) ||
-              (typeof c.quantity === 'number' && c.quantity > 0);
-
-            const compIds = [c.locationId, c.primaryLocationId, c.uniqueId];
-
-            compIds.forEach(t => {
-              addTag(t, compHasContent);
-            });
+            addTag(c.locationId);
+            addTag(c.primaryLocationId);
+            addTag(c.uniqueId);
 
             if (Array.isArray(c.locationIds)) {
-              c.locationIds.forEach((id: any) => {
-                addTag(id, compHasContent);
-              });
+              c.locationIds.forEach((id: any) => addTag(id));
             }
 
             if (Array.isArray(c.levelLocationMappings)) {
-              c.levelLocationMappings.forEach((mapping: any) => {
-                const locId = mapping?.locationId || mapping?.locId;
-                addTag(locId, compHasContent);
-              });
+              c.levelLocationMappings.forEach((m: any) => addTag(m?.locationId || m?.locId));
             }
           });
         }
       });
 
+      // For each placed tag, get its backend utilization percentage
       const total = placedTagIds.size;
-      const inUse = usedTagIds.size;
+      let utilizationSum = 0;
+      let inUse = 0;
+      placedTagIds.forEach(tagId => {
+        const backendTag = tagByKey.get(tagId);
+        if (backendTag) {
+          const tagUtil = typeof backendTag.utilizationPercentage === 'number'
+            ? Math.min(backendTag.utilizationPercentage, 100)
+            : (backendTag.capacity > 0
+              ? Math.min((backendTag.currentItems / backendTag.capacity) * 100, 100)
+              : 0);
+          utilizationSum += tagUtil;
+          if (tagUtil > 0) inUse += 1;
+        } else {
+          // Tag placed on canvas but not found in backend — treat as 0% utilization
+          utilizationSum += 0;
+        }
+      });
+
+      const avgUtil = total > 0 ? Math.round((utilizationSum / total) * 10) / 10 : 0;
       const pct = total > 0 ? Math.round((inUse / total) * 100) : 0;
-      return { layoutId: layout.id, total, inUse, pct };
+      return { layoutId: layout.id, total, inUse, pct, avgUtil };
     });
   }, [layouts, locationTagsMap]);
 
   const layoutTagStatsMap = useMemo(() => {
-    const map: Record<string, { total: number; inUse: number; pct: number }> = {};
+    const map: Record<string, { total: number; inUse: number; pct: number; avgUtil: number }> = {};
     layoutTagStats.forEach((stat) => {
       map[stat.layoutId] = stat;
     });
@@ -314,8 +287,10 @@ export default function WarehouseManagementPage() {
 
   const totalPlacedTags = layoutTagStats.reduce((sum, stat) => sum + stat.total, 0);
   const totalInUseTags = layoutTagStats.reduce((sum, stat) => sum + stat.inUse, 0);
-  const avgTagUtilization = totalPlacedTags > 0
-    ? Math.round((totalInUseTags / totalPlacedTags) * 1000) / 10
+  // Avg Tag Utilization = arithmetic mean of per-layout average utilization percentages
+  const layoutsWithTags = layoutTagStats.filter(s => s.total > 0);
+  const avgTagUtilization = layoutsWithTags.length > 0
+    ? Math.round((layoutsWithTags.reduce((sum, s) => sum + s.avgUtil, 0) / layoutsWithTags.length) * 10) / 10
     : null;
 
   const isEmptyState = !isLoadingLayouts && layouts.length === 0;
@@ -427,7 +402,7 @@ export default function WarehouseManagementPage() {
                 : meta.size ?? '—';
             const itemsLabel = meta.totalItems ?? meta.items ?? meta.croppedItems ?? 0;
             const lastActivity = layout.updatedAt ?? layout.createdAt;
-            const tagStats = layoutTagStatsMap[layout.id] || { pct: 0, inUse: 0, total: 0 };
+            const tagStats = layoutTagStatsMap[layout.id] || { pct: 0, inUse: 0, total: 0, avgUtil: 0 };
             const slotCapacity = (() => {
               const items: any[] = (layout as any).layoutData?.items ?? [];
               const GRID = 60;

@@ -37,7 +37,7 @@ export default function WarehouseManagementPage() {
       console.log('🏢 Current user organization:', user?.organizationName, '(', user?.organizationId, ')');
       const units = await orgUnitService.list();
       setOrgUnits(units);
-      
+
       const layoutResponses = await Promise.all(
         units.map(async (unit) => {
           try {
@@ -51,7 +51,7 @@ export default function WarehouseManagementPage() {
           }
         })
       );
-      
+
       const allLayouts = layoutResponses.flat();
       console.log(`📊 Total layouts fetched: ${allLayouts.length}`);
       if (allLayouts.length > 0) {
@@ -90,10 +90,10 @@ export default function WarehouseManagementPage() {
     setError(null);
     setShowMapModal(false);
     setSelectedLayoutId(null);
-    
+
     // Show notification
     notification.success('Refreshing all layouts...');
-    
+
     // Fetch fresh data
     await fetchAllLayouts();
   };
@@ -132,7 +132,7 @@ export default function WarehouseManagementPage() {
     // Use local modal state instead of navigation
     setSelectedLayoutId(layoutId);
     setShowMapModal(true);
-    
+
     // Update URL to include the layout ID and name
     const layout = layouts.find((l) => l.id === layoutId);
     if (layout) {
@@ -188,15 +188,118 @@ export default function WarehouseManagementPage() {
     return layouts.map((layout) => {
       const unitTags = locationTagsMap[layout.unitId] ?? [];
       const canvasItems: any[] = (layout as any).layoutData?.items ?? [];
-      const placedTagIds = new Set(
-        canvasItems
-          .map((item: any) => item.locationTagId)
-          .filter((tagId: unknown): tagId is string => typeof tagId === 'string' && tagId.length > 0),
-      );
-      const placedTags = unitTags.filter((tag) => placedTagIds.has(tag.id));
-      const total = placedTags.length;
-      const inUse = placedTags.filter((tag) => tag.currentItems > 0).length;
-      const pct = total > 0 ? Math.round((inUse / total) * 1000) / 10 : 0;
+
+      const locationTagLookup = new globalThis.Map<string, string>();
+      unitTags.forEach(tag => {
+        if (tag.id) {
+          locationTagLookup.set(tag.id, tag.id);
+          if (tag.locationTagName) locationTagLookup.set(tag.locationTagName.trim(), tag.id);
+          if ((tag as any).name) locationTagLookup.set((tag as any).name.trim(), tag.id);
+        }
+      });
+
+      const placedTagIds = new Set<string>();
+      const usedTagIds = new Set<string>();
+
+      const addTag = (id: any, isUsed: boolean) => {
+        if (!id || typeof id !== 'string') return;
+        const cleanId = id.trim();
+        if (!cleanId) return;
+        const canonicalId = locationTagLookup.get(cleanId) || cleanId;
+        placedTagIds.add(canonicalId);
+        if (isUsed) usedTagIds.add(canonicalId);
+      };
+
+      canvasItems.forEach((item: any) => {
+        // Collect from component level
+        const itemTags = [
+          item.locationTag?.locationTagName,
+          item.locationTag?.name,
+          item.locationTagId,
+          item.locationId,
+          item.primaryLocationId,
+          item.locationCode
+        ].filter((id): id is string => typeof id === 'string' && id.trim().length > 0);
+
+        // Let's determine if the item as a whole is "in use" based on map properties
+        let itemUsed = 0;
+        const RACKS = new Set(['sku_holder', 'vertical_sku_holder']);
+        if (RACKS.has(item.type)) {
+          if (item.compartmentContents && typeof item.compartmentContents === 'object') {
+            Object.values(item.compartmentContents).forEach((c: any) => {
+              if (!c) return;
+              let qty = 1;
+              if (typeof c.quantity === 'number' && c.quantity > 0) qty = c.quantity;
+              else if (Array.isArray(c.locationIds)) qty = Math.max(1, c.locationIds.length);
+              else if (Array.isArray(c.levelLocationMappings)) qty = Math.max(1, c.levelLocationMappings.length);
+              itemUsed += qty;
+            });
+          }
+        } else {
+          const hasId = (item.locationId || item.primaryLocationId || item.sku || '').toString().trim();
+          const hasInv = item.inventoryData && (
+            (Array.isArray(item.inventoryData.inventory) && item.inventoryData.inventory.length > 0) ||
+            (typeof item.inventoryData.utilization === 'number' && item.inventoryData.utilization > 0)
+          );
+          if (hasId || hasInv) itemUsed += 1;
+        }
+
+        if (itemUsed > 0) {
+          itemTags.forEach(t => addTag(t, true));
+        } else {
+          itemTags.forEach(t => addTag(t, false));
+        }
+
+        // Collect from arrays (multiple tags per component)
+        if (Array.isArray(item.locationIds)) {
+          item.locationIds.forEach((id: any) => {
+            addTag(id, itemUsed > 0);
+          });
+        }
+
+        // Collect from vertical storage mappings
+        if (Array.isArray(item.levelLocationMappings)) {
+          item.levelLocationMappings.forEach((mapping: any) => {
+            const locId = mapping?.locationId || mapping?.locId;
+            addTag(locId, itemUsed > 0);
+          });
+        }
+
+        // Collect from compartments (tags defined inside compartments)
+        if (item.compartmentContents && typeof item.compartmentContents === 'object') {
+          Object.values(item.compartmentContents).forEach((c: any) => {
+            if (!c) return;
+            // Determine if THIS particular compartment is "in use"
+            const compHasContent = c.sku || c.primarySku || c.locationId || c.primaryLocationId || c.uniqueId ||
+              (Array.isArray(c.locationIds) && c.locationIds.length > 0) ||
+              (Array.isArray(c.levelLocationMappings) && c.levelLocationMappings.length > 0) ||
+              (typeof c.quantity === 'number' && c.quantity > 0);
+
+            const compIds = [c.locationId, c.primaryLocationId, c.uniqueId];
+
+            compIds.forEach(t => {
+              addTag(t, compHasContent);
+            });
+
+            if (Array.isArray(c.locationIds)) {
+              c.locationIds.forEach((id: any) => {
+                addTag(id, compHasContent);
+              });
+            }
+
+            if (Array.isArray(c.levelLocationMappings)) {
+              c.levelLocationMappings.forEach((mapping: any) => {
+                const locId = mapping?.locationId || mapping?.locId;
+                addTag(locId, compHasContent);
+              });
+            }
+          });
+        }
+      });
+
+      const total = placedTagIds.size;
+      const inUse = usedTagIds.size;
+      const pct = total > 0 ? Math.round((inUse / total) * 100) : 0;
       return { layoutId: layout.id, total, inUse, pct };
     });
   }, [layouts, locationTagsMap]);
@@ -317,21 +420,14 @@ export default function WarehouseManagementPage() {
             const orgUnit = orgUnits.find(u => u.id === layout.unitId);
             const unitLabel = typeof meta.orgUnit === 'string' ? meta.orgUnit : meta.orgUnit?.name ?? orgUnit?.unitName ?? 'Unit';
             const locationLabel = typeof meta.location === 'string' ? meta.location : meta.orgUnit?.location ?? '—';
-            const sizeLabel = orgUnit?.area 
-              ? orgUnit.area 
+            const sizeLabel = orgUnit?.area
+              ? orgUnit.area
               : meta.croppedDimensions
-                ? `${meta.croppedDimensions.width ?? '-'}×${meta.croppedDimensions.height ?? '-'}` 
+                ? `${meta.croppedDimensions.width ?? '-'}×${meta.croppedDimensions.height ?? '-'}`
                 : meta.size ?? '—';
             const itemsLabel = meta.totalItems ?? meta.items ?? meta.croppedItems ?? 0;
             const lastActivity = layout.updatedAt ?? layout.createdAt;
-            const unitTags = locationTagsMap[layout.unitId] ?? [];
-            const canvasItems: any[] = (layout as any).layoutData?.items ?? [];
-            const placedTagIds = new Set(canvasItems.map((i: any) => i.locationTagId).filter(Boolean));
-            const placedTags = unitTags.filter((t) => placedTagIds.has(t.id));
-            const unitTagInUse = placedTags.filter((t) => t.currentItems > 0).length;
-            const unitTagTotal = unitTags.length;
-            const unitTagPct = unitTagTotal > 0 ? Math.round((unitTagInUse / unitTagTotal) * 1000) / 10 : 0;
-            const tagStats = { pct: unitTagPct, inUse: unitTagInUse, total: unitTagTotal };
+            const tagStats = layoutTagStatsMap[layout.id] || { pct: 0, inUse: 0, total: 0 };
             const slotCapacity = (() => {
               const items: any[] = (layout as any).layoutData?.items ?? [];
               const GRID = 60;
@@ -383,12 +479,12 @@ export default function WarehouseManagementPage() {
                     {unitLabel} • {locationLabel} • {sizeLabel}
                   </CardDescription>
                 </CardHeader>
-                
+
                 <CardContent className="space-y-4">
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     Last updated: {new Date(lastActivity).toLocaleDateString()} • {itemsLabel} items
                   </p>
-                  
+
                   <div className="space-y-3">
                     <div>
                       <div className="flex items-center justify-between mb-2">
@@ -400,22 +496,22 @@ export default function WarehouseManagementPage() {
 
                   </div>
                 </CardContent>
-                
+
                 <CardFooter className="flex flex-col gap-2 pt-4 pb-6 px-6">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="w-full justify-center"
                     onClick={() => handleViewLive(layout.id)}
                   >
                     View Live <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="w-full justify-center"
                     onClick={() => {
-                     router.push(`/warehouse-management/edit/${layout.id}`) ;
+                      router.push(`/warehouse-management/edit/${layout.id}`);
                     }}
                   >
                     Edit Layout
@@ -438,14 +534,14 @@ export default function WarehouseManagementPage() {
       {/* Warehouse Map Modal */}
       {showMapModal && selectedLayoutId && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
-          <WarehouseMapView 
-            facilityData={{}} 
+          <WarehouseMapView
+            facilityData={{}}
             initialSelectedLayoutId={selectedLayoutId}
             prefetchedLayouts={layouts}
             onModalClose={() => {
               setShowMapModal(false);
               setSelectedLayoutId(null);
-              
+
               // Restore original URL when modal closes
               const originalUrl = window.location.pathname;
               window.history.pushState({}, '', originalUrl);

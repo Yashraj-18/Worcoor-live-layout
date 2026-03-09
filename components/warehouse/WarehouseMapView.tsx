@@ -33,7 +33,7 @@ interface WarehouseLayout {
   items: number;
   lastActivity: string;
   unitId?: string | null;
-  orgUnit?: { id?: string | null; name?: string | null; [key: string]: any } | null;
+  orgUnit?: { id?: string | null; name?: string | null;[key: string]: any } | null;
   layoutData: {
     items: WarehouseItem[];
   };
@@ -103,7 +103,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   const router = useRouter();
   const searchParams = useSearchParams();
   const layoutId = searchParams?.get('layoutId');
-  
+
   const [selectedZone, setSelectedZone] = useState<any>(null);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [selectedUnitForDemo, setSelectedUnitForDemo] = useState<string | null>(initialSelectedLayoutId || null);
@@ -209,7 +209,24 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       );
       const allBackendLayouts = layoutArrays.flat();
       const converted = allBackendLayouts.map(convertBackendLayout);
-      setSavedLayouts(converted);
+
+      setSavedLayouts(prev => {
+        return converted.map(newLayout => {
+          const existingLayout = prev.find(l => l.id === newLayout.id);
+          // Preserve live items if they were recently fetched via refreshActiveLayoutComponents
+          // instead of wiping them out with stale database JSONB metadata layout items.
+          if (existingLayout?.layoutData?.items?.length) {
+            return {
+              ...newLayout,
+              layoutData: {
+                ...newLayout.layoutData,
+                items: existingLayout.layoutData.items
+              }
+            };
+          }
+          return newLayout;
+        });
+      });
     } catch (error) {
       console.error('Failed to load layouts from backend:', error);
     }
@@ -303,36 +320,81 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     if (!unitId) return;
 
     try {
+      // Collect all location tags referenced in the layout items to filter dropdowns
+      const activeLocationIds = new Set<string>();
+      if (layout?.layoutData?.items) {
+        layout.layoutData.items.forEach((item: any) => {
+          if (item.locationId) activeLocationIds.add(item.locationId.trim());
+          if (item.primaryLocationId) activeLocationIds.add(item.primaryLocationId.trim());
+          if (item.locationCode) activeLocationIds.add(item.locationCode.trim());
+          if (typeof item.locationTag === 'string') activeLocationIds.add(item.locationTag.trim());
+          if (item.locationTag?.locationTagName) activeLocationIds.add(item.locationTag.locationTagName.trim());
+          if (item.locationTag?.name) activeLocationIds.add(item.locationTag.name.trim());
+          if (item.locationTagId) activeLocationIds.add(item.locationTagId.trim());
+          if (Array.isArray(item.locationIds)) {
+            item.locationIds.forEach((id: string) => id && activeLocationIds.add(id.trim()));
+          }
+          if (Array.isArray(item.levelLocationMappings)) {
+            item.levelLocationMappings.forEach((m: any) => {
+              if (m?.locationId) activeLocationIds.add(m.locationId.trim());
+              if (m?.locId) activeLocationIds.add(m.locId.trim());
+            });
+          }
+          if (item.compartmentContents) {
+            Object.values(item.compartmentContents).forEach((content: any) => {
+              if (content.locationId) activeLocationIds.add(content.locationId.trim());
+              if (content.uniqueId) activeLocationIds.add(content.uniqueId.trim());
+              if (Array.isArray(content.locationIds)) {
+                content.locationIds.forEach((id: string) => id && activeLocationIds.add(id.trim()));
+              }
+              if (Array.isArray(content.levelLocationMappings)) {
+                content.levelLocationMappings.forEach((m: any) => {
+                  if (m.locationId) activeLocationIds.add(m.locationId.trim());
+                  if (m.locId) activeLocationIds.add(m.locId.trim());
+                });
+              }
+            });
+          }
+        });
+      }
+      console.log('🧪 Active Location IDs in layout:', Array.from(activeLocationIds));
+
       const [tags, skuResponse, assetResponse] = await Promise.all([
         locationTagService.listByUnit(unitId).catch(() => []),
         skuService.list({ unitId, limit: 100 }).catch(() => ({ items: [] })),
         assetService.list({ unitId, limit: 100 }).catch(() => ({ items: [] })),
       ]);
-      console.log('🧪 skuResponse:', skuResponse, 'items count:', skuResponse?.items?.length);
-      console.log('🧪 SKU items:', JSON.stringify(skuResponse.items, null, 2));
 
-      // Location tags: deduplicated tag names from backend
+      // 1. Filter Location tags: only those present in the layout
+      const filteredTags = (tags || []).filter((t: any) => {
+        const name = (t.locationTagName || t.name || '').trim();
+        return name && activeLocationIds.has(name);
+      });
+
       const tagSet = new Set<string>();
-      (tags || []).forEach((t: any) => {
+      filteredTags.forEach((t: any) => {
         const name = (t.locationTagName || t.name || '').trim();
         if (name) tagSet.add(name);
       });
-      setAvailableLocationTags(Array.from(tagSet));
-      
-      // Store full location tag objects for compartment border color logic
-      setLocationTagsData(tags || []);
+      setAvailableLocationTags(Array.from(tagSet).sort());
+      setLocationTagsData(filteredTags);
 
-      // SKUs: deduplicated skuName from backend
+      // 2. Filter SKUs: only those whose location tag is in the layout
+      const filteredSkuItems = (skuResponse.items || []).filter((s: any) => {
+        const locTag = (s.locationTagName || '').trim();
+        return locTag && activeLocationIds.has(locTag);
+      });
+
       const skuSet = new Set<string>();
-      (skuResponse.items || []).forEach((s: any) => {
+      filteredSkuItems.forEach((s: any) => {
         const name = (s.skuName || s.skuId || '').trim();
         if (name) skuSet.add(name);
       });
-      console.log('🧪 Setting availableSkus to:', Array.from(skuSet));
-      setAvailableSkus(Array.from(skuSet));
+      setAvailableSkus(Array.from(skuSet).sort());
+
       const skuMap: Record<string, string[]> = {};
-      (skuResponse.items || []).forEach((s: any) => {
-        const skuName = (s.skuName || '').trim();
+      filteredSkuItems.forEach((s: any) => {
+        const skuName = (s.skuName || s.skuId || '').trim();
         const locTag = (s.locationTagName || '').trim();
         if (skuName && locTag) {
           if (!skuMap[skuName]) skuMap[skuName] = [];
@@ -342,20 +404,31 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         }
       });
       setSkuLocationMap(skuMap);
+
+      // 3. Filter Assets: only those whose location tag is in the layout
+      const filteredAssetItems = (assetResponse.items || []).filter((a: any) => {
+        const locTag = (a.locationTagName || '').trim();
+        return locTag && activeLocationIds.has(locTag);
+      });
+
       const backendAssetSet = new Set<string>();
       const assetTagMap: Record<string, string> = {};
-      (assetResponse.items || []).forEach((a: any) => {
+      filteredAssetItems.forEach((a: any) => {
         const name = (a.assetName || '').trim();
         if (name) {
           backendAssetSet.add(name);
-          // Map assetName → locationTagName
           if (a.locationTagName) {
             assetTagMap[name] = a.locationTagName.trim();
           }
         }
       });
       setAssetLocationTagMap(assetTagMap);
-      setAvailableAssets(prev => Array.from(new Set([...prev, ...Array.from(backendAssetSet)])));
+
+      // Merge with component types already in availableAssets (Storage Unit, etc.)
+      setAvailableAssets(prev => {
+        const componentTypes = prev.filter(a => ['Storage Unit', 'Horizontal Storage', 'Vertical Storage'].includes(a));
+        return Array.from(new Set([...componentTypes, ...Array.from(backendAssetSet)])).sort();
+      });
 
     } catch (error) {
       console.error('Failed to hydrate dropdowns from backend:', error);
@@ -378,7 +451,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     void loadAllLayouts();
     // Reset transition state when layoutId changes
     setIsTransitioning(false);
-    
+
     // Check if user came from main dashboard (has layoutId in URL)
     if (layoutId) {
       setCameFromDashboard(true);
@@ -430,11 +503,11 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   // Handle modal close with URL cleanup
   const handleCloseModal = useCallback(() => {
     setShowDemoMapModal(false);
-    
+
     // Restore original URL when modal closes
     const originalUrl = window.location.pathname;
     window.history.pushState({}, '', originalUrl);
-    
+
     if (onModalClose) {
       onModalClose();
     }
@@ -495,7 +568,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
           assets.add(readableName);
         }
       }
-  });
+    });
 
     setAvailableAssets(Array.from(assets));
 
@@ -524,7 +597,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
 
   // No default demo units - only show saved layouts
   const defaultUnits: WarehouseUnit[] = [];
-  
+
   // Helper function to get status colors
   function getStatusColor(status: string) {
     const colors = {
@@ -553,7 +626,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
 
   // Only use saved layouts - no mock/demo units
   const customLayoutUnits = savedLayoutUnits;
-  
+
   const warehouseUnits = [...defaultUnits, ...customLayoutUnits];
 
   // Create location tags map for compartment border color logic
@@ -613,7 +686,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       }
     },
     warehouse2: {
-      label: 'Warehouse 2', 
+      label: 'Warehouse 2',
       children: {
         'unit3': { label: 'Unit 3', subtitle: 'Building 1' },
         'unit4': { label: 'Unit 4', subtitle: 'Building 2' }
@@ -640,13 +713,13 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     if (selectedFilter === 'all') {
       return warehouseUnits;
     }
-    
+
     // Check if it's a warehouse filter
     if (hierarchicalFilters[selectedFilter] && hierarchicalFilters[selectedFilter].children) {
       const childIds = Object.keys(hierarchicalFilters[selectedFilter].children);
       return warehouseUnits.filter(unit => childIds.includes(unit.id));
     }
-    
+
     // Check if it's a specific unit filter
     return warehouseUnits.filter(unit => unit.id === selectedFilter);
   };
@@ -684,7 +757,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   const handleActionClick = (actionId: string, unitId?: string) => {
     console.log('Action clicked:', actionId);
     // Add your action handling logic here
-    switch(actionId) {
+    switch (actionId) {
       case 'all-units':
         // Navigate to all units view
         break;
@@ -699,7 +772,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         if (unitId) {
           setSelectedUnitForDemo(unitId);
           setShowDemoMapModal(true);
-          
+
           // Update URL to include the layout ID
           const unit = warehouseUnits.find(u => u.id === unitId);
           if (unit) {
@@ -733,8 +806,8 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
 
   const handleUnitAction = (unitId: string, action: string) => {
     console.log('Unit action:', unitId, action);
-    
-    switch(action) {
+
+    switch (action) {
       case 'view-live':
         // Show demo map modal for specific unit
         setSelectedUnitForDemo(unitId);
@@ -776,7 +849,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     if (unit.isCustomLayout && unit.layoutData && unit.layoutData.items) {
       unit.layoutData.items.forEach((item: WarehouseItem, index: number) => {
         const itemId = `item-${index}`;
-        
+
         // Generate operational data for search
         const generateSearchData = (item: WarehouseItem, index: number) => {
           if (item.type?.includes('storage') || item.type?.includes('sku')) {
@@ -795,12 +868,12 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         };
 
         const searchData = generateSearchData(item, index);
-        
+
         if (type === 'location' && searchData) {
           // Search by location ID
           const locationId = `${searchData.location.zone}-${searchData.location.aisle}-${searchData.location.position}`;
-          if (searchData.unitId.toLowerCase().includes(searchTerm) || 
-              locationId.toLowerCase().includes(searchTerm)) {
+          if (searchData.unitId.toLowerCase().includes(searchTerm) ||
+            locationId.toLowerCase().includes(searchTerm)) {
             results.push({
               id: itemId,
               type: 'location',
@@ -814,8 +887,8 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
           // Search by item/SKU in compartments
           Object.values(searchData.items).forEach(itemData => {
             if (itemData.locationId?.toLowerCase().includes(searchTerm) ||
-                itemData.sku?.toLowerCase().includes(searchTerm) ||
-                itemData.uniqueId?.toLowerCase().includes(searchTerm)) {
+              itemData.sku?.toLowerCase().includes(searchTerm) ||
+              itemData.uniqueId?.toLowerCase().includes(searchTerm)) {
               results.push({
                 id: `${itemId}-${itemData.uniqueId || itemData.sku || 'compartment'}`,
                 type: 'item',
@@ -824,7 +897,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                 item,
                 itemData
               });
-              }
+            }
           });
         }
       });
@@ -836,7 +909,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       demoData.zones.forEach((zone: any, index: number) => {
         if (type === 'location') {
           if (zone.id.toLowerCase().includes(searchTerm) ||
-              zone.name?.toLowerCase().includes(searchTerm)) {
+            zone.name?.toLowerCase().includes(searchTerm)) {
             results.push({
               id: `zone-${index}`,
               type: 'location',
@@ -848,10 +921,10 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         } else if (type === 'item') {
           // Search for items in zones (simulated)
           if (zone.items && zone.items > 0) {
-            const simulatedItems = Array.from({length: Math.min(zone.items, 5)}, (_, i) => 
+            const simulatedItems = Array.from({ length: Math.min(zone.items, 5) }, (_, i) =>
               `ITEM-${zone.id}-${String(i + 1).padStart(3, '0')}`
             );
-            
+
             simulatedItems.forEach(itemId => {
               if (itemId.toLowerCase().includes(searchTerm)) {
                 results.push({
@@ -862,7 +935,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                   zone: zone,
                   itemId: itemId
                 });
-                  }
+              }
             });
           }
         }
@@ -903,19 +976,19 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     if (selectedFilter === 'all') {
       return `All Units (${warehouseUnits.length})`;
     }
-    
+
     // Check if it's a warehouse filter
     if (hierarchicalFilters[selectedFilter] && hierarchicalFilters[selectedFilter].children) {
       const childCount = Object.keys(hierarchicalFilters[selectedFilter].children).length;
       return `${hierarchicalFilters[selectedFilter].label} (${childCount})`;
     }
-    
+
     // Check if it's a specific unit
     const unit = warehouseUnits.find(u => u.id === selectedFilter);
     if (unit) {
       return unit.name;
     }
-    
+
     return 'Filter';
   };
 
@@ -937,7 +1010,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       if (unit.isCustomLayout && unit.layoutData && unit.layoutData.items) {
         unit.layoutData.items.forEach((item: WarehouseItem, index: number) => {
           const itemId = `${unit.id}-item-${index}`;
-          
+
           // Generate search data for custom layout items
           const generateItemSearchData = (item: WarehouseItem, index: number) => {
             const baseData: any = {
@@ -976,9 +1049,9 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
           if (searchType === 'all' || searchType === 'locations') {
             // Search locations
             const locationId = `${searchData.location.zone}-${searchData.location.aisle}-${searchData.location.position}`;
-            if (searchData.unitId.toLowerCase().includes(searchTerm) || 
-                locationId.toLowerCase().includes(searchTerm) ||
-                item.name?.toLowerCase().includes(searchTerm)) {
+            if (searchData.unitId.toLowerCase().includes(searchTerm) ||
+              locationId.toLowerCase().includes(searchTerm) ||
+              item.name?.toLowerCase().includes(searchTerm)) {
               unitResults.push({
                 id: itemId,
                 type: 'location',
@@ -995,7 +1068,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
             if (searchData.skus) {
               searchData.skus.forEach((skuData: any) => {
                 if (skuData.id?.toLowerCase().includes(searchTerm) ||
-                    skuData.sku?.toLowerCase().includes(searchTerm)) {
+                  skuData.sku?.toLowerCase().includes(searchTerm)) {
                   unitResults.push({
                     id: `${itemId}-${skuData.id}`,
                     type: 'item',
@@ -1015,7 +1088,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
             // Search zones/areas
             if (item.type?.includes('zone') || item.type?.includes('storage') || item.type?.includes('boundary')) {
               if (item.name?.toLowerCase().includes(searchTerm) ||
-                  item.type?.toLowerCase().includes(searchTerm)) {
+                item.type?.toLowerCase().includes(searchTerm)) {
                 unitResults.push({
                   id: itemId,
                   type: 'zone',
@@ -1039,8 +1112,8 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
           if (searchType === 'all' || searchType === 'zones') {
             // Search zones
             if (zone.id.toLowerCase().includes(searchTerm) ||
-                zone.name?.toLowerCase().includes(searchTerm) ||
-                zone.type?.toLowerCase().includes(searchTerm)) {
+              zone.name?.toLowerCase().includes(searchTerm) ||
+              zone.type?.toLowerCase().includes(searchTerm)) {
               unitResults.push({
                 id: zoneId,
                 type: 'zone',
@@ -1055,10 +1128,10 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
           if (searchType === 'all' || searchType === 'items') {
             // Search simulated items in zones
             if (zone.items && zone.items > 0) {
-              const simulatedItems = Array.from({length: Math.min(zone.items, 3)}, (_, i) => 
+              const simulatedItems = Array.from({ length: Math.min(zone.items, 3) }, (_, i) =>
                 `ITEM-${zone.id}-${String(i + 1).padStart(3, '0')}`
               );
-              
+
               simulatedItems.forEach(itemId => {
                 if (itemId.toLowerCase().includes(searchTerm)) {
                   unitResults.push({
@@ -1108,7 +1181,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     setSelectedUnitForDemo(result.unit.id);
     setShowDemoMapModal(true);
     setShowGlobalSearchDropdown(false);
-    
+
     // You could add highlighting logic here
     console.log('Navigate to:', result);
   };
@@ -1192,7 +1265,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         // Check item-level levelLocationMappings (vertical racks)
         let itemLevelMappingsMatch = false;
         if (Array.isArray(item.levelLocationMappings)) {
-          itemLevelMappingsMatch = item.levelLocationMappings.some((mapping: { locationId?: string; locId?: string }) => 
+          itemLevelMappingsMatch = item.levelLocationMappings.some((mapping: { locationId?: string; locId?: string }) =>
             (mapping?.locationId === selectedLocationTag || mapping?.locId === selectedLocationTag)
           );
         }
@@ -1227,7 +1300,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       if (selectedSku) {
         // Get location IDs that have this SKU name
         const locationIdsForSku = skuNameToLocationIds[selectedSku] || [];
-        
+
         let itemLevelSkuMatch = false;
         itemLevelSkuMatch = [item.sku, item.skuId, item.locationId]
           .some((value) => typeof value === 'string' && (value.trim() === selectedSku || locationIdsForSku.includes(value.trim())));
@@ -1302,7 +1375,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
               levelMappingsMatch = item.levelLocationMappings.some(m =>
                 m?.locationId === locationTagForAsset || m?.locId === locationTagForAsset
               );
-           }
+            }
 
             let compartmentMatch = false;
             if (item.compartmentContents) {
@@ -1314,9 +1387,9 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
             }
 
             matchesFilters = matchesFilters && (itemLevelMatch || locationIdsMatch || levelMappingsMatch || compartmentMatch);
-         }
-       }
-     }
+          }
+        }
+      }
 
       if (!matchesFilters) {
         return;
@@ -1374,14 +1447,14 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
           <div className="layout-builder-container">
             <div className="layout-builder-header">
               <h2>Layout Builder - {warehouseUnits.find(u => u.id === selectedUnit)?.name || 'Unit'}</h2>
-              <button 
+              <button
                 className="btn secondary"
                 onClick={() => setCurrentSection('dashboard')}
               >
                 ← Back to Dashboard
               </button>
             </div>
-            <WarehouseLayoutBuilder 
+            <WarehouseLayoutBuilder
               initialOrgUnit={(() => {
                 const unit = warehouseUnits.find(u => u.id === selectedUnit);
                 return unit ? {
@@ -1399,72 +1472,72 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         ) : isExternallyControlled ? null : (
           <div>
             {/* Header section removed */}
-          
-          {/* Unit cards display removed */}
-        </div>
+
+            {/* Unit cards display removed */}
+          </div>
         )}
 
-      {/* Create New Unit Modal */}
-      {showTemplateModal && (
-        <div className="modal-overlay" onClick={() => setShowTemplateModal(false)}>
-          <div className="modal-content template-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Choose Template</h3>
-              <button className="close-btn" onClick={() => setShowTemplateModal(false)}>×</button>
-            </div>
-            <div className="modal-body">
-              <div className="template-grid">
-                <div className="template-card" onClick={() => {
-                  console.log('Using standard warehouse template');
-                  setShowTemplateModal(false);
-                }}>
-                  <div className="template-icon">🏭</div>
-                  <h4>Standard Warehouse</h4>
-                  <p>Basic layout with storage, receiving, and dispatch zones</p>
-                </div>
-                <div className="template-card" onClick={() => {
-                  console.log('Using cold storage template');
-                  setShowTemplateModal(false);
-                }}>
-                  <div className="template-icon">❄️</div>
-                  <h4>Cold Storage</h4>
-                  <p>Temperature-controlled storage with specialized zones</p>
-                </div>
-                <div className="template-card" onClick={() => {
-                  console.log('Using distribution center template');
-                  setShowTemplateModal(false);
-                }}>
-                  <div className="template-icon">📦</div>
-                  <h4>Distribution Center</h4>
-                  <p>High-throughput layout optimized for fast processing</p>
+        {/* Create New Unit Modal */}
+        {showTemplateModal && (
+          <div className="modal-overlay" onClick={() => setShowTemplateModal(false)}>
+            <div className="modal-content template-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>Choose Template</h3>
+                <button className="close-btn" onClick={() => setShowTemplateModal(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="template-grid">
+                  <div className="template-card" onClick={() => {
+                    console.log('Using standard warehouse template');
+                    setShowTemplateModal(false);
+                  }}>
+                    <div className="template-icon">🏭</div>
+                    <h4>Standard Warehouse</h4>
+                    <p>Basic layout with storage, receiving, and dispatch zones</p>
+                  </div>
+                  <div className="template-card" onClick={() => {
+                    console.log('Using cold storage template');
+                    setShowTemplateModal(false);
+                  }}>
+                    <div className="template-icon">❄️</div>
+                    <h4>Cold Storage</h4>
+                    <p>Temperature-controlled storage with specialized zones</p>
+                  </div>
+                  <div className="template-card" onClick={() => {
+                    console.log('Using distribution center template');
+                    setShowTemplateModal(false);
+                  }}>
+                    <div className="template-icon">📦</div>
+                    <h4>Distribution Center</h4>
+                    <p>High-throughput layout optimized for fast processing</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Zone Details Modal */}
-      {selectedZone && (
-        <div className="zone-details-modal" onClick={() => setSelectedZone(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{selectedZone.name}</h3>
-              <button className="close-btn" onClick={() => setSelectedZone(null)}>×</button>
-            </div>
-            <div className="modal-body">
-              <p>Zone Type: {selectedZone.type}</p>
-              <p>Status: Active</p>
-              <p>Capacity: 85%</p>
-              <p>Last Activity: 2 hours ago</p>
+        {/* Zone Details Modal */}
+        {selectedZone && (
+          <div className="zone-details-modal" onClick={() => setSelectedZone(null)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>{selectedZone.name}</h3>
+                <button className="close-btn" onClick={() => setSelectedZone(null)}>×</button>
+              </div>
+              <div className="modal-body">
+                <p>Zone Type: {selectedZone.type}</p>
+                <p>Status: Active</p>
+                <p>Capacity: 85%</p>
+                <p>Last Activity: 2 hours ago</p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Live Map Modal */}
-      {shouldShowLiveMap && selectedUnitForDemo && (
-          <div 
+        {/* Live Map Modal */}
+        {shouldShowLiveMap && selectedUnitForDemo && (
+          <div
             className={`demo-map-modal-overlay ${fullscreenMode ? 'fullscreen-mode' : ''}`}
             onClick={() => {
               if (fullscreenMode) return;
@@ -1481,8 +1554,8 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
               padding: 0
             } : undefined}
           >
-            <div 
-              className="demo-map-modal-content" 
+            <div
+              className="demo-map-modal-content"
               onClick={(e) => e.stopPropagation()}
               style={fullscreenMode ? {
                 width: '100%',
@@ -1508,13 +1581,13 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                     })()}
                   </div>
                 </div>
-                
+
                 {/* Enhanced Dropdown Search Filters - Moved to Header */}
                 <div className="demo-map-search-inline">
                   <div className="search-dropdown-filters">
                     <div className="dropdown-filter">
-                      <select 
-                        value={selectedLocationTag} 
+                      <select
+                        value={selectedLocationTag}
                         onChange={handleLocationTagChange}
                         className="search-dropdown"
                       >
@@ -1524,10 +1597,10 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                         ))}
                       </select>
                     </div>
-                    
+
                     <div className="dropdown-filter">
-                      <select 
-                        value={selectedSku} 
+                      <select
+                        value={selectedSku}
                         onChange={handleSkuChange}
                         className="search-dropdown"
                       >
@@ -1537,10 +1610,10 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                         ))}
                       </select>
                     </div>
-                    
+
                     <div className="dropdown-filter">
-                      <select 
-                        value={selectedAsset} 
+                      <select
+                        value={selectedAsset}
                         onChange={handleAssetChange}
                         className="search-dropdown"
                       >
@@ -1550,12 +1623,12 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                         ))}
                       </select>
                     </div>
-                    
+
                     {/* Clear button only shows when filters are active */}
                     {(selectedLocationTag || selectedSku || selectedAsset) && (
                       <div className="dropdown-filter">
-                        <button 
-                          className="search-clear-btn-dropdown" 
+                        <button
+                          className="search-clear-btn-dropdown"
                           onClick={clearDropdownSearch}
                           title="Clear All"
                         >
@@ -1564,12 +1637,12 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                     )}
                   </div>
                 </div>
-                
+
                 <div className="demo-map-controls">
                   {/* Refresh Status Indicator */}
                   {(lastRefreshTime || isRefreshing || refreshError) && (
-                    <div style={{ 
-                      fontSize: '11px', 
+                    <div style={{
+                      fontSize: '11px',
                       color: refreshError ? '#dc3545' : '#6c757d',
                       marginRight: '8px',
                       display: 'flex',
@@ -1585,14 +1658,14 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                       )}
                     </div>
                   )}
-                  
+
                   <div className="dropdown-filter">
                     <select
                       value={autoRefreshMinutes}
                       onChange={(e) => setAutoRefreshMinutes(Number(e.target.value) || 0)}
                       className="search-dropdown"
-                      title={autoRefreshMinutes > 0 && nextRefreshTime 
-                        ? `Next refresh: ${nextRefreshTime.toLocaleTimeString()}` 
+                      title={autoRefreshMinutes > 0 && nextRefreshTime
+                        ? `Next refresh: ${nextRefreshTime.toLocaleTimeString()}`
                         : "Auto Refresh"}
                       disabled={isRefreshing}
                     >
@@ -1611,15 +1684,15 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                     title={isRefreshing ? "Refreshing..." : "Force Refresh"}
                     type="button"
                     disabled={isRefreshing}
-                    style={{ 
+                    style={{
                       opacity: isRefreshing ? 0.6 : 1,
                       animation: isRefreshing ? 'spin 1s linear infinite' : 'none'
                     }}
                   >
                     <RefreshCw size={16} />
                   </button>
-                  <button 
-                    className="demo-map-fullscreen-btn" 
+                  <button
+                    className="demo-map-fullscreen-btn"
                     onClick={handleOpenFullscreenTab}
                     title="Fullscreen Preview"
                     type="button"
@@ -1629,10 +1702,10 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                   <button className="demo-map-close-btn" onClick={handleCloseModal} type="button">×</button>
                 </div>
               </div>
-              
+
               {/* Search Results - Moved outside header */}
               <div className="demo-map-search-results">
-                
+
                 {/* Search Results */}
                 {searchResults.length > 0 && (
                   <div className="search-results">
@@ -1658,21 +1731,21 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                   </div>
                 )}
               </div>
-              
+
               <div className={`demo-map-body ${isDemoUnit ? '' : 'demo-map-body-single'}`} style={{ display: 'flex', flexDirection: 'row', gap: '20px', alignItems: 'stretch' }}>
                 <div className="demo-map-canvas" style={{ flex: 1 }}>
                   {(() => {
                     const unit = warehouseUnits.find(u => u.id === selectedUnitForDemo);
-                    
+
                     // For default units, show demo map
                     const demoData = demoMapsData[selectedUnitForDemo];
                     const demoUnit = warehouseUnits.find(u => u.id === selectedUnitForDemo);
-                    
+
                     // If it's a custom layout, render the actual layout
                     console.log('Debug - Unit data:', unit);
                     console.log('Debug - Is custom layout:', unit?.isCustomLayout);
                     console.log('Debug - Layout data:', unit?.layoutData);
-                    
+
                     if (unit && unit.isCustomLayout && unit.layoutData && unit.layoutData.items && Array.isArray(unit.layoutData.items)) {
                       const layoutItems = unit.layoutData.items;
                       if (layoutItems.length === 0) {
@@ -1733,14 +1806,14 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                         </div>
                       );
                     }
-                    
+
                     return (
                       <svg width="700" height="320" viewBox="0 0 700 320" className="warehouse-svg">
                         {/* Background */}
-                        <rect width="700" height="320" fill="#ffffff" stroke="#dee2e6" strokeWidth="2" rx="8"/>
-                        
+                        <rect width="700" height="320" fill="#ffffff" stroke="#dee2e6" strokeWidth="2" rx="8" />
+
                         {/* Header with location info */}
-                        <rect x="10" y="10" width="680" height="25" fill="#f8f9fa" stroke="#dee2e6" strokeWidth="1"/>
+                        <rect x="10" y="10" width="680" height="25" fill="#f8f9fa" stroke="#dee2e6" strokeWidth="1" />
                         <text x="20" y="27" fontSize="14" fontWeight="bold" fill="#333">
                           {demoData.name}
                         </text>
@@ -1749,7 +1822,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                             Location: {demoData.location}
                           </text>
                         )}
-                        
+
                         {/* Enhanced demo zones with operational data */}
                         {demoData.zones.map((zone: any, index: number) => {
                           // Generate operational data for demo zones
@@ -1808,7 +1881,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                                 rx="4"
                                 style={{ cursor: isInteractive ? 'pointer' : 'default' }}
                               />
-                              
+
                               {/* Operational status indicator */}
                               <circle
                                 cx={zone.x + zone.width - 8}
@@ -1818,7 +1891,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                                 stroke="white"
                                 strokeWidth="1"
                               />
-                              
+
                               {/* Utilization bar for storage zones */}
                               {opData.type === 'storage' && zone.width > 40 && (
                                 <g>
@@ -1840,7 +1913,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                                   />
                                 </g>
                               )}
-                              
+
                               {/* Storage unit metrics */}
                               {opData.type === 'storage' && zone.width > 60 && zone.height > 40 && (
                                 <g>
@@ -1854,7 +1927,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                                   >
                                     {opData.unitId}
                                   </text>
-                                  
+
                                   {/* Capacity info */}
                                   <text
                                     x={zone.x + zone.width / 2}
@@ -1866,7 +1939,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                                   >
                                     {opData.occupied}/{opData.capacity}
                                   </text>
-                                  
+
                                   {/* Location info */}
                                   <text
                                     x={zone.x + zone.width / 2}
@@ -1893,7 +1966,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                                   >
                                     {zone.id}
                                   </text>
-                                  
+
                                   {/* Throughput */}
                                   <text
                                     x={zone.x + 8}
@@ -1903,7 +1976,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                                   >
                                     {opData.throughput} items/hr
                                   </text>
-                                  
+
                                   {/* Workers */}
                                   <text
                                     x={zone.x + 8}
@@ -1913,7 +1986,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                                   >
                                     👥 {opData.activeWorkers}
                                   </text>
-                                  
+
                                   {/* Efficiency */}
                                   <text
                                     x={zone.x + zone.width - 8}
@@ -1927,7 +2000,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                                   </text>
                                 </g>
                               )}
-                              
+
                               {/* Fixed info icon for interactive zones */}
                               {isInteractive && (
                                 <g>
@@ -1953,7 +2026,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                                   </text>
                                 </g>
                               )}
-                              
+
                               {/* Unified Demo Zone Label - Below Every Zone */}
                               {(() => {
                                 // Generate smart label for demo zones
@@ -1961,7 +2034,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                                   if (zone.label && zone.label.trim()) return zone.label.trim();
                                   if (zone.name && zone.name.trim()) return zone.name.trim();
                                   if (zone.id && zone.id.trim()) return zone.id.trim();
-                                  
+
                                   // Auto-generate based on type
                                   const typeLabels = {
                                     'storage': 'ZONE',
@@ -1970,7 +2043,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                                     'office': 'OFF',
                                     'overflow': 'OVF'
                                   };
-                                  
+
                                   const prefix = typeLabels[zone.type as keyof typeof typeLabels] || 'ZONE';
                                   return `${prefix}-${String(index + 1).padStart(2, '0')}`;
                                 };
@@ -1983,7 +2056,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                                 let labelColor = '#2c3e50';
                                 let bgColor = 'rgba(52, 152, 219, 0.1)';
                                 let borderColor = '#3498db';
-                                
+
                                 // Different colors for different zone types
                                 if (zone.type === 'receiving') {
                                   labelColor = '#e67e22';
@@ -2033,13 +2106,13 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                     );
                   })()}
                 </div>
-                
+
                 {/* Zone Information Panel - Always visible on the right */}
                 <div className="demo-map-sidebar" style={{ width: '300px', flexShrink: 0, overflowY: 'auto', height: '100%' }}>
                   {(() => {
                     const unit = warehouseUnits.find(u => u.id === selectedUnitForDemo);
                     const demoData = demoMapsData[selectedUnitForDemo];
-                    
+
                     // Show zone info for demo units - COMMENTED OUT (not using demo maps)
                     /*
                     if (unit && !unit.isCustomLayout && demoData) {
@@ -2092,7 +2165,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                       );
                     }
                     */
-                    
+
                     // Show Location Details Panel if an item is selected
                     if (showLocationDetails && selectedItem) {
                       return (
@@ -2109,12 +2182,12 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                         </div>
                       );
                     }
-                    
+
                     // Show Warehouse Overview Panel by default (no component selected)
                     const currentLayout = savedLayouts.find(layout => layout.id === selectedUnitForDemo);
                     return (
                       <div className="demo-map-info overview-container">
-                        <WarehouseOverviewPanel 
+                        <WarehouseOverviewPanel
                           layoutData={{
                             items: currentLayout?.layoutData?.items || [],
                             name: currentLayout?.name
@@ -2128,7 +2201,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                   })()}
                 </div>
               </div>
-              
+
               {isDemoUnit && (
                 <div className="demo-map-footer">
                   {shouldShowDemoLegend && (

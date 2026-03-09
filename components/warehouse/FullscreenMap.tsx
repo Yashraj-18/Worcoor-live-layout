@@ -9,6 +9,9 @@ import locationDataService from '@/lib/warehouse/services/locationDataService';
 import LocationDetailsPanel from './LocationDetailsPanel';
 import WarehouseOverviewPanel from './WarehouseOverviewPanel';
 import layoutComponentsMock from '@/lib/warehouse/data/layoutComponentsMock.json';
+import { locationTagService } from '@/src/services/locationTags';
+import { skuService } from '@/src/services/skus';
+import { assetService } from '@/src/services/assets';
 
 const renderDemoLayout = (demoData) => (
   <svg width="100%" height="100%" viewBox="0 0 700 320" className="fullscreen-warehouse-svg">
@@ -132,6 +135,12 @@ const FullscreenMap = () => {
   const [availableAssets, setAvailableAssets] = useState([]);
   const [dropdownSearchActive, setDropdownSearchActive] = useState(false);
 
+  // Live data state for dropdowns and mapping
+  const [locationTagsData, setLocationTagsData] = useState([]);
+  const [skuLocationMap, setSkuLocationMap] = useState({});
+  const [assetTagMap, setAssetTagMap] = useState({});
+  const [isHydrating, setIsHydrating] = useState(false);
+
   const storageSummaries = useMemo(() => {
     if (!mapData) {
       return [];
@@ -250,6 +259,9 @@ const FullscreenMap = () => {
             };
 
             setMapData(transformedData);
+
+            // Hydrate dropdowns from backend using the resolved unitId
+            void hydrateDropdownsFromBackend(transformedData.layoutData.id, transformedData.unitId);
 
             // Generate operational data for each item
             const layoutItems = transformedData.layoutData?.items || [];
@@ -585,6 +597,121 @@ const FullscreenMap = () => {
     setAvailableAssets(Array.from(assets).sort());
   };
 
+  // Fetch location tags, SKUs, and assets from backend for the selected layout's unit
+  const hydrateDropdownsFromBackend = useCallback(async (layoutId, unitId) => {
+    if (!unitId || isHydrating) return;
+
+    setIsHydrating(true);
+    console.log('🔍 hydrateDropdownsFromBackend: unitId=', unitId);
+
+    try {
+      // Collect all location tags referenced in the layout items to filter dropdowns
+      const activeLocationIds = new Set();
+      if (mapData?.layoutData?.items) {
+        mapData.layoutData.items.forEach((item) => {
+          if (item.locationId) activeLocationIds.add(item.locationId.trim());
+          if (item.locationCode) activeLocationIds.add(item.locationCode.trim());
+          if (item.locationTag) activeLocationIds.add(item.locationTag.trim());
+          if (Array.isArray(item.locationIds)) {
+            item.locationIds.forEach((id) => id && activeLocationIds.add(id.trim()));
+          }
+          if (Array.isArray(item.levelLocationMappings)) {
+            item.levelLocationMappings.forEach((m) => {
+              if (m?.locationId) activeLocationIds.add(m.locationId.trim());
+              if (m?.locId) activeLocationIds.add(m.locId.trim());
+            });
+          }
+          if (item.compartmentContents) {
+            Object.values(item.compartmentContents).forEach((content) => {
+              if (content.locationId) activeLocationIds.add(content.locationId.trim());
+              if (content.uniqueId) activeLocationIds.add(content.uniqueId.trim());
+              if (Array.isArray(content.locationIds)) {
+                content.locationIds.forEach((id) => id && activeLocationIds.add(id.trim()));
+              }
+              if (Array.isArray(content.levelLocationMappings)) {
+                content.levelLocationMappings.forEach((m) => {
+                  if (m.locationId) activeLocationIds.add(m.locationId.trim());
+                  if (m.locId) activeLocationIds.add(m.locId.trim());
+                });
+              }
+            });
+          }
+        });
+      }
+
+      const [tags, skuResponse, assetResponse] = await Promise.all([
+        locationTagService.listByUnit(unitId).catch(() => []),
+        skuService.list({ unitId, limit: 100 }).catch(() => ({ items: [] })),
+        assetService.list({ unitId, limit: 100 }).catch(() => ({ items: [] })),
+      ]);
+
+      // 1. Location tags
+      const tagSet = new Set();
+      (tags || []).forEach((t) => {
+        const name = (t.locationTagName || t.name || '').trim();
+        if (name && activeLocationIds.has(name)) tagSet.add(name);
+      });
+      setAvailableLocationTags(Array.from(tagSet).sort());
+      setLocationTagsData(tags || []);
+
+      // 2. SKUs + mapping
+      const skuSet = new Set();
+      const skuMap = {};
+      (skuResponse.items || []).forEach((s) => {
+        const skuName = (s.skuName || s.skuId || '').trim();
+        const locTag = (s.locationTagName || '').trim();
+
+        if (locTag && activeLocationIds.has(locTag)) {
+          if (skuName) skuSet.add(skuName);
+          if (skuName && locTag) {
+            if (!skuMap[skuName]) skuMap[skuName] = [];
+            skuMap[skuName].push(locTag);
+            skuMap[skuName].push(locTag.toUpperCase());
+            skuMap[skuName].push(locTag.toLowerCase());
+          }
+        }
+      });
+      setAvailableSkus(Array.from(skuSet).sort());
+      setSkuLocationMap(skuMap);
+
+      // 3. Assets + mapping
+      const assetSet = new Set();
+      const aTagMap = {};
+      (assetResponse.items || []).forEach((a) => {
+        const name = (a.assetName || '').trim();
+        const locTag = (a.locationTagName || '').trim();
+
+        if (locTag && activeLocationIds.has(locTag)) {
+          if (name) assetSet.add(name);
+          if (name && locTag) {
+            aTagMap[name] = locTag;
+          }
+        }
+      });
+
+      // Also add component types to assets
+      const typeMap = {
+        storage_unit: 'Storage Unit',
+        sku_holder: 'Horizontal Storage',
+        vertical_sku_holder: 'Vertical Storage'
+      };
+
+      if (mapData?.layoutData?.items) {
+        mapData.layoutData.items.forEach(item => {
+          if (typeMap[item.type]) assetSet.add(typeMap[item.type]);
+        });
+      }
+
+      setAvailableAssets(Array.from(assetSet).sort());
+      setAssetTagMap(aTagMap);
+
+    } catch (error) {
+      console.error('Failed to hydrate dropdowns:', error);
+    } finally {
+      setIsHydrating(false);
+    }
+  }, [isHydrating, mapData]);
+
   // Enhanced search functionality with dropdown filters only - matching WarehouseMapView approach
   const performSearch = useCallback(() => {
     // Check if dropdown search is active
@@ -684,8 +811,8 @@ const FullscreenMap = () => {
 
         // Check SKU filter
         if (selectedSku) {
-          // Get location IDs that have this SKU name
-          const locationIdsForSku = skuNameToLocationIds[selectedSku] || [];
+          // Get location IDs that have this SKU name (using live data)
+          const locationIdsForSku = skuLocationMap[selectedSku] || [];
 
           let itemLevelSkuMatch = false;
           itemLevelSkuMatch = [item.sku, item.skuId, item.locationId]
@@ -737,10 +864,44 @@ const FullscreenMap = () => {
           matchesFilters = matchesFilters && hasSkuMatch;
         }
 
-        // Check asset filter
+        // Check asset filter (Issue 6 fix)
         if (selectedAsset) {
           const itemType = typeMap[selectedAsset] || selectedAsset.toLowerCase().replace(/ /g, '_');
-          const assetMatches = item.type === itemType;
+          const assetTag = assetTagMap[selectedAsset];
+
+          let assetMatches = false;
+          if (item.type === itemType || item.name === selectedAsset || item.label === selectedAsset) {
+            assetMatches = true;
+          } else if (assetTag) {
+            const itemLevelMatch = [item.locationId, item.locationCode, item.locationTag, item.primaryLocationId]
+              .some(v => typeof v === 'string' && v.trim() === assetTag);
+
+            let locationIdsMatch = false;
+            if (Array.isArray(item.locationIds)) {
+              locationIdsMatch = item.locationIds.includes(assetTag);
+            }
+
+            let levelMappingsMatch = false;
+            if (Array.isArray(item.levelLocationMappings)) {
+              levelMappingsMatch = item.levelLocationMappings.some(m =>
+                m?.locationId === assetTag || m?.locId === assetTag
+              );
+            }
+
+            let compartmentMatch = false;
+            if (item.compartmentContents) {
+              compartmentMatch = Object.values(item.compartmentContents).some((c: any) =>
+                c?.locationId === assetTag ||
+                c?.uniqueId === assetTag ||
+                c?.primaryLocationId === assetTag ||
+                (Array.isArray(c?.locationIds) && c.locationIds.includes(assetTag)) ||
+                (Array.isArray(c?.levelLocationMappings) && c.levelLocationMappings.some((m: any) => m?.locationId === assetTag || m?.locId === assetTag))
+              );
+            }
+
+            assetMatches = itemLevelMatch || locationIdsMatch || levelMappingsMatch || compartmentMatch;
+          }
+
           matchesFilters = matchesFilters && assetMatches;
         }
 

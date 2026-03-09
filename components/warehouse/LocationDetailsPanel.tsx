@@ -7,6 +7,8 @@ import { locationTagService } from '@/src/services/locationTags';
 import type { LocationTag } from '@/src/services/locationTags';
 import { skuService } from '@/src/services/skus';
 import type { Sku } from '@/src/services/skus';
+import { assetService } from '@/src/services/assets';
+import type { Asset } from '@/src/services/assets';
 import { useLocationSocket } from '@/hooks/useLocationSocket';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -62,10 +64,10 @@ interface LocationDetailsPanelProps {
 const fmt = (dateStr?: string | null) =>
   dateStr
     ? new Date(dateStr).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
     : 'N/A';
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -88,27 +90,28 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
   const locationTagId = selectedItem?.locationTagId ?? null;
 
   const [locationTag, setLocationTag] = useState<LocationTag | null>(null);
-  const [skus, setSkus]               = useState<Sku[]>([]);
-  const [loading, setLoading]         = useState(false);
-  const [error, setError]             = useState<string | null>(null);
+  const [skus, setSkus] = useState<Sku[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Multi-level state
   const [isMultiLevel, setIsMultiLevel] = useState(false);
-  const [levelsData, setLevelsData]     = useState<any[]>([]);
-  
+  const [levelsData, setLevelsData] = useState<any[]>([]);
+
   // Multi-location state (for storage units with multiple tags)
   const [isMultiLocation, setIsMultiLocation] = useState(false);
   const [multiLocationData, setMultiLocationData] = useState<any[]>([]);
 
   // Live values pushed by WebSocket (override REST snapshot when received)
-  const [liveCurrentItems, setLiveCurrentItems]     = useState<number | null>(null);
+  const [liveCurrentItems, setLiveCurrentItems] = useState<number | null>(null);
   const [liveUtilizationPct, setLiveUtilizationPct] = useState<number | null>(null);
 
   // ── Multi-level and multi-location detection logic ───────────────────────────────────
 
   const detectMultiLevels = useCallback((item: SelectedItem) => {
     console.log('🔍 Detecting multi-level for item:', item);
-    
+
     // Check for compartment-specific multi-level
     if (item.selectedCompartment?.levelLocationMappings && item.selectedCompartment.levelLocationMappings.length > 0) {
       console.log('✅ Found multi-level in selectedCompartment.levelLocationMappings');
@@ -117,7 +120,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
         levels: item.selectedCompartment.levelLocationMappings
       };
     }
-    
+
     // Check for compartment contents
     if (item.compartmentContents) {
       const compartments = Object.values(item.compartmentContents);
@@ -130,7 +133,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
         };
       }
     }
-    
+
     console.log('❌ No multi-level detected');
     return { isMultiLevel: false, levels: [] };
   }, []);
@@ -139,7 +142,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
   const detectMultiLocation = useCallback((item: SelectedItem) => {
     console.log('🔍 Detecting multi-location for item:', item);
-    
+
     // Check for storage units with multiple location tags
     if (item.locationData?.isMultiLocation && item.locationData.locationIds && item.locationData.locationIds.length > 1) {
       console.log('✅ Found multi-location storage unit:', item.locationData.locationIds);
@@ -148,7 +151,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
         locationIds: item.locationData.locationIds
       };
     }
-    
+
     // Also check for direct locationIds array (fallback)
     if (item.locationIds && item.locationIds.length > 1) {
       console.log('✅ Found multi-location via locationIds:', item.locationIds);
@@ -157,7 +160,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
         locationIds: item.locationIds
       };
     }
-    
+
     console.log('❌ No multi-location detected');
     return { isMultiLocation: false, locationIds: [] };
   }, []);
@@ -191,7 +194,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
         if (multiLevelInfo.isMultiLevel) {
           // Handle multi-level fetching (existing logic)
           console.log('🚀 Fetching multi-level data for levels:', multiLevelInfo.levels);
-          
+
           const locationTagIds = multiLevelInfo.levels
             .map((level: LevelLocationMapping) => level.locationId || level.locId)
             .filter((id: string | undefined): id is string => Boolean(id));
@@ -207,71 +210,77 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
           // Fetch all location tags in parallel
           const allTags = await locationTagService.listByUnit(unitId);
-          const matchedTags = allTags.filter(tag => 
+          const matchedTags = allTags.filter(tag =>
             locationTagIds.includes(tag.locationTagName)
           );
 
           console.log('🔍 Matched tags:', matchedTags.map(t => ({ id: t.id, name: t.locationTagName })));
 
-          // Fetch SKUs for all levels using matched UUIDs
-          const skuPromises = multiLevelInfo.levels.map(async (level: LevelLocationMapping, idx: number) => {
+          // Fetch SKUs and Assets for all levels using matched UUIDs
+          const fetchPromises = multiLevelInfo.levels.map(async (level: LevelLocationMapping, idx: number) => {
             const locationCode = level.locationId || level.locId || '';
             const matchedTag = matchedTags.find(tag => tag.locationTagName === locationCode);
-            
+
             if (!matchedTag) {
               console.log(`⚠️ No matching tag found for location code: ${locationCode}`);
-              return { items: [], levelIndex: idx };
+              return { skus: [], assets: [], levelIndex: idx };
             }
-            
+
             try {
-              const result = await skuService.list({ locationTagId: matchedTag.id, limit: 100 });
-              console.log('✅ Successfully fetched SKUs for location:', matchedTag.id, 'Count:', result.items.length);
-              return { ...result, levelIndex: idx };
+              const [skuResult, assetResult] = await Promise.all([
+                skuService.list({ locationTagId: matchedTag.id, limit: 100 }),
+                assetService.list({ locationTagId: matchedTag.id, limit: 100 })
+              ]);
+              console.log('✅ Successfully fetched SKUs and Assets for location:', matchedTag.id);
+              return { skus: skuResult.items, assets: assetResult.items, levelIndex: idx };
             } catch (err) {
-              console.error(`❌ Failed to fetch SKUs for location ${matchedTag.id}:`, err);
-              return { items: [], levelIndex: idx };
-            }
-          });
-          
-          const skuResponses = await Promise.allSettled(skuPromises);
-          const validSkuResponses = skuResponses.map((result) => {
-            if (result.status === 'fulfilled') {
-              return result.value;
-            } else {
-              console.error(`❌ SKU fetch failed:`, result.reason);
-              return { items: [], levelIndex: 0 };
+              console.error(`❌ Failed to fetch data for location ${matchedTag.id}:`, err);
+              return { skus: [], assets: [], levelIndex: idx };
             }
           });
 
-          // Set multi-level data
+          const fetchResponses = await Promise.allSettled(fetchPromises);
+          const validResponses = fetchResponses.map((result) => {
+            if (result.status === 'fulfilled') {
+              return result.value;
+            } else {
+              console.error(`❌ Data fetch failed:`, result.reason);
+              return { skus: [], assets: [], levelIndex: 0 };
+            }
+          });
+
           const newLevelsData = multiLevelInfo.levels.map((level: LevelLocationMapping, idx: number) => {
             const locationCode = level.locationId || level.locId || '';
             const matchedTag = matchedTags.find(tag => tag.locationTagName === locationCode);
-            const skuResponse = validSkuResponses.find(resp => resp.levelIndex === idx);
-            
+            const responseData = validResponses.find(resp => resp.levelIndex === idx);
+
             if (!matchedTag) {
               console.warn(`⚠️ No matching tag found for level ${idx} with code: ${locationCode}`);
             }
-            
+
             return {
               locationTag: matchedTag || null,
-              skus: skuResponse?.items || [],
+              skus: responseData?.skus || [],
+              assets: responseData?.assets || [],
               levelInfo: {
                 levelId: level.levelId || level.level || `L${idx + 1}`,
                 locationId: locationCode,
                 levelIndex: idx
-              }
+              },
+              isActive: selectedItem.selectedCompartmentId ?
+                (locationCode === selectedItem.selectedCompartmentId) : false
             };
           });
-          
+
           console.log('✅ Multi-level data assembled:', newLevelsData.map(d => ({
             level: d.levelInfo.levelId,
             locationId: d.levelInfo.locationId,
             hasTag: !!d.locationTag,
             tagId: d.locationTag?.id || 'none',
-            skuCount: d.skus.length
+            skuCount: d.skus.length,
+            assetCount: d.assets.length
           })));
-          
+
           setLevelsData(newLevelsData);
           setIsMultiLevel(true);
           setLocationTag(null); // Clear single-level data
@@ -281,7 +290,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
         } else if (multiLocationInfo.isMultiLocation) {
           // Handle multi-location fetching (storage units with multiple tags)
           console.log('🚀 Fetching multi-location data for location IDs:', multiLocationInfo.locationIds);
-          
+
           const locationTagCodes = multiLocationInfo.locationIds;
           console.log('🔍 Multi-location location codes found:', locationTagCodes);
 
@@ -294,53 +303,57 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
           // Fetch all location tags in parallel
           const allTags = await locationTagService.listByUnit(unitId);
-          const matchedTags = allTags.filter(tag => 
+          const matchedTags = allTags.filter(tag =>
             locationTagCodes.includes(tag.locationTagName)
           );
 
           console.log('🔍 Matched tags for multi-location:', matchedTags.map(t => ({ id: t.id, name: t.locationTagName })));
 
-          // Fetch SKUs for all location tags using matched UUIDs
-          const skuPromises = locationTagCodes.map(async (locationCode: string, idx: number) => {
+          // Fetch SKUs and Assets for all location tags using matched UUIDs
+          const fetchPromises = locationTagCodes.map(async (locationCode: string, idx: number) => {
             const matchedTag = matchedTags.find(tag => tag.locationTagName === locationCode);
-            
+
             if (!matchedTag) {
               console.log(`⚠️ No matching tag found for location code: ${locationCode}`);
-              return { items: [], locationIndex: idx };
+              return { skus: [], assets: [], locationIndex: idx };
             }
-            
+
             try {
-              const result = await skuService.list({ locationTagId: matchedTag.id, limit: 100 });
-              console.log('✅ Successfully fetched SKUs for location:', matchedTag.id, 'Count:', result.items.length);
-              return { ...result, locationIndex: idx };
+              const [skuResult, assetResult] = await Promise.all([
+                skuService.list({ locationTagId: matchedTag.id, limit: 100 }),
+                assetService.list({ locationTagId: matchedTag.id, limit: 100 })
+              ]);
+              console.log('✅ Successfully fetched data for location:', matchedTag.id);
+              return { skus: skuResult.items, assets: assetResult.items, locationIndex: idx };
             } catch (err) {
-              console.error(`❌ Failed to fetch SKUs for location ${matchedTag.id}:`, err);
-              return { items: [], locationIndex: idx };
+              console.error(`❌ Failed to fetch data for location ${matchedTag.id}:`, err);
+              return { skus: [], assets: [], locationIndex: idx };
             }
           });
-          
-          const skuResponses = await Promise.allSettled(skuPromises);
-          const validSkuResponses = skuResponses.map((result) => {
+
+          const fetchResponses = await Promise.allSettled(fetchPromises);
+          const validResponses = fetchResponses.map((result) => {
             if (result.status === 'fulfilled') {
               return result.value;
             } else {
-              console.error(`❌ SKU fetch failed:`, result.reason);
-              return { items: [], locationIndex: 0 };
+              console.error(`❌ Data fetch failed:`, result.reason);
+              return { skus: [], assets: [], locationIndex: 0 };
             }
           });
 
           // Set multi-location data
           const newMultiLocationData = locationTagCodes.map((locationCode: string, idx: number) => {
             const matchedTag = matchedTags.find(tag => tag.locationTagName === locationCode);
-            const skuResponse = validSkuResponses.find(resp => resp.locationIndex === idx);
-            
+            const responseData = validResponses.find(resp => resp.locationIndex === idx);
+
             if (!matchedTag) {
               console.warn(`⚠️ No matching tag found for location ${idx} with code: ${locationCode}`);
             }
-            
+
             return {
               locationTag: matchedTag || null,
-              skus: skuResponse?.items || [],
+              skus: responseData?.skus || [],
+              assets: responseData?.assets || [],
               locationInfo: {
                 locationCode: locationCode,
                 locationIndex: idx,
@@ -348,15 +361,16 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
               }
             };
           });
-          
+
           console.log('✅ Multi-location data assembled:', newMultiLocationData.map(d => ({
             locationCode: d.locationInfo.locationCode,
             hasTag: !!d.locationTag,
             tagId: d.locationTag?.id || 'none',
             skuCount: d.skus.length,
+            assetCount: d.assets.length,
             isPrimary: d.locationInfo.isPrimary
           })));
-          
+
           setMultiLocationData(newMultiLocationData);
           setIsMultiLocation(true);
           setLocationTag(null); // Clear single-level data
@@ -371,9 +385,10 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
             return;
           }
 
-          const [allTags, skuResponse] = await Promise.all([
+          const [allTags, skuResponse, assetResponse] = await Promise.all([
             locationTagService.listByUnit(unitId),
             skuService.list({ locationTagId, limit: 100 }),
+            assetService.list({ locationTagId, limit: 100 }),
           ]);
 
           if (cancelled) return;
@@ -381,6 +396,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
           const tag = allTags.find((t) => t.id === locationTagId) ?? null;
           setLocationTag(tag);
           setSkus(skuResponse.items);
+          setAssets(assetResponse.items);
           setIsMultiLevel(false);
           setLevelsData([]);
           setIsMultiLocation(false);
@@ -439,27 +455,27 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
   // ── Derived display values (socket overrides REST snapshot) ───────────────
 
-  const displayCurrentItems   = liveCurrentItems   ?? locationTag?.currentItems          ?? 0;
+  const displayCurrentItems = liveCurrentItems ?? locationTag?.currentItems ?? 0;
   const displayUtilizationPct = liveUtilizationPct ?? locationTag?.utilizationPercentage ?? 0;
-  const isLive                = liveCurrentItems !== null;
+  const isLive = liveCurrentItems !== null;
 
   // ── Styles ────────────────────────────────────────────────────────────────
 
   const panelStyle: React.CSSProperties = isEmbedded
     ? {
-        width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-        backgroundColor: 'hsl(218.4 36.23% 13.53%)', borderRadius: 'var(--radius-lg)',
-        overflow: 'hidden',
-        background: 'linear-gradient(135deg, hsl(218.4 36.23% 13.53%), hsl(217.5 54.33% 5.85%))',
-      }
+      width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
+      backgroundColor: 'hsl(218.4 36.23% 13.53%)', borderRadius: 'var(--radius-lg)',
+      overflow: 'hidden',
+      background: 'linear-gradient(135deg, hsl(218.4 36.23% 13.53%), hsl(217.5 54.33% 5.85%))',
+    }
     : {
-        position: 'fixed', top: '80px', right: '20px', width: '380px', maxHeight: '85vh',
-        backgroundColor: 'hsl(218.4 36.23% 13.53%)', border: '1px solid hsl(215.3 25.1% 26.1%)',
-        borderRadius: 'var(--radius-2xl)',
-        boxShadow: '0 10px 40px -10px rgba(0,0,0,.15), 0 20px 25px -5px rgba(0,0,0,.1)',
-        zIndex: 1000, overflow: 'hidden', backdropFilter: 'blur(20px)',
-        background: 'linear-gradient(135deg, hsl(218.4 36.23% 13.53%), hsl(217.5 54.33% 5.85%))',
-      };
+      position: 'fixed', top: '80px', right: '20px', width: '380px', maxHeight: '85vh',
+      backgroundColor: 'hsl(218.4 36.23% 13.53%)', border: '1px solid hsl(215.3 25.1% 26.1%)',
+      borderRadius: 'var(--radius-2xl)',
+      boxShadow: '0 10px 40px -10px rgba(0,0,0,.15), 0 20px 25px -5px rgba(0,0,0,.1)',
+      zIndex: 1000, overflow: 'hidden', backdropFilter: 'blur(20px)',
+      background: 'linear-gradient(135deg, hsl(218.4 36.23% 13.53%), hsl(217.5 54.33% 5.85%))',
+    };
 
   const headerStyle: React.CSSProperties = {
     background: 'linear-gradient(135deg, hsl(222.2 47% 11%) 0%, hsl(222.2 32.6% 18.55%) 100%)',
@@ -733,6 +749,51 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                           ))
                         )}
                       </div>
+
+                      {/* Asset Info for this level */}
+                      <div style={sectionStyle}>
+                        <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa' }}>
+                          <Package size={16} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} />
+                          {levelData.levelInfo.levelId} Asset Information
+                          <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>
+                            {levelData.assets.length} Asset{levelData.assets.length !== 1 ? 's' : ''}
+                          </span>
+                        </h4>
+                        {levelData.assets.length === 0 ? (
+                          <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
+                            No Asset data linked to {levelData.levelInfo.levelId}
+                          </div>
+                        ) : (
+                          levelData.assets.map((asset) => (
+                            <div key={asset.id} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid hsl(215.3 25.1% 32.6%)' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                  <div style={labelStyle}>Asset Name</div>
+                                  <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{asset.assetName}</div>
+                                </div>
+                                <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                  <div>
+                                    <div style={labelStyle}>Asset Type</div>
+                                    <div style={valueStyle}>{asset.assetType || 'N/A'}</div>
+                                  </div>
+                                  <div>
+                                    <div style={labelStyle}>Status</div>
+                                    <div style={valueStyle}>{asset.status || 'Active'}</div>
+                                  </div>
+                                  <div>
+                                    <div style={labelStyle}>Asset ID</div>
+                                    <div style={{ ...valueStyle, fontSize: '0.85rem' }}>{asset.id}</div>
+                                  </div>
+                                  <div>
+                                    <div style={labelStyle}>Created</div>
+                                    <div style={valueStyle}>{fmt(asset.createdAt)}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </>
                   ) : (
                     <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
@@ -753,7 +814,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                 <div key={locationData.locationInfo.locationCode} style={{ marginBottom: '2rem' }}>
                   {/* Location Header */}
                   <div style={{
-                    background: locationData.locationInfo.isPrimary 
+                    background: locationData.locationInfo.isPrimary
                       ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
                       : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
                     color: 'white',
@@ -852,6 +913,51 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                                 <div style={{ gridColumn: '1 / -1' }}>
                                   <div style={labelStyle}>Created At</div>
                                   <div style={valueStyle}>{fmt(sku.createdAt)}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Asset Info for this location */}
+                      <div style={sectionStyle}>
+                        <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa' }}>
+                          <Package size={16} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} />
+                          {locationData.locationInfo.locationCode} Asset Information
+                          <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>
+                            {locationData.assets.length} Asset{locationData.assets.length !== 1 ? 's' : ''}
+                          </span>
+                        </h4>
+                        {locationData.assets.length === 0 ? (
+                          <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
+                            No Asset data linked to {locationData.locationInfo.locationCode}
+                          </div>
+                        ) : (
+                          locationData.assets.map((asset) => (
+                            <div key={asset.id} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid hsl(215.3 25.1% 32.6%)' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                  <div style={labelStyle}>Asset Name</div>
+                                  <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{asset.assetName}</div>
+                                </div>
+                                <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                  <div>
+                                    <div style={labelStyle}>Asset Type</div>
+                                    <div style={valueStyle}>{asset.assetType || 'N/A'}</div>
+                                  </div>
+                                  <div>
+                                    <div style={labelStyle}>Status</div>
+                                    <div style={valueStyle}>{asset.status || 'Active'}</div>
+                                  </div>
+                                  <div>
+                                    <div style={labelStyle}>Asset ID</div>
+                                    <div style={{ ...valueStyle, fontSize: '0.85rem' }}>{asset.id}</div>
+                                  </div>
+                                  <div>
+                                    <div style={labelStyle}>Created</div>
+                                    <div style={valueStyle}>{fmt(asset.createdAt)}</div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -970,10 +1076,46 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                   <div style={sectionStyle}>
                     <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <Archive size={16} /> Asset Information
+                      <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>
+                        {assets.length} Asset{assets.length !== 1 ? 's' : ''}
+                      </span>
                     </h4>
-                    <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
-                      Asset data not linked to this location tag
-                    </div>
+
+                    {assets.length === 0 ? (
+                      <div style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '0.5rem 0' }}>
+                        Asset data not linked to this location tag
+                      </div>
+                    ) : (
+                      assets.map((asset, idx) => (
+                        <div
+                          key={asset.id}
+                          style={{
+                            marginBottom: idx < assets.length - 1 ? '1rem' : 0,
+                            paddingBottom: idx < assets.length - 1 ? '1rem' : 0,
+                            borderBottom: idx < assets.length - 1 ? '1px solid hsl(215.3 25.1% 32.6%)' : 'none',
+                          }}
+                        >
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                              <div style={labelStyle}>Asset Name</div>
+                              <div style={{ ...valueStyle, fontSize: '1rem', color: '#60a5fa' }}>{asset.assetName}</div>
+                            </div>
+                            <div>
+                              <div style={labelStyle}>Type</div>
+                              <div style={valueStyle}>{asset.assetType}</div>
+                            </div>
+                            <div>
+                              <div style={labelStyle}>Asset ID</div>
+                              <div style={valueStyle}>{asset.assetId || 'N/A'}</div>
+                            </div>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                              <div style={labelStyle}>Created At</div>
+                              <div style={valueStyle}>{fmt(asset.createdAt)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </>
               )

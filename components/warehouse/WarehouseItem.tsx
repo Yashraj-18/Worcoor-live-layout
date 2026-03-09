@@ -20,17 +20,17 @@ const useConditionalTooltip = (isReadOnly: boolean) => {
   try {
     // Only try to use tooltip context if we're in read-only mode
     return isReadOnly ? useTooltip() : {
-      showTooltip: () => {},
-      hideTooltip: () => {},
-      updateTooltipPosition: () => {},
+      showTooltip: () => { },
+      hideTooltip: () => { },
+      updateTooltipPosition: () => { },
       isVisible: false
     };
   } catch (error) {
     // Fallback for when TooltipProvider is not available (edit mode)
     return {
-      showTooltip: () => {},
-      hideTooltip: () => {},
-      updateTooltipPosition: () => {},
+      showTooltip: () => { },
+      hideTooltip: () => { },
+      updateTooltipPosition: () => { },
       isVisible: false
     };
   }
@@ -107,19 +107,19 @@ const toTitleCase = (value: any) => {
 };
 
 
-const WarehouseItem = ({ 
-  item, 
-  isSelected, 
-  onSelect, 
-  onUpdate, 
-  onDelete, 
-  zoomLevel, 
-  snapToGrid, 
-  gridSize, 
-  onRequestSkuId, 
-  onRightClick, 
-  onInfoClick, 
-  stackMode, 
+const WarehouseItem = ({
+  item,
+  isSelected,
+  onSelect,
+  onUpdate,
+  onDelete,
+  zoomLevel,
+  snapToGrid,
+  gridSize,
+  onRequestSkuId,
+  onRightClick,
+  onInfoClick,
+  stackMode,
   isReadOnly,
   isHighlighted = false,
   highlightedCompartments,
@@ -128,7 +128,7 @@ const WarehouseItem = ({
 }: any) => {
   const hasCompartments = Boolean(item.skuGrid && item.showCompartments);
   const [hoveredCompartment, setHoveredCompartment] = useState<string | null>(null);
-  
+
   // Tooltip functionality for live view and fullscreen preview
   const { showTooltip, hideTooltip, updateTooltipPosition } = useConditionalTooltip(isReadOnly);
 
@@ -139,12 +139,16 @@ const WarehouseItem = ({
       return;
     }
 
-    const content = buildItemTooltipContent({ 
-      item, 
-      inventoryData: item.inventoryData, 
-      capacity: item.capacity 
+    const unitLocationId = item?.locationId || item?.locationData?.primaryLocationId || item?.inventoryData?.locationId || item?.inventoryData?.uniqueId;
+    const unitLocationTag = unitLocationId ? locationTagsMap[unitLocationId] : null;
+
+    const content = buildItemTooltipContent({
+      item,
+      inventoryData: item.inventoryData,
+      capacity: item.capacity,
+      dbUnitOfMeasurement: unitLocationTag?.unitOfMeasurement
     });
-    
+
     showTooltip(
       `item-${item.id}`,
       content,
@@ -168,7 +172,7 @@ const WarehouseItem = ({
   const handleCompartmentMouseEnter = useCallback((event: React.MouseEvent, compartmentData: any, rowIndex: number, colIndex: number) => {
     // Set hovered compartment for visual feedback
     setHoveredCompartment(`${rowIndex}-${colIndex}`);
-    
+
     // Only show tooltips in read-only mode
     if (!isReadOnly) return;
 
@@ -196,7 +200,7 @@ const WarehouseItem = ({
   const handleCompartmentMouseLeave = useCallback((rowIndex: number, colIndex: number) => {
     // Clear hovered compartment
     setHoveredCompartment(null);
-    
+
     if (!isReadOnly) return;
     hideTooltip(`compartment-${item.id}-${rowIndex}-${colIndex}`);
   }, [isReadOnly, item.id, hideTooltip, setHoveredCompartment]);
@@ -297,22 +301,22 @@ const WarehouseItem = ({
           // Use status-based border colors for storage racks
           // Determine capacity status based on location tags and SKU assignments
           const hasLocationTags = Boolean(compartmentData?.locationId || compartmentData?.uniqueId || compartmentData?.primaryLocationId || (compartmentData?.locationIds && compartmentData.locationIds.length > 0));
-          
+
           // Check if SKUs are assigned to the location tag (from database)
           // Look up the specific location tag for this compartment
           const compartmentLocationId = compartmentData?.locationId || compartmentData?.primaryLocationId;
           const compartmentLocationTag = compartmentLocationId ? locationTagsMap[compartmentLocationId] : null;
-          
+
           // ONLY check backend location tag data - currentItems field indicates SKUs assigned
           const hasSkusAssigned = Boolean(
             compartmentLocationTag && compartmentLocationTag.currentItems > 0
           );
-          
+
           const capacityStatus = determineCapacityStatus(hasLocationTags, hasSkusAssigned);
           const borderStyle = isReadOnly
             ? getStorageComponentBorder(hasLocationTags, capacityStatus)
             : '1px solid #000000';
-          
+
           // Extract color and width from border string (e.g., "2px solid #000000")
           const borderMatch = borderStyle.match(/(\d+)px\s+solid\s+(#[0-9A-Fa-f]{6})/);
           const borderWidth = borderMatch ? parseInt(borderMatch[1]) : (hasLocationData ? 2 : 1);
@@ -333,12 +337,12 @@ const WarehouseItem = ({
               }}
               onClick={(event: any) => {
                 event.stopPropagation();
-                
+
                 // Always select the parent rack when clicking on compartments
                 if (onSelect) {
                   onSelect(item.id);
                 }
-                
+
                 // In readonly mode, trigger item selection for location details (even for empty compartments)
                 if (isReadOnly && onSelect) {
                   console.log('Compartment clicked in readonly mode:', { item, compartmentId, row, col, compartmentData });
@@ -348,7 +352,7 @@ const WarehouseItem = ({
                   onSelect(item.id, { compartmentId, compartmentData, row, col });
                   return;
                 }
-                
+
                 if (onUpdate && !compartmentData && onRequestSkuId) {
                   onRequestSkuId(item.id, compartmentId, row, col);
                 }
@@ -411,7 +415,7 @@ const WarehouseItem = ({
 
   const [{ isDragging }, drag] = useDrag({
     type: DRAG_TYPES.WAREHOUSE_ITEM,
-    item: { 
+    item: {
       id: item.id,
       type: item.type,
       x: item.x,
@@ -454,7 +458,7 @@ const WarehouseItem = ({
     // Handle Storage Unit / Spare Unit / Open Storage Space Location assignment
     const isSingleSkuUnit = (item.type === 'storage_unit' || item.type === 'spare_unit') && item.hasSku && item.singleSku;
     const isOpenStorageUnit = item.type === 'open_storage_space';
-    
+
     if ((isSingleSkuUnit || isOpenStorageUnit) && onRequestSkuId && !item.locationId) {
       let selectorId;
       if (item.type === 'spare_unit') {
@@ -467,7 +471,7 @@ const WarehouseItem = ({
       onRequestSkuId(item.id, selectorId, 0, 0);
       return;
     }
-    
+
     onSelect(item.id);
   };
 
@@ -500,51 +504,51 @@ const WarehouseItem = ({
   const handleResizeStart = (e: any, direction: any) => {
     e.stopPropagation();
     e.preventDefault();
-    
+
     const startX = e.clientX;
     const startY = e.clientY;
     const startWidth = item.width;
     const startHeight = item.height;
     // Use major grid (60px) for square boundary, sub-grid (15px) for others
     const gridSize = (item.type === 'square_boundary' || item.gridAligned) ? 60 : 15;
-    
+
     const handleMouseMove = (moveEvent: any) => {
       const deltaX = moveEvent.clientX - startX;
       const deltaY = moveEvent.clientY - startY;
-      
+
       let newWidth = startWidth;
       let newHeight = startHeight;
-      
+
       if (direction === 'corner' || direction === 'right') {
         newWidth = Math.max(gridSize, Math.round((startWidth + deltaX) / gridSize) * gridSize);
       }
-      
+
       if (direction === 'corner' || direction === 'bottom') {
         newHeight = Math.max(gridSize, Math.round((startHeight + deltaY) / gridSize) * gridSize);
       }
-      
+
       // Apply min/max constraints if specified
       if (item.minSize) {
         newWidth = Math.max(item.minSize.width || gridSize, newWidth);
         newHeight = Math.max(item.minSize.height || gridSize, newHeight);
       }
-      
+
       if (item.maxSize) {
         newWidth = Math.min(item.maxSize.width || 1200, newWidth);
         newHeight = Math.min(item.maxSize.height || 1200, newHeight);
       }
-      
+
       // Update the item dimensions
       if (onUpdate && (newWidth !== item.width || newHeight !== item.height)) {
         onUpdate(item.id, { width: newWidth, height: newHeight });
       }
     };
-    
+
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-    
+
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
@@ -609,33 +613,33 @@ const WarehouseItem = ({
     .trim();
 
   const hasResolvedLocation = Boolean(resolvedLocationId);
-  
+
   // Check if multiple location IDs are attached
   const multipleLocationIds = item?.locationData?.isMultiLocation && item?.locationData?.locationIds;
   const locationIdCount = multipleLocationIds ? item.locationData.locationIds.length : 0;
-  const displayLocationId = locationIdCount > 1 
-    ? `${resolvedLocationId} +${locationIdCount - 1}` 
+  const displayLocationId = locationIdCount > 1
+    ? `${resolvedLocationId} +${locationIdCount - 1}`
     : resolvedLocationId;
-  
+
   // Calculate capacity status for storage units based on location tags and SKU assignments
   const hasLocationTagsForUnit = Boolean(
-    item?.locationId || 
-    item?.locationData?.primaryLocationId || 
-    item?.inventoryData?.locationId || 
+    item?.locationId ||
+    item?.locationData?.primaryLocationId ||
+    item?.inventoryData?.locationId ||
     item?.inventoryData?.uniqueId ||
     (item?.locationData?.locationIds && item.locationData.locationIds.length > 0)
   );
-  
+
   // Look up the location tag from backend to check SKU assignment
   const unitLocationId = item?.locationId || item?.locationData?.primaryLocationId || item?.inventoryData?.locationId || item?.inventoryData?.uniqueId;
   const unitLocationTag = unitLocationId ? locationTagsMap[unitLocationId] : null;
-  
+
   // ONLY check backend location tag data - currentItems field indicates SKUs assigned
   const hasSkusAssignedForUnit = Boolean(
     unitLocationTag && unitLocationTag.currentItems > 0
   );
   const storageUnitCapacityStatus = determineCapacityStatus(hasLocationTagsForUnit, hasSkusAssignedForUnit);
-  
+
   // Simple fallback color
   const statusColor = '#ddd';
 
@@ -654,23 +658,23 @@ const WarehouseItem = ({
         height: item.height,
         backgroundColor: isIconOnly ? 'transparent' : (item.isHollow ? 'transparent' :
           (isStorageComponentType ? 'transparent' :
-           isStorageRack ? 'transparent' :
-           isSpareUnit ? spareUnitColor :
-           isContainer ? 'transparent' :
-           getComponentColor(normalizedType, item.category))),
+            isStorageRack ? 'transparent' :
+              isSpareUnit ? spareUnitColor :
+                isContainer ? 'transparent' :
+                  getComponentColor(normalizedType, item.category))),
         backgroundImage: isIconOnly ? 'none' : (item.isHollow ? 'none' :
           (isStorageComponentType ? 'none' :
-           isStorageRack ? 'none' :
-           isSpareUnit ? 'none' :
-           isContainer ? 'none' :
-           'none')),
+            isStorageRack ? 'none' :
+              isSpareUnit ? 'none' :
+                isContainer ? 'none' :
+                  'none')),
         border: isIconOnly ? 'none' : (isStorageComponentType || isSpareUnit ? 'none' :
-               isStorageRack ? 'none' :
-               (normalizedType === 'square_boundary' ? '4px solid #000000' :
-               (isMainBoundary ? '4px solid #263238' :
-               (isZone ? `3px solid ${getComponentColor(normalizedType)}` :
-               (isContainer ? `3px solid ${getComponentColor(normalizedType)}` :
-               (isContained ? `2px dashed ${getComponentColor(normalizedType) || statusColor}` : `3px solid ${getComponentColor(normalizedType) || statusColor}`)))))),
+          isStorageRack ? 'none' :
+            (normalizedType === 'square_boundary' ? '4px solid #000000' :
+              (isMainBoundary ? '4px solid #263238' :
+                (isZone ? `3px solid ${getComponentColor(normalizedType)}` :
+                  (isContainer ? `3px solid ${getComponentColor(normalizedType)}` :
+                    (isContained ? `2px dashed ${getComponentColor(normalizedType) || statusColor}` : `3px solid ${getComponentColor(normalizedType) || statusColor}`)))))),
         borderRadius: '0px',
         boxShadow: isHighlighted && !hasHighlightedCompartments ? '0 0 12px 3px rgba(79, 70, 229, 0.6)' : 'none',
         opacity: isDragging ? 0.7 : 1,
@@ -717,7 +721,7 @@ const WarehouseItem = ({
           {hasResolvedLocation ? displayLocationId : '+'}
         </div>
       )}
-      
+
       {/* Storage Racks and Spare Units - Show Location ID in black text */}
       {((item.type === 'sku_holder' || item.type === 'vertical_sku_holder' || item.type === 'spare_unit') && !item.showCompartments) && (() => {
         if (item.type === 'spare_unit') {
@@ -762,13 +766,13 @@ const WarehouseItem = ({
       {/* Storage Unit - Display name inside */}
       {item.type === 'storage_unit' && (() => {
         const trimmedName = item.name ? item.name.trim() : '';
-        const primaryText = trimmedName || (item.name === 'Open Storage Space' ? 'Open Storage Space' : 
-                                         item.name === 'Dispatch Staging Area' ? 'Dispatch Staging Area' :
-                                         item.name === 'Grading Area' ? 'Grading Area' :
-                                         item.name === 'Processing Area' ? 'Processing Area' :
-                                         item.name === 'Production Area' ? 'Production Area' :
-                                         item.name === 'Packaging Area' ? 'Packaging Area' :
-                                         item.name === 'Cold Storage' ? 'Cold Storage' : 'Storage Unit');
+        const primaryText = trimmedName || (item.name === 'Open Storage Space' ? 'Open Storage Space' :
+          item.name === 'Dispatch Staging Area' ? 'Dispatch Staging Area' :
+            item.name === 'Grading Area' ? 'Grading Area' :
+              item.name === 'Processing Area' ? 'Processing Area' :
+                item.name === 'Production Area' ? 'Production Area' :
+                  item.name === 'Packaging Area' ? 'Packaging Area' :
+                    item.name === 'Cold Storage' ? 'Cold Storage' : 'Storage Unit');
         const minDimension = Math.min(item.width || 60, item.height || 60);
         const primaryFontSize = Math.max(9, Math.min(14, Math.floor(minDimension / 6)));
 
@@ -819,7 +823,7 @@ const WarehouseItem = ({
         if (!hasCustomName) {
           return null; // Don't show anything inside if no custom name
         }
-        
+
         return (
           <div style={{
             position: 'absolute',
@@ -878,152 +882,152 @@ const WarehouseItem = ({
       {/* Fire Exit Marking - Custom Image Display */}
       {item.type === 'fire_exit_marking' && (
         <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            borderRadius: '4px'
+          }}
+          title="Fire Exit - Emergency Evacuation Route"
+        >
+          {/* Fire Exit Image */}
+          <img
+            src={encodeURI(item.icon || "/assets/images/icons/Fire Exit marking.png")}
+            alt="Fire Exit"
             style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
               width: '100%',
               height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              borderRadius: '4px'
+              objectFit: 'contain',
+              borderRadius: '4px',
+              boxSizing: 'border-box'
             }}
-            title="Fire Exit - Emergency Evacuation Route"
-          >
-            {/* Fire Exit Image */}
-            <img
-              src={encodeURI(item.icon || "/assets/images/icons/Fire Exit marking.png")}
-              alt="Fire Exit"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                borderRadius: '4px',
-                boxSizing: 'border-box'
-              }}
-              onError={(e: any) => {
-                console.warn('Failed to load fire exit image');
-                e.target.style.display = 'none';
-              }}
-            />
+            onError={(e: any) => {
+              console.warn('Failed to load fire exit image');
+              e.target.style.display = 'none';
+            }}
+          />
         </div>
       )}
 
       {/* Security Area - Custom Image Display */}
       {item.type === 'security_area' && (
         <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            borderRadius: '4px'
+            // No backgroundColor - let image show through
+          }}
+          title="Security Area - Access Control and Monitoring"
+        >
+          {/* Security Area Image */}
+          <img
+            src={encodeURI(item.icon || "/assets/images/icons/security.png")}
+            alt="Security Area"
             style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
               width: '100%',
               height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              borderRadius: '4px'
-              // No backgroundColor - let image show through
+              objectFit: 'contain',
+              borderRadius: '4px',
+              boxSizing: 'border-box'
             }}
-            title="Security Area - Access Control and Monitoring"
-          >
-            {/* Security Area Image */}
-            <img
-              src={encodeURI(item.icon || "/assets/images/icons/security.png")}
-              alt="Security Area"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                borderRadius: '4px',
-                boxSizing: 'border-box'
-              }}
-              onError={(e: any) => {
-                console.warn('Failed to load security area image');
-                e.target.style.display = 'none';
-              }}
-            />
+            onError={(e: any) => {
+              console.warn('Failed to load security area image');
+              e.target.style.display = 'none';
+            }}
+          />
         </div>
       )}
 
       {/* Restrooms Area - Custom Image Display */}
       {item.type === 'restrooms_area' && (
         <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            borderRadius: '4px'
+            // No backgroundColor - let image show through
+          }}
+          title="Restrooms Area - Warehouse Personnel Facilities"
+        >
+          {/* Restrooms Area Image */}
+          <img
+            src={encodeURI(item.icon || "/assets/images/icons/rest room area.png")}
+            alt="Restrooms"
             style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
               width: '100%',
               height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              borderRadius: '4px'
-              // No backgroundColor - let image show through
+              objectFit: 'contain',
+              borderRadius: '4px',
+              boxSizing: 'border-box'
             }}
-            title="Restrooms Area - Warehouse Personnel Facilities"
-          >
-            {/* Restrooms Area Image */}
-            <img
-              src={encodeURI(item.icon || "/assets/images/icons/rest room area.png")}
-              alt="Restrooms"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                borderRadius: '4px',
-                boxSizing: 'border-box'
-              }}
-              onError={(e: any) => {
-                console.warn('Failed to load restrooms image');
-                e.target.style.display = 'none';
-              }}
-            />
+            onError={(e: any) => {
+              console.warn('Failed to load restrooms image');
+              e.target.style.display = 'none';
+            }}
+          />
         </div>
       )}
 
       {/* Seating Area - Custom Image Display */}
       {item.type === 'seating_area' && (
         <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            borderRadius: '4px'
+            // No backgroundColor - let image show through
+          }}
+          title="Seating Area - Informal Gatherings Space"
+        >
+          {/* Seating Area Image */}
+          <img
+            src={encodeURI(item.icon || "/assets/images/icons/Seating Area.png")}
+            alt="Seating"
             style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              borderRadius: '4px'
-              // No backgroundColor - let image show through
+              width: `${canvasIconSize}px`,
+              height: `${canvasIconSize}px`,
+              objectFit: 'contain',
+              borderRadius: '4px',
+              boxSizing: 'border-box'
             }}
-            title="Seating Area - Informal Gatherings Space"
-          >
-            {/* Seating Area Image */}
-            <img
-              src={encodeURI(item.icon || "/assets/images/icons/Seating Area.png")}
-              alt="Seating"
-              style={{
-                width: `${canvasIconSize}px`,
-                height: `${canvasIconSize}px`,
-                objectFit: 'contain',
-                borderRadius: '4px',
-                boxSizing: 'border-box'
-              }}
-              onError={(e: any) => {
-                if (e?.target?.dataset?.fallbackApplied === 'true') return;
-                if (e?.target?.dataset) {
-                  e.target.dataset.fallbackApplied = 'true';
-                }
-                console.warn('Failed to load seating image, showing fallback');
-                // Show fallback text
-                e.target.style.display = 'none';
-                const fallback = document.createElement('div');
-                fallback.innerHTML = `
+            onError={(e: any) => {
+              if (e?.target?.dataset?.fallbackApplied === 'true') return;
+              if (e?.target?.dataset) {
+                e.target.dataset.fallbackApplied = 'true';
+              }
+              console.warn('Failed to load seating image, showing fallback');
+              // Show fallback text
+              e.target.style.display = 'none';
+              const fallback = document.createElement('div');
+              fallback.innerHTML = `
                   <div style="
                     background-color: rgba(156, 39, 176, 0.9);
                     color: white;
@@ -1037,91 +1041,91 @@ const WarehouseItem = ({
                     SEATING
                   </div>
                 `;
-                e.target.parentNode.appendChild(fallback);
-              }}
-            />
-          </div>
+              e.target.parentNode.appendChild(fallback);
+            }}
+          />
+        </div>
       )}
 
       {/* Dispatch Gates - Custom Image Display */}
       {item.type === 'dispatch_gates' && (
         <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            borderRadius: '4px'
+            // No backgroundColor - completely transparent
+          }}
+          title="Dispatch Gates - Loading and Shipping Operations"
+        >
+          {/* Dispatch Gates Image */}
+          <img
+            src={encodeURI(item.icon || "/assets/images/icons/dispatch-gate.png")}
+            alt="Dispatch Gates"
             style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
               width: '100%',
               height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              borderRadius: '4px'
-              // No backgroundColor - completely transparent
+              objectFit: 'contain',
+              borderRadius: '4px',
+              boxSizing: 'border-box'
+              // No backgroundColor - transparent background
             }}
-            title="Dispatch Gates - Loading and Shipping Operations"
-          >
-            {/* Dispatch Gates Image */}
-            <img
-              src={encodeURI(item.icon || "/assets/images/icons/dispatch-gate.png")}
-              alt="Dispatch Gates"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                borderRadius: '4px',
-                boxSizing: 'border-box'
-                // No backgroundColor - transparent background
-              }}
-              onError={(e: any) => {
-                console.warn('Failed to load dispatch gates image');
-                e.target.style.display = 'none';
-              }}
-            />
-          </div>
+            onError={(e: any) => {
+              console.warn('Failed to load dispatch gates image');
+              e.target.style.display = 'none';
+            }}
+          />
+        </div>
       )}
 
       {/* Inbound Gates - Custom Image Display */}
       {item.type === 'inbound_gates' && (
         <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            borderRadius: '4px'
+            // No backgroundColor - completely transparent
+          }}
+          title="Inbound Gates - Receiving and Unloading Operations"
+        >
+          {/* Inbound Gates Image */}
+          <img
+            src={encodeURI(item.icon || "/assets/images/icons/inbound-gate.png")}
+            alt="Inbound Gates"
             style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
               width: '100%',
               height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              borderRadius: '4px'
-              // No backgroundColor - completely transparent
+              objectFit: 'contain',
+              borderRadius: '4px',
+              boxSizing: 'border-box'
+              // No backgroundColor - transparent background
             }}
-            title="Inbound Gates - Receiving and Unloading Operations"
-          >
-            {/* Inbound Gates Image */}
-            <img
-              src={encodeURI(item.icon || "/assets/images/icons/inbound-gate.png")}
-              alt="Inbound Gates"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                borderRadius: '4px',
-                boxSizing: 'border-box'
-                // No backgroundColor - transparent background
-              }}
-              onError={(e: any) => {
-                console.warn('Failed to load inbound gates image');
-                e.target.style.display = 'none';
-              }}
-            />
-          </div>
+            onError={(e: any) => {
+              console.warn('Failed to load inbound gates image');
+              e.target.style.display = 'none';
+            }}
+          />
+        </div>
       )}
 
       {/* SKU compartment grid rendering for SKU Holder components */}
       {renderCompartmentGrid()}
-      
+
       {/* Resize handles for horizontal and vertical racks */}
       <ResizeHandle
         item={item}
@@ -1137,90 +1141,90 @@ const WarehouseItem = ({
       />
 
       {/* Component Type Label - Shown below the component */}
-      {(item.type === 'sku_holder' || item.type === 'vertical_sku_holder' || item.type === 'storage_unit' || item.type === 'spare_unit' || item.type === 'open_storage_space' || 
+      {(item.type === 'sku_holder' || item.type === 'vertical_sku_holder' || item.type === 'storage_unit' || item.type === 'spare_unit' || item.type === 'open_storage_space' ||
         item.type === 'fire_exit_marking' || item.type === 'security_area' || item.type === 'restrooms_area' || item.type === 'pathways_arrows' ||
-        item.type === 'conference_room' || item.type === 'meeting_rooms' || item.type === 'pantry_area' || item.type === 'open_stage' || 
+        item.type === 'conference_room' || item.type === 'meeting_rooms' || item.type === 'pantry_area' || item.type === 'open_stage' ||
         item.type === 'seating_area' || item.type === 'booths' || item.type === 'general_area' ||
         item.type === 'dispatch_gates' || item.type === 'inbound_gates') && (() => {
-        // Determine the label text - use item.label if available, otherwise use default component type
-        let labelText = '';
-        
-        if (item.label && item.label.trim()) {
-          labelText = item.label.trim();
-        } else {
-          // Auto-generate label based on component type
-          if (item.type === 'sku_holder') {
-            labelText = 'Horizontal Storage Rack';
-          } else if (item.type === 'vertical_sku_holder') {
-            labelText = 'Vertical Storage Rack';
-          } else if (item.type === 'storage_unit') {
-            labelText = item.name === 'Open Storage Space' ? 'Open Storage Space' : 
-                       item.name === 'Dispatch Staging Area' ? 'Dispatch Staging Area' :
-                       item.name === 'Grading Area' ? 'Grading Area' :
-                       item.name === 'Processing Area' ? 'Processing Area' :
-                       item.name === 'Production Area' ? 'Production Area' :
-                       item.name === 'Packaging Area' ? 'Packaging Area' :
-                       item.name === 'Cold Storage' ? 'Cold Storage' : 'Storage Unit';
-          } else if (item.type === 'spare_unit') {
-            labelText = 'Spare Unit';
-          } else if (item.type === 'open_storage_space') {
-            labelText = 'Open Storage';
-          } else if (item.type === 'fire_exit_marking') {
-            labelText = 'Fire Exit Marking';
-          } else if (item.type === 'security_area') {
-            labelText = 'Security Area';
-          } else if (item.type === 'restrooms_area') {
-            labelText = 'Restrooms Area';
-          } else if (item.type === 'pathways_arrows') {
-            labelText = 'Pathways Arrows';
-          } else if (item.type === 'conference_room') {
-            labelText = 'Conference Room';
-          } else if (item.type === 'meeting_rooms') {
-            labelText = 'Meeting Rooms';
-          } else if (item.type === 'pantry_area') {
-            labelText = 'Pantry Area';
-          } else if (item.type === 'open_stage') {
-            labelText = 'Open Stage';
-          } else if (item.type === 'seating_area') {
-            labelText = 'Seating Area';
-          } else if (item.type === 'booths') {
-            labelText = 'Booths';
-          } else if (item.type === 'inner_boundary') {
-            labelText = item.label;
-          } else if (item.type === 'dispatch_gates') {
-            labelText = 'Dispatch Gates';
-          } else if (item.type === 'inbound_gates') {
-            labelText = 'Inbound Gates';
+          // Determine the label text - use item.label if available, otherwise use default component type
+          let labelText = '';
+
+          if (item.label && item.label.trim()) {
+            labelText = item.label.trim();
           } else {
-            labelText = 'Storage Component';
+            // Auto-generate label based on component type
+            if (item.type === 'sku_holder') {
+              labelText = 'Horizontal Storage Rack';
+            } else if (item.type === 'vertical_sku_holder') {
+              labelText = 'Vertical Storage Rack';
+            } else if (item.type === 'storage_unit') {
+              labelText = item.name === 'Open Storage Space' ? 'Open Storage Space' :
+                item.name === 'Dispatch Staging Area' ? 'Dispatch Staging Area' :
+                  item.name === 'Grading Area' ? 'Grading Area' :
+                    item.name === 'Processing Area' ? 'Processing Area' :
+                      item.name === 'Production Area' ? 'Production Area' :
+                        item.name === 'Packaging Area' ? 'Packaging Area' :
+                          item.name === 'Cold Storage' ? 'Cold Storage' : 'Storage Unit';
+            } else if (item.type === 'spare_unit') {
+              labelText = 'Spare Unit';
+            } else if (item.type === 'open_storage_space') {
+              labelText = 'Open Storage';
+            } else if (item.type === 'fire_exit_marking') {
+              labelText = 'Fire Exit Marking';
+            } else if (item.type === 'security_area') {
+              labelText = 'Security Area';
+            } else if (item.type === 'restrooms_area') {
+              labelText = 'Restrooms Area';
+            } else if (item.type === 'pathways_arrows') {
+              labelText = 'Pathways Arrows';
+            } else if (item.type === 'conference_room') {
+              labelText = 'Conference Room';
+            } else if (item.type === 'meeting_rooms') {
+              labelText = 'Meeting Rooms';
+            } else if (item.type === 'pantry_area') {
+              labelText = 'Pantry Area';
+            } else if (item.type === 'open_stage') {
+              labelText = 'Open Stage';
+            } else if (item.type === 'seating_area') {
+              labelText = 'Seating Area';
+            } else if (item.type === 'booths') {
+              labelText = 'Booths';
+            } else if (item.type === 'inner_boundary') {
+              labelText = item.label;
+            } else if (item.type === 'dispatch_gates') {
+              labelText = 'Dispatch Gates';
+            } else if (item.type === 'inbound_gates') {
+              labelText = 'Inbound Gates';
+            } else {
+              labelText = 'Storage Component';
+            }
           }
-        }
-        
-        return (
-          <div
-            style={{
-              position: 'absolute',
-              top: '100%',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              marginTop: '6px',
-              backgroundColor: 'transparent',
-              color: '#000000',
-              padding: '0px',
-              borderRadius: '0px',
-              fontSize: '12px',
-              fontWeight: '700',
-              whiteSpace: 'nowrap',
-              pointerEvents: 'none',
-              userSelect: 'none',
-              zIndex: 10000,
-              textShadow: 'none'
-            }}
-          >
-            {labelText}
-          </div>
-        );
-      })()}
+
+          return (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                marginTop: '6px',
+                backgroundColor: 'transparent',
+                color: '#000000',
+                padding: '0px',
+                borderRadius: '0px',
+                fontSize: '12px',
+                fontWeight: '700',
+                whiteSpace: 'nowrap',
+                pointerEvents: 'none',
+                userSelect: 'none',
+                zIndex: 10000,
+                textShadow: 'none'
+              }}
+            >
+              {labelText}
+            </div>
+          );
+        })()}
     </div>
   );
 };

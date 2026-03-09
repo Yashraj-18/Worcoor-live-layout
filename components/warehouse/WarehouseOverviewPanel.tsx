@@ -126,7 +126,9 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
         }),
       ];
 
-      if (!locationTagsProp) {
+      // If locationTagsProp is undefined OR an empty array, trigger our own fetch
+      // to lazily load the backend tag capacities if the parent map hasn't hydrated yet.
+      if (!locationTagsProp || locationTagsProp.length === 0) {
         requests.push(locationTagService.listByUnit(unitId).catch(() => [] as LocationTag[]));
       }
 
@@ -261,6 +263,16 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
     };
 
     items.forEach((item: any) => {
+      // Find parent tag name for the entire item
+      const itemTagName: string = (
+        item.locationTag?.locationTagName ||
+        item.locationTag?.name ||
+        item.locationTagId ||
+        item.locationId ||
+        item.primaryLocationId ||
+        ''
+      ).toString().trim();
+
       // For items with compartmentContents, process each compartment separately
       if (item.compartmentContents && typeof item.compartmentContents === 'object') {
         Object.values(item.compartmentContents).forEach((content: any) => {
@@ -278,11 +290,17 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
 
           if (!hasContent) return;
 
-          // Extract location tag from compartment content
+          // Extract location tag from compartment content, fallback to parent item's tag
           const compartmentTagName: string = (content.locationId || content.primaryLocationId || '').toString().trim();
+          const activeTagName = compartmentTagName || itemTagName;
 
-          if (compartmentTagName) {
-            const tagData = locationTagLookup.get(compartmentTagName);
+          if (activeTagName) {
+            let tagData = locationTagLookup.get(activeTagName);
+            if (!tagData) {
+              // Creating a lightweight placeholder if tag mapping hasn't loaded yet from DB
+              tagData = { id: activeTagName, locationTagName: activeTagName, unitId: unitId || 'fallback' } as LocationTag;
+              locationTagLookup.set(activeTagName, tagData);
+            }
 
             // Calculate quantity for this compartment
             let qty = 1;
@@ -300,11 +318,12 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
       } else {
         // For non-compartmentalized items, process as before
         const { usedCapacity } = deriveItemCapacity(item);
-        const tagName: string =
-          (item.locationTag?.locationTagName || item.locationTag?.name || item.locationTagId || item.locationId || item.primaryLocationId || '').toString().trim();
-
-        if (tagName) {
-          const tagData = locationTagLookup.get(tagName);
+        if (itemTagName) {
+          let tagData = locationTagLookup.get(itemTagName);
+          if (!tagData) {
+            tagData = { id: itemTagName, locationTagName: itemTagName, unitId: unitId || 'fallback' } as LocationTag;
+            locationTagLookup.set(itemTagName, tagData);
+          }
           addToTag(tagData, usedCapacity);
         }
       }
@@ -313,9 +332,19 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
     const locationTagData = Array.from(tagMap.values()).map(({ tag, usedCapacity }) => {
       const capacity = tag.capacity ?? 0;
       const currentItems = tag.currentItems ?? 0;
-      const utilizationPercentage = typeof tag.utilizationPercentage === 'number'
-        ? Math.round(tag.utilizationPercentage)
-        : (capacity > 0 ? Math.round(Math.min(currentItems / capacity, 1) * 100) : 0);
+
+      // Calculate effective items by taking the max of backend items and frontend map usage
+      const effectiveItems = Math.max(currentItems, usedCapacity);
+
+      let utilizationPercentage = 0;
+      if (typeof tag.utilizationPercentage === 'number' && tag.utilizationPercentage > 0) {
+        utilizationPercentage = Math.round(tag.utilizationPercentage);
+      } else if (capacity > 0) {
+        utilizationPercentage = Math.round(Math.min(effectiveItems / capacity, 1) * 100);
+      } else if (effectiveItems > 0) {
+        // If used but capacity is 0/unknown, default to 100% since it's occupied
+        utilizationPercentage = 100;
+      }
 
       return {
         locationId: tag.locationTagName ?? tag.id,
@@ -398,7 +427,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
       totalMax,
       totalUsed,
     };
-  }, [layoutData]);
+  }, [layoutData, locationTags]);
 
   // Prefer real API stats for summary metrics when available, fall back to canvas-derived data
   const displayStats = useMemo(() => ({
@@ -464,7 +493,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
   };
 
   const placedTagCount = displayStats.locationTagData.length;
-  const placedTagInUseCount = displayStats.locationTagData.filter((t: any) => t.utilizationPercentage > 0).length;
+  const placedTagInUseCount = displayStats.locationTagData.filter((t: any) => t.utilizationPercentage > 0 || t.usedCapacity > 0).length;
   const placedTagUtilPercent = placedTagCount > 0 ? Math.round((placedTagInUseCount / placedTagCount) * 100) : 0;
 
   return (

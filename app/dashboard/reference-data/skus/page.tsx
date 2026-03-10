@@ -148,26 +148,34 @@ export default function SkuManagementPage() {
     return skus.filter((s) => s.skuName.toLowerCase().includes(q))
   }, [search, skus])
 
-  const mapFormValuesToPayload = (values: any) => ({
-    skuId: values.skuId ?? null,
-    skuName: values.skuName,
-    skuCategory: values.skuCategory,
-    quantity: values.quantity,
-    skuUnit: values.skuUnit,
-    effectiveDate: values.effectiveDate,
-    expiryDate: values.expiryDate ? values.expiryDate : null,
-    locationTagId: values.locationTagId ?? null,
-  })
+  const mapFormValuesToPayload = (values: any) => {
+    const payload = {
+      skuId: values.skuId && values.skuId.trim() ? values.skuId.trim() : null,
+      skuName: values.skuName.trim(),
+      skuCategory: values.skuCategory,
+      quantity: Number(values.quantity),
+      skuUnit: values.skuUnit,
+      effectiveDate: values.effectiveDate,
+      expiryDate: values.expiryDate && values.expiryDate.trim() ? values.expiryDate : null,
+      locationTagId: values.locationTagId && values.locationTagId !== "__none__" ? values.locationTagId : null,
+    }
+    
+    console.log("Mapped payload:", payload)
+    return payload
+  }
 
   const handleAddSku = async (data: any) => {
     setIsSubmitting(true)
     try {
-      const created = await skuService.create(mapFormValuesToPayload(data))
+      const payload = mapFormValuesToPayload(data)
+      console.log("Creating SKU with payload:", payload)
+      const created = await skuService.create(payload)
       setSkus((prev) => [created, ...prev])
       toast({ title: "SKU created", description: `${created.skuName} has been added successfully.` })
       setIsAddOpen(false)
     } catch (error: any) {
       console.error("Failed to create SKU", error)
+      console.error("Error response:", error?.response?.data)
       toast({
         title: "Failed to create SKU",
         description: error?.response?.data?.error ?? "Please try again.",

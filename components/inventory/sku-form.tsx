@@ -22,12 +22,12 @@ const skuFormSchema = z.object({
   skuCategory: z.enum(["raw_material", "finished_good"], {
     required_error: "Please select a SKU Category.",
   }),
-  quantity: z.coerce.number().min(0, { message: "Quantity must be a positive number." }),
+  quantity: z.coerce.number().min(0.01, { message: "Quantity must be greater than 0." }),
   skuUnit: z.enum(["kg", "liters", "pieces", "boxes"], {
     required_error: "Please select a Unit of Measure.",
   }),
-  effectiveDate: z.string().min(1, { message: "Effective Date is required." }),
-  expiryDate: z.string().optional(),
+  effectiveDate: z.string().min(1, { message: "Effective Date is required." }).regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Invalid date format. Please use YYYY-MM-DD format." }),
+  expiryDate: z.string().optional().refine((val) => !val || /^\d{4}-\d{2}-\d{2}$/.test(val), { message: "Invalid date format. Please use YYYY-MM-DD format." }),
   locationTagId: z.string().optional(),
 })
 

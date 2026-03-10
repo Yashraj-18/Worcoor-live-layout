@@ -782,7 +782,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                                   </div>
                                   <div>
                                     <div style={labelStyle}>Asset ID</div>
-                                    <div style={{ ...valueStyle, fontSize: '0.85rem' }}>{asset.id}</div>
+                                    <div style={{ ...valueStyle, fontSize: '0.85rem' }}>{asset.assetId || 'N/A'}</div>
                                   </div>
                                   <div>
                                     <div style={labelStyle}>Created</div>
@@ -952,7 +952,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                                   </div>
                                   <div>
                                     <div style={labelStyle}>Asset ID</div>
-                                    <div style={{ ...valueStyle, fontSize: '0.85rem' }}>{asset.id}</div>
+                                    <div style={{ ...valueStyle, fontSize: '0.85rem' }}>{asset.assetId || 'N/A'}</div>
                                   </div>
                                   <div>
                                     <div style={labelStyle}>Created</div>

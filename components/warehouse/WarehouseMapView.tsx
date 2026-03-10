@@ -156,6 +156,10 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     }));
   }, []);
 
+  const handleLocationTagUpdate = useCallback((locationTagId: string, currentItems: number) => {
+    patchLocationTag(locationTagId, { currentItems });
+  }, [patchLocationTag]);
+
   const patchLocationTagByName = useCallback((locationTagName: string, changes: Partial<any>) => {
     setLocationTagsData(prev => prev.map(tag => {
       if (tag.locationTagName === locationTagName || tag.name === locationTagName) {
@@ -2305,6 +2309,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
                             selectedItem={selectedItem}
                             unitId={resolvedUnitId}
                             locationTags={locationTagsData}
+                            onLocationTagUpdate={handleLocationTagUpdate}
                             onClose={() => {
                               setShowLocationDetails(false);
                               setSelectedItem(null);

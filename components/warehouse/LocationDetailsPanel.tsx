@@ -66,6 +66,7 @@ interface LocationDetailsPanelProps {
     capacity: number;
     percentage: number;
   }) => void;
+  onLocationTagUpdate?: (locationTagId: string, currentItems: number) => void;
   locationTags?: any[]; // Optional parent-provided location tags to avoid duplicate fetches
 }
 
@@ -90,6 +91,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
   onSkuChange,
   onComponentChange,
   onCapacityWarning,
+  onLocationTagUpdate,
   locationTags,
 }) => {
 
@@ -386,6 +388,12 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
             setLevelsData([]);
             setIsMultiLocation(false);
             setMultiLocationData([]);
+            
+            // Update global locationTagsData with fresh SKU quantity
+            if (onLocationTagUpdate && locationTagId) {
+              const totalQuantity = skuResponse.items.reduce((sum, sku) => sum + (sku.quantity || 0), 0);
+              onLocationTagUpdate(locationTagId, totalQuantity);
+            }
           }
         }
 
@@ -416,12 +424,18 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
       const skuResponse = await skuService.list({ locationTagId, limit: 100 }, { signal });
       if (!signal.aborted) {
         setSkus(skuResponse.items);
+        
+        // Update global locationTagsData with fresh SKU quantity
+        if (onLocationTagUpdate) {
+          const totalQuantity = skuResponse.items.reduce((sum, sku) => sum + (sku.quantity || 0), 0);
+          onLocationTagUpdate(locationTagId, totalQuantity);
+        }
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
       if (signal.aborted) return;
     }
-  }, [locationTagId]);
+  }, [locationTagId, onLocationTagUpdate]);
 
   const handleLocationUpdated = useCallback((data) => {
     setLiveCurrentItems(data.current_items);

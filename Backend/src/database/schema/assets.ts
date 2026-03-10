@@ -23,5 +23,6 @@ export const assets = pgTable(
     assetOrgUniqueIdx: uniqueIndex('idx_assets_org_asset_id_unique')
       .on(table.organizationId, table.assetId)
       .where(sql`asset_id IS NOT NULL`),
+    locationOrgIdx: index('idx_assets_location_org').on(table.locationTagId, table.organizationId),
   }),
 );

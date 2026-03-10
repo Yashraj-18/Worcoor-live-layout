@@ -5,7 +5,21 @@ let globalSocket: Socket | null = null;
 
 const getSocket = (): Socket => {
   if (!globalSocket) {
-    const apiUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
+    const apiUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
+  if (!apiUrl) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'NEXT_PUBLIC_SOCKET_URL is required in production'
+      );
+    }
+    // Development fallback only
+    globalSocket = io('http://localhost:4000', {
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
+      autoConnect: true,
+    });
+    return globalSocket;
+  }
     globalSocket = io(apiUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
@@ -13,15 +27,12 @@ const getSocket = (): Socket => {
     });
 
     globalSocket.on('connect', () => {
-      console.log('✅ Socket connected:', globalSocket?.id);
     });
 
     globalSocket.on('disconnect', (reason) => {
-      console.log('❌ Socket disconnected:', reason);
     });
 
     globalSocket.on('connect_error', (err) => {
-      console.error('🔴 Socket connection error:', err.message);
     });
   }
   return globalSocket;
@@ -56,7 +67,6 @@ export const useSocket = (options: UseSocketOptions = {}) => {
       // First caller for this unitId — register one join handler
       const joinRoom = () => {
         socket.emit('join-unit', { unit_id: unitId });
-        console.log('📡 Joined unit room:', unitId);
       };
       unitJoinHandlers.set(unitId, joinRoom);
 
@@ -77,7 +87,6 @@ export const useSocket = (options: UseSocketOptions = {}) => {
           unitJoinHandlers.delete(unitId);
         }
         socket.emit('leave-unit', { unit_id: unitId });
-        console.log('📡 Left unit room:', unitId);
       } else {
         unitRefCounts.set(unitId, current - 1);
       }

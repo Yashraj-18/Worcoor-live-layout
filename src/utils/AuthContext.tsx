@@ -70,8 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               organizationId: org?.id,
               organizationName: org?.name,
             };
-            console.log(' Session restored for user:', u.email, 'Organization:', org?.name, '(', org?.id, ')');
-            setIsAuthenticated(true);
+                        setIsAuthenticated(true);
             setUser(userData);
           } else {
             setIsAuthenticated(false);

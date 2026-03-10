@@ -34,16 +34,13 @@ export default function WarehouseManagementPage() {
     setIsLoadingLayouts(true);
     setError(null);
     try {
-      console.log('🏢 Current user organization:', user?.organizationName, '(', user?.organizationId, ')');
       const units = await orgUnitService.list();
       setOrgUnits(units);
 
       const layoutResponses = await Promise.all(
         units.map(async (unit) => {
           try {
-            console.log(`Fetching layouts for unit: ${unit.unitName} (${unit.id})`);
             const layouts = await warehouseService.getLayouts(unit.id);
-            console.log(`✅ Fetched ${layouts.length} layouts for unit ${unit.unitName}`);
             return layouts;
           } catch (layoutsError) {
             console.error(`❌ Failed to fetch layouts for unit ${unit.unitName}:`, layoutsError);
@@ -53,9 +50,7 @@ export default function WarehouseManagementPage() {
       );
 
       const allLayouts = layoutResponses.flat();
-      console.log(`📊 Total layouts fetched: ${allLayouts.length}`);
       if (allLayouts.length > 0) {
-        console.log('First layout sample:', allLayouts[0]);
       }
       setLayouts(allLayouts);
 

@@ -21,11 +21,15 @@ export class LiveMapStatsService {
     }
 
     // Get all components across all layouts
-    const layoutComponents = await Promise.all(
-      data.layouts.map((layout) => this.repository.getLayoutComponents(layout.id, organizationId)),
+    const layoutIds = data.layouts.map(layout => layout.id);
+    const allComponents = await this.repository.getLayoutComponentsBatch(
+      layoutIds, 
+      organizationId
     );
-
-    const allComponents = layoutComponents.flat();
+    // Group by layoutId to preserve the existing data structure
+    const layoutComponents = data.layouts.map(layout =>
+      allComponents.filter(c => c.layoutId === layout.id)
+    );
 
     // Get all location tag IDs
     const locationTagIds = allComponents

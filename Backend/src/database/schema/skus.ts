@@ -24,5 +24,6 @@ export const skus = pgTable(
     organizationIdx: index('idx_skus_org').on(table.organizationId),
     locationIdx: index('idx_skus_location').on(table.locationTagId),
     expiryIdx: index('idx_skus_expiry').on(table.expiryDate),
+    locationOrgIdx: index('idx_skus_location_org').on(table.locationTagId, table.organizationId),
   }),
 );

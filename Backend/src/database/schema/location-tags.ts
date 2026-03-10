@@ -33,5 +33,6 @@ export const locationTags = pgTable(
       table.unitId,
       table.locationTagName,
     ),
+    unitOrgIdx: index('idx_location_tags_unit_org').on(table.unitId, table.organizationId),
   }),
 );

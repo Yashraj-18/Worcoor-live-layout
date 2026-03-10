@@ -22,7 +22,15 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.BACKEND_URL || 'http://localhost:4000'}/api/:path*`,
+        destination: `${
+    process.env.NODE_ENV === 'production' && 
+    !process.env.BACKEND_URL
+      ? (() => { throw new Error(
+          'BACKEND_URL is required in production'
+        )})()
+      : process.env.BACKEND_URL || 
+        'http://localhost:4000'
+  }/api/:path*`,
       },
       {
         source: '/reference-data/:path*',

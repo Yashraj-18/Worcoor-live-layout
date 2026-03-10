@@ -19,11 +19,16 @@ export class LiveMapService {
 
     const utilization = await this.repository.calculateUtilization(unitId, organizationId);
 
-    const layoutComponents = await Promise.all(
-      data.layouts.map((layout) => this.repository.getLayoutComponents(layout.id, organizationId)),
+    const layoutIds = data.layouts.map(layout => layout.id);
+    const allComponents = await this.repository.getLayoutComponentsBatch(
+      layoutIds, 
+      organizationId
     );
-    const locationTagIds = layoutComponents
-      .flat()
+    // Group by layoutId to preserve the existing data structure
+    const layoutComponents = data.layouts.map(layout =>
+      allComponents.filter(c => c.layoutId === layout.id)
+    );
+    const locationTagIds = allComponents
       .map((component) => component.locationTagId)
       .filter((id): id is string => Boolean(id));
 

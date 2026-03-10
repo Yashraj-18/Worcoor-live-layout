@@ -31,5 +31,6 @@ export const components = pgTable(
     layoutIdx: index('idx_components_layout').on(table.layoutId),
     organizationIdx: index('idx_components_org').on(table.organizationId),
     locationTagIdx: index('idx_components_location_tag').on(table.locationTagId),
+    layoutOrgIdx: index('idx_components_layout_org').on(table.layoutId, table.organizationId),
   }),
 );

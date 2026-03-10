@@ -159,8 +159,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
 
     try {
       setIsLoadingLocationTags(true);
-      console.log(`🏷️ WarehouseLayoutBuilder - Fetching location tags for org unit: ${orgUnit.name} (ID: ${orgUnit.id})`);
-
+      
       const tags = await locationTagService.listByUnit(orgUnit.id);
 
       console.log(`✅ WarehouseLayoutBuilder - Successfully fetched ${tags.length} location tags for ${orgUnit.name}:`);

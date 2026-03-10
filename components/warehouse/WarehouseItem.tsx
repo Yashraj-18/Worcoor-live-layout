@@ -344,8 +344,7 @@ const WarehouseItem = ({
 
                 // In readonly mode, trigger item selection for location details (even for empty compartments)
                 if (isReadOnly && onSelect) {
-                  console.log('Compartment clicked in readonly mode:', { item, compartmentId, row, col, compartmentData });
-                  // Pass the compartment-specific data by calling onSelect with a special format
+                                    // Pass the compartment-specific data by calling onSelect with a special format
                   // We'll pass the compartmentId so the parent can identify which compartment was clicked
                   // For empty compartments, compartmentData will be null/undefined
                   onSelect(item.id, { compartmentId, compartmentData, row, col });
@@ -623,37 +622,16 @@ const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageCom
     ? `${resolvedLocationId} +${locationIdCount - 1}`
     : resolvedLocationId;
 
-  console.log('🔍 Component Type Debug:', {
-  itemId: item.id,
-  itemName: item.name,
-  originalType: item.type,
-  normalizedType: normalizedType,
-  isStorageUnitType,
-  isStorageZoneType,
-  isStorageComponentType,
-  isStorageRack,
-  locationData: item.locationData
-});
-
+  
   // Calculate capacity status for storage units using enhanced multi-location logic
   const allUnitLocationIds = extractAllLocationIds(item);
-  console.log('🔍 Storage Unit Debug:', {
-    itemId: item.id,
-    itemName: item.name,
-    allUnitLocationIds,
-    locationData: item.locationData,
-    locationTagsMapKeys: Object.keys(locationTagsMap),
-    shouldUseMultiLocation: allUnitLocationIds.length > 1
-  });
-  
+    
   const storageUnitCapacityStatus = allUnitLocationIds.length > 1
     ? (() => {
-        console.log('🚀 Using MULTI-LOCATION logic for', allUnitLocationIds);
-        return determineCapacityStatusForMultiLocation(allUnitLocationIds, locationTagsMap);
+                return determineCapacityStatusForMultiLocation(allUnitLocationIds, locationTagsMap);
       })()
     : (() => {
-        console.log('🔄 Using SINGLE location logic');
-        // Fallback to single location logic for backward compatibility
+                // Fallback to single location logic for backward compatibility
         const hasLocationTagsForUnit = Boolean(
           item?.locationId ||
           item?.locationData?.primaryLocationId ||
@@ -664,21 +642,10 @@ const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageCom
         const unitLocationId = item?.locationId || item?.locationData?.primaryLocationId || item?.inventoryData?.locationId || item?.inventoryData?.uniqueId;
         const unitLocationTag = unitLocationId ? locationTagsMap[unitLocationId] : null;
         const hasSkusAssignedForUnit = Boolean(unitLocationTag && unitLocationTag.currentItems > 0);
-        console.log('🔍 Single Location Debug:', {
-          hasLocationTagsForUnit,
-          unitLocationId,
-          unitLocationTag,
-          hasSkusAssignedForUnit,
-          capacityStatus: determineCapacityStatus(hasLocationTagsForUnit, hasSkusAssignedForUnit)
-        });
-        return determineCapacityStatus(hasLocationTagsForUnit, hasSkusAssignedForUnit);
+                return determineCapacityStatus(hasLocationTagsForUnit, hasSkusAssignedForUnit);
       })();
       
-  console.log('🔍 Final Storage Unit Status:', {
-    allUnitLocationIdsCount: allUnitLocationIds.length,
-    storageUnitCapacityStatus
-  });
-
+  
   // Simple fallback color
   const statusColor = '#ddd';
 
@@ -913,7 +880,6 @@ const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageCom
               boxSizing: 'border-box'
             }}
             onError={(e: any) => {
-              console.warn('Failed to load icon image');
               e.target.style.display = 'none';
             }}
           />
@@ -949,7 +915,6 @@ const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageCom
               boxSizing: 'border-box'
             }}
             onError={(e: any) => {
-              console.warn('Failed to load fire exit image');
               e.target.style.display = 'none';
             }}
           />
@@ -986,7 +951,6 @@ const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageCom
               boxSizing: 'border-box'
             }}
             onError={(e: any) => {
-              console.warn('Failed to load security area image');
               e.target.style.display = 'none';
             }}
           />
@@ -1023,7 +987,6 @@ const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageCom
               boxSizing: 'border-box'
             }}
             onError={(e: any) => {
-              console.warn('Failed to load restrooms image');
               e.target.style.display = 'none';
             }}
           />
@@ -1064,8 +1027,7 @@ const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageCom
               if (e?.target?.dataset) {
                 e.target.dataset.fallbackApplied = 'true';
               }
-              console.warn('Failed to load seating image, showing fallback');
-              // Show fallback text
+                            // Show fallback text
               e.target.style.display = 'none';
               const fallback = document.createElement('div');
               fallback.innerHTML = `
@@ -1119,7 +1081,6 @@ const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageCom
               // No backgroundColor - transparent background
             }}
             onError={(e: any) => {
-              console.warn('Failed to load dispatch gates image');
               e.target.style.display = 'none';
             }}
           />
@@ -1157,7 +1118,6 @@ const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageCom
               // No backgroundColor - transparent background
             }}
             onError={(e: any) => {
-              console.warn('Failed to load inbound gates image');
               e.target.style.display = 'none';
             }}
           />

@@ -8,8 +8,7 @@ export function registerSocketHandlers(io: SocketIOServer) {
     handleConnection(authSocket);
 
     socket.on('disconnect', () => {
-      console.log(`User ${authSocket.userId} disconnected`);
-    });
+          });
   });
 }
 

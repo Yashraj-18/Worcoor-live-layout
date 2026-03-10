@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import WarehouseDesigner from '@/components/warehouse/WarehouseDesigner';
 import Dashboard from '../../dashboard/WarehouseDashboard';
@@ -38,6 +38,8 @@ const WarehouseMapView = ({ facilityData }) => {
   const [selectedAsset, setSelectedAsset] = useState('');
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [savedLayouts, setSavedLayouts] = useState([]);
+  const savedLayoutsRef = useRef(savedLayouts);
+  useEffect(() => { savedLayoutsRef.current = savedLayouts; }, [savedLayouts]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showLocationDetails, setShowLocationDetails] = useState(false);
@@ -87,8 +89,7 @@ const WarehouseMapView = ({ facilityData }) => {
   }, [convertBackendLayout]);
 
   const refreshLiveData = useCallback(async () => {
-    console.log('MapView - Refresh triggered', { selectedUnitForDemo });
-    setIsRefreshing(true);
+        setIsRefreshing(true);
     try {
       await refreshSavedLayouts();
     } catch (error) {
@@ -138,7 +139,7 @@ const WarehouseMapView = ({ facilityData }) => {
     }
 
     // Find the selected unit from saved layouts
-    const selectedLayout = savedLayouts.find(layout => layout.id === unitId);
+    const selectedLayout = savedLayoutsRef.current.find(layout => layout.id === unitId);
 
     if (!selectedLayout?.layoutData?.items) {
       setAvailableLocationTags([]);
@@ -301,12 +302,12 @@ const WarehouseMapView = ({ facilityData }) => {
     setAvailableLocationTags(Array.from(locationTags).sort());
     setAvailableSkus(Array.from(skus).sort());
     setAvailableAssets(Array.from(assets).sort());
-  }, [savedLayouts]);
+  }, []); // reads savedLayouts from ref, no dep needed
 
   // Extract dropdown options when selected unit changes
   useEffect(() => {
     extractDropdownOptionsFromSelectedUnit(selectedUnitForDemo);
-  }, [selectedUnitForDemo, savedLayouts, extractDropdownOptionsFromSelectedUnit]);
+  }, [selectedUnitForDemo, extractDropdownOptionsFromSelectedUnit]);
 
   // Close filter dropdown when clicking outside
   useEffect(() => {
@@ -638,7 +639,6 @@ const WarehouseMapView = ({ facilityData }) => {
   };
 
   const handleActionClick = (actionId) => {
-    console.log('Action clicked:', actionId);
     // Add your action handling logic here
     switch(actionId) {
       case 'all-units':
@@ -670,7 +670,6 @@ const WarehouseMapView = ({ facilityData }) => {
   };
 
   const handleUnitAction = (unitId, action) => {
-    console.log('Unit action:', unitId, action);
     
     switch(action) {
       case 'view-live':
@@ -697,7 +696,6 @@ const WarehouseMapView = ({ facilityData }) => {
   };
 
   const handleNotificationAction = (notificationId, action) => {
-    console.log('Notification action:', notificationId, action);
     
     switch(action) {
       case 'view':
@@ -711,7 +709,6 @@ const WarehouseMapView = ({ facilityData }) => {
       case 'dismiss':
         // Remove notification from list
         // In this demo implementation we simply log the dismissal
-        console.log('Notification dismissed:', notificationId);
         break;
       default:
         break;
@@ -719,7 +716,6 @@ const WarehouseMapView = ({ facilityData }) => {
   };
 
   const handleMarkAllAsRead = () => {
-    console.log('Mark all notifications as read');
     // Mark all notifications as read
   };
 
@@ -889,7 +885,6 @@ const WarehouseMapView = ({ facilityData }) => {
   };
 
   const handleClearAllNotifications = () => {
-    console.log('Clear all notifications');
     // Clear all notifications
   };
 
@@ -1114,7 +1109,6 @@ const WarehouseMapView = ({ facilityData }) => {
     setShowGlobalSearchDropdown(false);
     
     // You could add highlighting logic here
-    console.log('Navigate to:', result);
   };
 
   const clearGlobalSearch = () => {
@@ -1827,7 +1821,6 @@ const WarehouseMapView = ({ facilityData }) => {
                 Cancel
               </button>
               <button className="btn primary" onClick={() => {
-                console.log('Creating new unit...');
                 setShowCreateUnitModal(false);
               }}>
                 Create Unit
@@ -1848,7 +1841,6 @@ const WarehouseMapView = ({ facilityData }) => {
             <div className="modal-body">
               <div className="template-grid">
                 <div className="template-card" onClick={() => {
-                  console.log('Using standard warehouse template');
                   setShowTemplateModal(false);
                 }}>
                   <div className="template-icon">🏭</div>
@@ -1856,7 +1848,6 @@ const WarehouseMapView = ({ facilityData }) => {
                   <p>Basic layout with storage, receiving, and dispatch zones</p>
                 </div>
                 <div className="template-card" onClick={() => {
-                  console.log('Using cold storage template');
                   setShowTemplateModal(false);
                 }}>
                   <div className="template-icon">❄️</div>
@@ -1864,7 +1855,6 @@ const WarehouseMapView = ({ facilityData }) => {
                   <p>Temperature-controlled storage with specialized zones</p>
                 </div>
                 <div className="template-card" onClick={() => {
-                  console.log('Using distribution center template');
                   setShowTemplateModal(false);
                 }}>
                   <div className="template-icon">📦</div>
@@ -2020,7 +2010,6 @@ const WarehouseMapView = ({ facilityData }) => {
                 <button
                   className="demo-map-fullscreen-btn"
                   onClick={() => {
-                    console.log('MapView - Refresh button clicked');
                     void refreshLiveData();
                   }}
                   title="Refresh"
@@ -2090,9 +2079,6 @@ const WarehouseMapView = ({ facilityData }) => {
                   const unit = warehouseUnits.find(u => u.id === selectedUnitForDemo);
                   
                   // If it's a custom layout, render the actual layout
-                  console.log('Debug - Unit data:', unit);
-                  console.log('Debug - Is custom layout:', unit?.isCustomLayout);
-                  console.log('Debug - Layout data:', unit?.layoutData);
                   
                   if (unit && unit.isCustomLayout && unit.layoutData && Array.isArray(unit.layoutData.items)) {
                     const layoutItems = unit.layoutData.items;
@@ -2133,8 +2119,6 @@ const WarehouseMapView = ({ facilityData }) => {
                         stageShadow="none"
                         stageBorderRadius="0px"
                         onItemClick={(item, index) => {
-                          console.log('WarehouseMapView - Item clicked:', item);
-                          console.log('WarehouseMapView - Item index:', index);
                           setSelectedItem(item);
                           setShowLocationDetails(true);
                         }}

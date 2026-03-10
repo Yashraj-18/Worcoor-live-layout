@@ -52,11 +52,11 @@ export type SkuListResponse = {
 const BASE_PATH = '/api/skus';
 
 export const skuService = {
-  async list(params?: SkuListQuery): Promise<SkuListResponse> {
+  async list(params?: SkuListQuery, config?: { signal?: AbortSignal }): Promise<SkuListResponse> {
     const response = await apiService.get({
       path: BASE_PATH,
       params,
-    });
+    }, config);
     return response.data as SkuListResponse;
   },
 

@@ -166,6 +166,9 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
   // ── Initial data fetch via REST ───────────────────────────────────────────
 
   useEffect(() => {
+    const abortController = new AbortController();
+    const signal = abortController.signal;
+
     if (!unitId) {
       setLocationTag(null);
       setSkus([]);
@@ -196,8 +199,10 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
 
           if (locationTagIds.length === 0) {
-            setIsMultiLevel(false);
-            setLevelsData([]);
+            if (!signal.aborted) {
+              setIsMultiLevel(false);
+              setLevelsData([]);
+            }
             return;
           }
 
@@ -221,8 +226,8 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
             try {
               const [skuResult, assetResult] = await Promise.all([
-                skuService.list({ locationTagId: matchedTag.id, limit: 100 }),
-                assetService.list({ locationTagId: matchedTag.id, limit: 100 })
+                skuService.list({ locationTagId: matchedTag.id, limit: 100 }, { signal }),
+                assetService.list({ locationTagId: matchedTag.id, limit: 100 }, { signal })
               ]);
               return { skus: skuResult.items, assets: assetResult.items, levelIndex: idx };
             } catch (err) {
@@ -263,20 +268,24 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
           });
 
           
-          setLevelsData(newLevelsData);
-          setIsMultiLevel(true);
-          setLocationTag(null); // Clear single-level data
-          setSkus([]);
-          setIsMultiLocation(false);
-          setMultiLocationData([]);
+          if (!signal.aborted) {
+            setLevelsData(newLevelsData);
+            setIsMultiLevel(true);
+            setLocationTag(null); // Clear single-level data
+            setSkus([]);
+            setIsMultiLocation(false);
+            setMultiLocationData([]);
+          }
         } else if (multiLocationInfo.isMultiLocation) {
           // Handle multi-location fetching (storage units with multiple tags)
 
           const locationTagCodes = multiLocationInfo.locationIds;
 
           if (locationTagCodes.length === 0) {
-            setIsMultiLocation(false);
-            setMultiLocationData([]);
+            if (!signal.aborted) {
+              setIsMultiLocation(false);
+              setMultiLocationData([]);
+            }
             return;
           }
 
@@ -299,8 +308,8 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
             try {
               const [skuResult, assetResult] = await Promise.all([
-                skuService.list({ locationTagId: matchedTag.id, limit: 100 }),
-                assetService.list({ locationTagId: matchedTag.id, limit: 100 })
+                skuService.list({ locationTagId: matchedTag.id, limit: 100 }, { signal }),
+                assetService.list({ locationTagId: matchedTag.id, limit: 100 }, { signal })
               ]);
               return { skus: skuResult.items, assets: assetResult.items, locationIndex: idx };
             } catch (err) {
@@ -339,17 +348,21 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
           });
 
           
-          setMultiLocationData(newMultiLocationData);
-          setIsMultiLocation(true);
-          setLocationTag(null); // Clear single-level data
-          setSkus([]);
-          setIsMultiLevel(false);
-          setLevelsData([]);
+          if (!signal.aborted) {
+            setMultiLocationData(newMultiLocationData);
+            setIsMultiLocation(true);
+            setLocationTag(null); // Clear single-level data
+            setSkus([]);
+            setIsMultiLevel(false);
+            setLevelsData([]);
+          }
         } else {
           // Handle single-level (existing logic)
           if (!locationTagId) {
-            setLocationTag(null);
-            setSkus([]);
+            if (!signal.aborted) {
+              setLocationTag(null);
+              setSkus([]);
+            }
             return;
           }
 
@@ -358,45 +371,55 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
             locationTags && locationTags.length > 0 
               ? Promise.resolve(locationTags)
               : locationTagService.listByUnit(unitId),
-            skuService.list({ locationTagId, limit: 100 }),
-            assetService.list({ locationTagId, limit: 100 }),
+            skuService.list({ locationTagId, limit: 100 }, { signal }),
+            assetService.list({ locationTagId, limit: 100 }, { signal }),
           ]);
 
           if (cancelled) return;
 
           const tag = allTags.find((t) => t.id === locationTagId) ?? null;
-          setLocationTag(tag);
-          setSkus(skuResponse.items);
-          setAssets(assetResponse.items);
-          setIsMultiLevel(false);
-          setLevelsData([]);
-          setIsMultiLocation(false);
-          setMultiLocationData([]);
+          if (!signal.aborted) {
+            setLocationTag(tag);
+            setSkus(skuResponse.items);
+            setAssets(assetResponse.items);
+            setIsMultiLevel(false);
+            setLevelsData([]);
+            setIsMultiLocation(false);
+            setMultiLocationData([]);
+          }
         }
 
         if (!multiLevelInfo.isMultiLevel && !multiLocationInfo.isMultiLocation && !selectedItem?.locationTagId) {
         }
       } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        if (signal.aborted) return;
         if (!cancelled) setError((err as Error).message);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && !signal.aborted) setLoading(false);
       }
     };
 
     fetchData();
     return () => {
-      cancelled = true;
+      abortController.abort();
     };
-  }, [selectedItem, unitId, detectMultiLevels, detectMultiLocation, locationTagId]);
+  }, [selectedItem, unitId, locationTagId]);
 
   // ── WebSocket: live updates ───────────────────────────────────────────────
 
   const refreshSkus = useCallback(async () => {
     if (!locationTagId) return;
+    const abortController = new AbortController();
+    const signal = abortController.signal;
     try {
-      const skuResponse = await skuService.list({ locationTagId, limit: 100 });
-      setSkus(skuResponse.items);
+      const skuResponse = await skuService.list({ locationTagId, limit: 100 }, { signal });
+      if (!signal.aborted) {
+        setSkus(skuResponse.items);
+      }
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      if (signal.aborted) return;
     }
   }, [locationTagId]);
 

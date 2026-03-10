@@ -15,6 +15,10 @@ interface RequestOptions {
   df?: Record<string, any>;
 }
 
+interface RequestConfig {
+  signal?: AbortSignal;
+}
+
 const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
 const normalizedBaseUrl = rawBaseUrl.replace(/\/+$/, "");
 
@@ -54,19 +58,21 @@ const getAuthHeaders = (options: RequestOptions) => {
 };
 
 const request = async <T = any>(
-  options: RequestOptions
+  options: RequestOptions,
+  config?: RequestConfig
 ): Promise<AxiosResponse<T>> => {
-  const config: AxiosRequestConfig = {
+  const axiosConfig: AxiosRequestConfig = {
     url: buildRequestUrl(options.path),
     method: options.method || "GET",
     headers: getAuthHeaders(options),
     params: options.params,
     data: options.data,
     withCredentials: true,
+    signal: config?.signal,
   };
 
   try {
-    const response = await axios(config);
+    const response = await axios(axiosConfig);
     return response;
   } catch (error: any) {
     if (error.response?.status === 401) {
@@ -86,9 +92,9 @@ const request = async <T = any>(
 };
 
 export const apiService = {
-  get: (options: RequestOptions) => request({ ...options, method: "GET" }),
-  post: (options: RequestOptions) => request({ ...options, method: "POST" }),
-  put: (options: RequestOptions) => request({ ...options, method: "PUT" }),
-  delete: (options: RequestOptions) => request({ ...options, method: "DELETE" }),
-  patch: (options: RequestOptions) => request({ ...options, method: "PATCH" }),
+  get: (options: RequestOptions, config?: RequestConfig) => request({ ...options, method: "GET" }, config),
+  post: (options: RequestOptions, config?: RequestConfig) => request({ ...options, method: "POST" }, config),
+  put: (options: RequestOptions, config?: RequestConfig) => request({ ...options, method: "PUT" }, config),
+  delete: (options: RequestOptions, config?: RequestConfig) => request({ ...options, method: "DELETE" }, config),
+  patch: (options: RequestOptions, config?: RequestConfig) => request({ ...options, method: "PATCH" }, config),
 };

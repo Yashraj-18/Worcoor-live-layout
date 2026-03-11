@@ -62,10 +62,33 @@ export class LocationTagsService {
     reply: FastifyReply,
   ) {
     const { unitId } = request.params;
-    const tags = await this.repository.findAllByUnit(unitId, request.user.organizationId);
-    const enriched = await Promise.all(
-      tags.map((tag) => this.enrichTag(tag, request.user.organizationId)),
-    );
+    const organizationId = request.user.organizationId;
+
+    // Query 1: get all tags
+    const tags = await this.repository.findAllByUnit(unitId, organizationId);
+    
+    if (tags.length === 0) {
+      return reply.send([]);
+    }
+
+    // Query 2: get ALL usage in a single GROUP BY query
+    const tagIds = tags.map(tag => tag.id);
+    const usageMap = await this.repository.getUsageBatch(tagIds, organizationId);
+
+    // Enrich in memory — no more DB calls
+    const enriched = tags.map(tag => {
+      const normalized = normalizeTag(tag);
+      const usage = usageMap[tag.id] ?? 0;
+      const utilization =
+        normalized.capacity > 0
+          ? Math.round((usage / normalized.capacity) * 100 * 10) / 10
+          : 0;
+      return {
+        ...normalized,
+        currentItems: usage,
+        utilizationPercentage: utilization,
+      };
+    });
 
     reply.send(enriched);
   }

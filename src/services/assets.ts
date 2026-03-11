@@ -41,11 +41,11 @@ export type AssetListResponse = {
 const BASE_PATH = '/api/assets';
 
 export const assetService = {
-  async list(params?: AssetListQuery): Promise<AssetListResponse> {
+  async list(params?: AssetListQuery, config?: { signal?: AbortSignal }): Promise<AssetListResponse> {
     const response = await apiService.get({
       path: BASE_PATH,
       params,
-    });
+    }, config);
     return response.data as AssetListResponse;
   },
 

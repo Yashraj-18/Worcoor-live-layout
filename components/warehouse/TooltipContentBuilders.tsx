@@ -24,9 +24,7 @@ export interface CompartmentTooltipData {
 export const buildItemTooltipContent = (data: ItemTooltipData): React.ReactNode => {
   const { item, inventoryData, capacity, dbUnitOfMeasurement } = data;
 
-  // Debug: Log the item data to see what we're working with
-  console.log('Tooltip Debug - Item Data:', item);
-
+  
   const title = getContextualLabel(item) || item.name || 'Warehouse Component';
   const subtitleParts = [];
   if (item.autoLabel && item.autoLabel !== title) {

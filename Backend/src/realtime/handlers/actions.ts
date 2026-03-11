@@ -90,6 +90,7 @@ export function registerActionHandlers(
         timestamp: new Date().toISOString(),
       });
 
+      // Update destination location
       const utilizationPercentage = ((result.currentItems) / result.capacity) * 100;
 
       io.to(getUnitRoom(socket.currentUnit)).emit('location:updated', {
@@ -106,6 +107,37 @@ export function registerActionHandlers(
           capacity: result.capacity,
           percentage: utilizationPercentage,
         });
+      }
+
+      // Also update source location if there was one
+      if (result.fromLocation && result.fromLocation !== data.to_location_tag_id) {
+        try {
+          const sourceLocationInfo = await dependencies.getLocationCapacity(
+            result.fromLocation,
+            socket.organizationId,
+          );
+
+          const sourceUtilizationPercentage = ((sourceLocationInfo.currentItems) / sourceLocationInfo.capacity) * 100;
+
+          io.to(getUnitRoom(socket.currentUnit)).emit('location:updated', {
+            location_tag_id: result.fromLocation,
+            current_items: sourceLocationInfo.currentItems,
+            utilization_percentage: sourceUtilizationPercentage,
+          });
+
+          if (sourceUtilizationPercentage > 90) {
+            io.to(getUnitRoom(socket.currentUnit)).emit('location:capacity-warning', {
+              location_tag_id: result.fromLocation,
+              location_tag_name: sourceLocationInfo.tagName,
+              current: sourceLocationInfo.currentItems,
+              capacity: sourceLocationInfo.capacity,
+              percentage: sourceUtilizationPercentage,
+            });
+          }
+        } catch (sourceError) {
+          // Log but don't fail the operation if source location update fails
+          console.error('Failed to emit source location update:', sourceError);
+        }
       }
     } catch (error) {
       socket.emit('error', { message: (error as Error).message });

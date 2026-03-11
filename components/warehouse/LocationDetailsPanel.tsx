@@ -57,6 +57,17 @@ interface LocationDetailsPanelProps {
   unitId: string | null | undefined;  // pass selectedUnitForDemo from WarehouseMapView
   onClose: () => void;
   isEmbedded?: boolean;
+  onSkuChange?: () => void;
+  onComponentChange?: () => void;
+  onCapacityWarning?: (data: {
+    location_tag_id: string;
+    location_tag_name: string;
+    current: number;
+    capacity: number;
+    percentage: number;
+  }) => void;
+  onLocationTagUpdate?: (locationTagId: string, currentItems: number) => void;
+  locationTags?: any[]; // Optional parent-provided location tags to avoid duplicate fetches
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -77,15 +88,12 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
   unitId,
   onClose,
   isEmbedded = false,
+  onSkuChange,
+  onComponentChange,
+  onCapacityWarning,
+  onLocationTagUpdate,
+  locationTags,
 }) => {
-  // 🔍 DEBUG: Log selectedItem data to understand structure
-  console.log('🔍 LocationDetailsPanel - selectedItem:', selectedItem);
-  console.log('🔍 selectedItem keys:', Object.keys(selectedItem || {}));
-  console.log('🔍 levelLocationMappings:', selectedItem?.levelLocationMappings);
-  console.log('🔍 locationIds:', selectedItem?.locationIds);
-  console.log('🔍 levelIds:', selectedItem?.levelIds);
-  console.log('🔍 compartmentContents:', selectedItem?.compartmentContents);
-  console.log('🔍 locationData (multi-location support):', selectedItem?.locationData);
 
   const locationTagId = selectedItem?.locationTagId ?? null;
 
@@ -110,11 +118,9 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
   // ── Multi-level and multi-location detection logic ───────────────────────────────────
 
   const detectMultiLevels = useCallback((item: SelectedItem) => {
-    console.log('🔍 Detecting multi-level for item:', item);
 
     // Check for compartment-specific multi-level
     if (item.selectedCompartment?.levelLocationMappings && item.selectedCompartment.levelLocationMappings.length > 0) {
-      console.log('✅ Found multi-level in selectedCompartment.levelLocationMappings');
       return {
         isMultiLevel: true,
         levels: item.selectedCompartment.levelLocationMappings
@@ -126,7 +132,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
       const compartments = Object.values(item.compartmentContents);
       const firstCompartment = compartments[0];
       if (firstCompartment?.levelLocationMappings && firstCompartment.levelLocationMappings.length > 0) {
-        console.log('✅ Found multi-level in compartmentContents');
         return {
           isMultiLevel: true,
           levels: firstCompartment.levelLocationMappings
@@ -134,18 +139,15 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
       }
     }
 
-    console.log('❌ No multi-level detected');
     return { isMultiLevel: false, levels: [] };
   }, []);
 
   // ── Multi-location detection logic ─────────────────────────────────────────--
 
   const detectMultiLocation = useCallback((item: SelectedItem) => {
-    console.log('🔍 Detecting multi-location for item:', item);
 
     // Check for storage units with multiple location tags
     if (item.locationData?.isMultiLocation && item.locationData.locationIds && item.locationData.locationIds.length > 1) {
-      console.log('✅ Found multi-location storage unit:', item.locationData.locationIds);
       return {
         isMultiLocation: true,
         locationIds: item.locationData.locationIds
@@ -154,20 +156,21 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
     // Also check for direct locationIds array (fallback)
     if (item.locationIds && item.locationIds.length > 1) {
-      console.log('✅ Found multi-location via locationIds:', item.locationIds);
       return {
         isMultiLocation: true,
         locationIds: item.locationIds
       };
     }
 
-    console.log('❌ No multi-location detected');
     return { isMultiLocation: false, locationIds: [] };
   }, []);
 
   // ── Initial data fetch via REST ───────────────────────────────────────────
 
   useEffect(() => {
+    const abortController = new AbortController();
+    const signal = abortController.signal;
+
     if (!unitId) {
       setLocationTag(null);
       setSkus([]);
@@ -181,8 +184,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
     let cancelled = false;
     const multiLevelInfo = detectMultiLevels(selectedItem);
     const multiLocationInfo = detectMultiLocation(selectedItem);
-    console.log('🔍 Multi-level detection result:', multiLevelInfo);
-    console.log('🔍 Multi-location detection result:', multiLocationInfo);
 
     const fetchData = async () => {
       setLoading(true);
@@ -193,28 +194,28 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
       try {
         if (multiLevelInfo.isMultiLevel) {
           // Handle multi-level fetching (existing logic)
-          console.log('🚀 Fetching multi-level data for levels:', multiLevelInfo.levels);
 
           const locationTagIds = multiLevelInfo.levels
             .map((level: LevelLocationMapping) => level.locationId || level.locId)
             .filter((id: string | undefined): id is string => Boolean(id));
 
-          console.log('🔍 Multi-level location IDs found:', locationTagIds);
 
           if (locationTagIds.length === 0) {
-            console.warn('⚠️ No valid location tag IDs found for multi-level item');
-            setIsMultiLevel(false);
-            setLevelsData([]);
+            if (!signal.aborted) {
+              setIsMultiLevel(false);
+              setLevelsData([]);
+            }
             return;
           }
 
-          // Fetch all location tags in parallel
-          const allTags = await locationTagService.listByUnit(unitId);
+          // Use parent-provided location tags if available, otherwise fetch them
+          const allTags = locationTags && locationTags.length > 0 
+            ? locationTags 
+            : await locationTagService.listByUnit(unitId);
           const matchedTags = allTags.filter(tag =>
             locationTagIds.includes(tag.locationTagName)
           );
 
-          console.log('🔍 Matched tags:', matchedTags.map(t => ({ id: t.id, name: t.locationTagName })));
 
           // Fetch SKUs and Assets for all levels using matched UUIDs
           const fetchPromises = multiLevelInfo.levels.map(async (level: LevelLocationMapping, idx: number) => {
@@ -222,19 +223,16 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
             const matchedTag = matchedTags.find(tag => tag.locationTagName === locationCode);
 
             if (!matchedTag) {
-              console.log(`⚠️ No matching tag found for location code: ${locationCode}`);
               return { skus: [], assets: [], levelIndex: idx };
             }
 
             try {
               const [skuResult, assetResult] = await Promise.all([
-                skuService.list({ locationTagId: matchedTag.id, limit: 100 }),
-                assetService.list({ locationTagId: matchedTag.id, limit: 100 })
+                skuService.list({ locationTagId: matchedTag.id, limit: 100 }, { signal }),
+                assetService.list({ locationTagId: matchedTag.id, limit: 100 }, { signal })
               ]);
-              console.log('✅ Successfully fetched SKUs and Assets for location:', matchedTag.id);
               return { skus: skuResult.items, assets: assetResult.items, levelIndex: idx };
             } catch (err) {
-              console.error(`❌ Failed to fetch data for location ${matchedTag.id}:`, err);
               return { skus: [], assets: [], levelIndex: idx };
             }
           });
@@ -244,7 +242,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
             if (result.status === 'fulfilled') {
               return result.value;
             } else {
-              console.error(`❌ Data fetch failed:`, result.reason);
               return { skus: [], assets: [], levelIndex: 0 };
             }
           });
@@ -255,7 +252,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
             const responseData = validResponses.find(resp => resp.levelIndex === idx);
 
             if (!matchedTag) {
-              console.warn(`⚠️ No matching tag found for level ${idx} with code: ${locationCode}`);
             }
 
             return {
@@ -268,65 +264,57 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                 levelIndex: idx
               },
               isActive: selectedItem.selectedCompartmentId ?
-                (locationCode === selectedItem.selectedCompartmentId) : false
+                (locationCode === selectedItem.selectedCompartmentId) : false,
+              isPrimary: locationCode === selectedItem?.locationData?.primaryLocationId
             };
           });
 
-          console.log('✅ Multi-level data assembled:', newLevelsData.map(d => ({
-            level: d.levelInfo.levelId,
-            locationId: d.levelInfo.locationId,
-            hasTag: !!d.locationTag,
-            tagId: d.locationTag?.id || 'none',
-            skuCount: d.skus.length,
-            assetCount: d.assets.length
-          })));
-
-          setLevelsData(newLevelsData);
-          setIsMultiLevel(true);
-          setLocationTag(null); // Clear single-level data
-          setSkus([]);
-          setIsMultiLocation(false);
-          setMultiLocationData([]);
-        } else if (multiLocationInfo.isMultiLocation) {
-          // Handle multi-location fetching (storage units with multiple tags)
-          console.log('🚀 Fetching multi-location data for location IDs:', multiLocationInfo.locationIds);
-
-          const locationTagCodes = multiLocationInfo.locationIds;
-          console.log('🔍 Multi-location location codes found:', locationTagCodes);
-
-          if (locationTagCodes.length === 0) {
-            console.warn('⚠️ No valid location tag codes found for multi-location item');
+          
+          if (!signal.aborted) {
+            setLevelsData(newLevelsData);
+            setIsMultiLevel(true);
+            setLocationTag(null); // Clear single-level data
+            setSkus([]);
             setIsMultiLocation(false);
             setMultiLocationData([]);
+          }
+        } else if (multiLocationInfo.isMultiLocation) {
+          // Handle multi-location fetching (storage units with multiple tags)
+
+          const locationTagCodes = multiLocationInfo.locationIds;
+
+          if (locationTagCodes.length === 0) {
+            if (!signal.aborted) {
+              setIsMultiLocation(false);
+              setMultiLocationData([]);
+            }
             return;
           }
 
-          // Fetch all location tags in parallel
-          const allTags = await locationTagService.listByUnit(unitId);
+          // Use parent-provided location tags if available, otherwise fetch them
+          const allTags = locationTags && locationTags.length > 0 
+            ? locationTags 
+            : await locationTagService.listByUnit(unitId);
           const matchedTags = allTags.filter(tag =>
             locationTagCodes.includes(tag.locationTagName)
           );
 
-          console.log('🔍 Matched tags for multi-location:', matchedTags.map(t => ({ id: t.id, name: t.locationTagName })));
 
           // Fetch SKUs and Assets for all location tags using matched UUIDs
           const fetchPromises = locationTagCodes.map(async (locationCode: string, idx: number) => {
             const matchedTag = matchedTags.find(tag => tag.locationTagName === locationCode);
 
             if (!matchedTag) {
-              console.log(`⚠️ No matching tag found for location code: ${locationCode}`);
               return { skus: [], assets: [], locationIndex: idx };
             }
 
             try {
               const [skuResult, assetResult] = await Promise.all([
-                skuService.list({ locationTagId: matchedTag.id, limit: 100 }),
-                assetService.list({ locationTagId: matchedTag.id, limit: 100 })
+                skuService.list({ locationTagId: matchedTag.id, limit: 100 }, { signal }),
+                assetService.list({ locationTagId: matchedTag.id, limit: 100 }, { signal })
               ]);
-              console.log('✅ Successfully fetched data for location:', matchedTag.id);
               return { skus: skuResult.items, assets: assetResult.items, locationIndex: idx };
             } catch (err) {
-              console.error(`❌ Failed to fetch data for location ${matchedTag.id}:`, err);
               return { skus: [], assets: [], locationIndex: idx };
             }
           });
@@ -336,7 +324,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
             if (result.status === 'fulfilled') {
               return result.value;
             } else {
-              console.error(`❌ Data fetch failed:`, result.reason);
               return { skus: [], assets: [], locationIndex: 0 };
             }
           });
@@ -347,7 +334,6 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
             const responseData = validResponses.find(resp => resp.locationIndex === idx);
 
             if (!matchedTag) {
-              console.warn(`⚠️ No matching tag found for location ${idx} with code: ${locationCode}`);
             }
 
             return {
@@ -358,89 +344,106 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
                 locationCode: locationCode,
                 locationIndex: idx,
                 isPrimary: locationCode === selectedItem?.locationData?.primaryLocationId
-              }
+              },
+              isPrimary: locationCode === selectedItem?.locationData?.primaryLocationId
             };
           });
 
-          console.log('✅ Multi-location data assembled:', newMultiLocationData.map(d => ({
-            locationCode: d.locationInfo.locationCode,
-            hasTag: !!d.locationTag,
-            tagId: d.locationTag?.id || 'none',
-            skuCount: d.skus.length,
-            assetCount: d.assets.length,
-            isPrimary: d.locationInfo.isPrimary
-          })));
-
-          setMultiLocationData(newMultiLocationData);
-          setIsMultiLocation(true);
-          setLocationTag(null); // Clear single-level data
-          setSkus([]);
-          setIsMultiLevel(false);
-          setLevelsData([]);
+          
+          if (!signal.aborted) {
+            setMultiLocationData(newMultiLocationData);
+            setIsMultiLocation(true);
+            setLocationTag(null); // Clear single-level data
+            setSkus([]);
+            setIsMultiLevel(false);
+            setLevelsData([]);
+          }
         } else {
           // Handle single-level (existing logic)
           if (!locationTagId) {
-            setLocationTag(null);
-            setSkus([]);
+            if (!signal.aborted) {
+              setLocationTag(null);
+              setSkus([]);
+            }
             return;
           }
 
           const [allTags, skuResponse, assetResponse] = await Promise.all([
-            locationTagService.listByUnit(unitId),
-            skuService.list({ locationTagId, limit: 100 }),
-            assetService.list({ locationTagId, limit: 100 }),
+            // Use parent-provided location tags if available, otherwise fetch them
+            locationTags && locationTags.length > 0 
+              ? Promise.resolve(locationTags)
+              : locationTagService.listByUnit(unitId),
+            skuService.list({ locationTagId, limit: 100 }, { signal }),
+            assetService.list({ locationTagId, limit: 100 }, { signal }),
           ]);
 
           if (cancelled) return;
 
           const tag = allTags.find((t) => t.id === locationTagId) ?? null;
-          setLocationTag(tag);
-          setSkus(skuResponse.items);
-          setAssets(assetResponse.items);
-          setIsMultiLevel(false);
-          setLevelsData([]);
-          setIsMultiLocation(false);
-          setMultiLocationData([]);
+          if (!signal.aborted) {
+            setLocationTag(tag);
+            setSkus(skuResponse.items);
+            setAssets(assetResponse.items);
+            setIsMultiLevel(false);
+            setLevelsData([]);
+            setIsMultiLocation(false);
+            setMultiLocationData([]);
+            
+            // Update global locationTagsData with fresh SKU quantity
+            if (onLocationTagUpdate && locationTagId) {
+              const totalQuantity = skuResponse.items.reduce((sum, sku) => sum + (sku.quantity || 0), 0);
+              onLocationTagUpdate(locationTagId, totalQuantity);
+            }
+          }
         }
 
         if (!multiLevelInfo.isMultiLevel && !multiLocationInfo.isMultiLocation && !selectedItem?.locationTagId) {
-          console.warn('LocationDetailsPanel: tag not found');
         }
       } catch (err) {
-        console.error('Data fetch error:', err);
+        if (err instanceof Error && err.name === 'AbortError') return;
+        if (signal.aborted) return;
         if (!cancelled) setError((err as Error).message);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && !signal.aborted) setLoading(false);
       }
     };
 
     fetchData();
     return () => {
-      cancelled = true;
+      abortController.abort();
     };
-  }, [selectedItem, unitId, detectMultiLevels, detectMultiLocation, locationTagId]);
+  }, [selectedItem, unitId, locationTagId]);
 
   // ── WebSocket: live updates ───────────────────────────────────────────────
 
   const refreshSkus = useCallback(async () => {
     if (!locationTagId) return;
+    const abortController = new AbortController();
+    const signal = abortController.signal;
     try {
-      const skuResponse = await skuService.list({ locationTagId, limit: 100 });
-      setSkus(skuResponse.items);
+      const skuResponse = await skuService.list({ locationTagId, limit: 100 }, { signal });
+      if (!signal.aborted) {
+        setSkus(skuResponse.items);
+        
+        // Update global locationTagsData with fresh SKU quantity
+        if (onLocationTagUpdate) {
+          const totalQuantity = skuResponse.items.reduce((sum, sku) => sum + (sku.quantity || 0), 0);
+          onLocationTagUpdate(locationTagId, totalQuantity);
+        }
+      }
     } catch (err) {
-      console.error('Failed to refresh SKUs:', err);
+      if (err instanceof Error && err.name === 'AbortError') return;
+      if (signal.aborted) return;
     }
-  }, [locationTagId]);
+  }, [locationTagId, onLocationTagUpdate]);
 
   const handleLocationUpdated = useCallback((data) => {
-    console.log('🔄 location:updated', data);
     setLiveCurrentItems(data.current_items);
     setLiveUtilizationPct(data.utilization_percentage);
     refreshSkus(); // re-fetch SKU list so quantities update too
   }, [refreshSkus]);
 
   const handleInventoryChanged = useCallback((data) => {
-    console.log('🔄 inventory:changed', data);
     setLiveCurrentItems(data.current_items);
     setLiveUtilizationPct(data.utilization_percentage);
     refreshSkus(); // re-fetch SKU list so quantities update too
@@ -451,6 +454,9 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
     locationTagId,
     onLocationUpdated: handleLocationUpdated,
     onInventoryChanged: handleInventoryChanged,
+    onSkuChange,
+    onComponentChange,
+    onCapacityWarning,
   });
 
   // ── Derived display values (socket overrides REST snapshot) ───────────────

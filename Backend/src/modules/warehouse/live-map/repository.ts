@@ -47,6 +47,37 @@ export class LiveMapRepository {
       .where(and(eq(components.layoutId, layoutId), eq(components.organizationId, organizationId)));
   }
 
+  async getLayoutComponentsBatch(
+    layoutIds: string[],
+    organizationId: string
+  ) {
+    if (layoutIds.length === 0) return [];
+    
+    return await db
+      .select({
+        layoutId: components.layoutId,
+        id: components.id,
+        componentType: components.componentType,
+        displayName: components.displayName,
+        positionX: components.positionX,
+        positionY: components.positionY,
+        width: components.width,
+        height: components.height,
+        color: components.color,
+        locationTagId: components.locationTagId,
+        locationTagName: locationTags.locationTagName,
+        capacity: locationTags.capacity,
+      })
+      .from(components)
+      .leftJoin(locationTags, eq(components.locationTagId, locationTags.id))
+      .where(
+        and(
+          inArray(components.layoutId, layoutIds),
+          eq(components.organizationId, organizationId)
+        )
+      );
+  }
+
   async getLocationTagSkus(locationTagId: string, organizationId: string) {
     return db
       .select({

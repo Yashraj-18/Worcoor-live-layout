@@ -11,8 +11,7 @@ export interface AuthenticatedSocket extends Socket {
 }
 
 export function handleConnection(socket: AuthenticatedSocket) {
-  console.log(`User ${socket.userId} connected`);
-
+  
   socket.on('join-unit', (data: any) => requireUnitAccess(async (socket, { unit_id }) => {
     socket.join(getUnitRoom(unit_id));
     socket.currentUnit = unit_id;
@@ -35,8 +34,7 @@ export function handleConnection(socket: AuthenticatedSocket) {
     const unitId = data?.unit_id ?? data?.unitId;
     socket.join(getUnitRoom(unitId));
     socket.currentUnit = unitId;
-    console.log(`User ${socket.userId} joined unit room: ${unitId}`);
-  }));
+      }));
 
   socket.on('leave:unit', (data: any) => {
     const { unitId } = data ?? {};
@@ -45,22 +43,19 @@ export function handleConnection(socket: AuthenticatedSocket) {
     if (socket.currentUnit === unitId) {
       socket.currentUnit = undefined;
     }
-    console.log(`User ${socket.userId} left unit room: ${unitId}`);
-  });
+      });
 
   socket.on('join:layout', async (data: any) => {
     const { layoutId } = data ?? {};
     if (!layoutId || typeof layoutId !== 'string') return;
     socket.join(getLayoutRoom(layoutId));
-    console.log(`User ${socket.userId} joined layout room: ${layoutId}`);
-  });
+      });
 
   socket.on('leave:layout', (data: any) => {
     const { layoutId } = data ?? {};
     if (!layoutId || typeof layoutId !== 'string') return;
     socket.leave(getLayoutRoom(layoutId));
-    console.log(`User ${socket.userId} left layout room: ${layoutId}`);
-  });
+      });
 
   socket.on('join-organization', (data: any) => {
     const { organization_id } = data ?? {};

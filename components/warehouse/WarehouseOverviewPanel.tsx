@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { TrendingUp, Package, BarChart3, Wifi, WifiOff } from 'lucide-react';
 import { useWarehouseSocket } from '../../hooks/useWarehouseSocket';
 import { locationTagService, type LocationTag } from '@/src/services/locationTags';
@@ -112,9 +112,22 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
   const [fetchedLocationTags, setFetchedLocationTags] = useState<LocationTag[]>([]);
   const locationTags: LocationTag[] = locationTagsProp ?? fetchedLocationTags;
 
+  // Ref to track locationTagsProp without causing fetchStats recreation
+  const locationTagsPropRef = useRef(locationTagsProp);
+
+  // Keep the ref in sync with locationTagsProp
+  useEffect(() => {
+    locationTagsPropRef.current = locationTagsProp;
+  }, [locationTagsProp]);
+
+  // Ref to track the last unitId for which stats was fetched to prevent duplicate requests
+  const lastStatsFetchedUnitRef = useRef<string | null>(null);
+
   // Fetch stats (and location tags when not provided by parent) from API
   const fetchStats = useCallback(async () => {
     if (!unitId) return;
+    if (lastStatsFetchedUnitRef.current === unitId) return;
+    lastStatsFetchedUnitRef.current = unitId;
 
     setIsLoadingStats(true);
     try {
@@ -126,16 +139,10 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
         }),
       ];
 
-      // If locationTagsProp is undefined OR an empty array, trigger our own fetch
-      // to lazily load the backend tag capacities if the parent map hasn't hydrated yet.
-      if (!locationTagsProp || locationTagsProp.length === 0) {
-        requests.push(locationTagService.listByUnit(unitId).catch(() => [] as LocationTag[]));
-      }
+      const statsResponse = await Promise.all(requests);
 
-      const [statsResponse, tags] = await Promise.all(requests);
-
-      if (statsResponse.ok) {
-        const stats = await statsResponse.json();
+      if (statsResponse[0].ok) {
+        const stats = await statsResponse[0].json();
         setApiStats({
           totalLocations: stats.totalLocationTags,
           totalSkus: stats.totalSkus,
@@ -143,16 +150,12 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
           totalAssets: stats.totalAssets,
         });
       }
-
-      if (tags) {
-        setFetchedLocationTags(tags);
-      }
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     } finally {
       setIsLoadingStats(false);
     }
-  }, [unitId, locationTagsProp]);
+  }, [unitId]);
 
   // Fetch stats on mount and when unitId changes
   useEffect(() => {

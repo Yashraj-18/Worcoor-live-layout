@@ -1,4 +1,4 @@
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { and, eq, ne, inArray, sql } from 'drizzle-orm';
 
 import { db } from '../../../config/database.js';
 import { locationTags, skus, assets, components } from '../../../database/schema/index.js';
@@ -71,6 +71,34 @@ export class LocationTagsRepository {
       .where(conditions);
 
     return Number(result[0]?.totalItems ?? 0);
+  }
+
+  async getUsageBatch(
+    locationTagIds: string[],
+    organizationId: string
+  ): Promise<Record<string, number>> {
+    if (locationTagIds.length === 0) return {};
+    
+    const rows = await db
+      .select({
+        locationTagId: skus.locationTagId,
+        totalQuantity: sql<number>`COALESCE(SUM(${skus.quantity}), 0)`,
+      })
+      .from(skus)
+      .where(
+        and(
+          inArray(skus.locationTagId, locationTagIds),
+          eq(skus.organizationId, organizationId)
+        )
+      )
+      .groupBy(skus.locationTagId);
+
+    return rows.reduce<Record<string, number>>((acc, row) => {
+      if (row.locationTagId) {
+        acc[row.locationTagId] = Number(row.totalQuantity);
+      }
+      return acc;
+    }, {});
   }
 
   async findByNameWithinUnit(

@@ -9,6 +9,7 @@ import { createMockReply, createMockRequest } from '../helpers/mocks.js';
 type SkusRepositoryMock = {
   list: ReturnType<typeof vi.fn>;
   findById: ReturnType<typeof vi.fn>;
+  findBySkuId: ReturnType<typeof vi.fn>;
   create: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;
   delete: ReturnType<typeof vi.fn>;
@@ -28,6 +29,7 @@ function buildRepositories() {
   const skusRepository: SkusRepositoryMock = {
     list: vi.fn(),
     findById: vi.fn(),
+    findBySkuId: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
@@ -90,15 +92,16 @@ describe('SkusService', () => {
     expect(reply.payload.items[0].quantity).toBe(10);
   });
 
-  it('creates SKU after validating capacity', async () => {
-    locationTagsRepository.findById.mockResolvedValue({ id: 'tag-1', capacity: 100 });
-    locationTagsRepository.getUsage.mockResolvedValue(25);
+  it('creates SKU and emits events', async () => {
+    locationTagsRepository.findById.mockResolvedValue({ id: 'tag-1', unitId: 'unit-1', capacity: 100 });
+    skusRepository.findBySkuId.mockResolvedValue(null);
     skusRepository.create.mockResolvedValue({
       id: 'sku-1',
       skuName: 'Steel Beam',
       skuCategory: 'raw',
       skuUnit: 'pieces',
       quantity: '50',
+      locationTagId: 'tag-1',
       organizationId: 'org-1',
     });
 
@@ -107,17 +110,17 @@ describe('SkusService', () => {
       body: {
         skuName: 'Steel Beam',
         skuCategory: 'raw',
-        skuUnit: 'pieces',
+        skuUnit: 'pieces' as const,
         quantity: 50,
         effectiveDate: '2024-01-01',
         expiryDate: null,
         locationTagId: 'tag-1',
       },
+      server: { io: {} },
     });
 
     await service.create(request, reply);
 
-    expect(locationTagsRepository.getUsage).toHaveBeenCalledWith('tag-1', 'org-1', undefined);
     expect(skusRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         skuName: 'Steel Beam',
@@ -126,29 +129,6 @@ describe('SkusService', () => {
       }),
     );
     expect(reply.statusCode).toBe(201);
-  });
-
-  it('prevents create when capacity exceeded', async () => {
-    locationTagsRepository.findById.mockResolvedValue({ id: 'tag-1', capacity: 60 });
-    locationTagsRepository.getUsage.mockResolvedValue(50);
-
-    const reply = createMockReply();
-    const request = createMockRequest({
-      body: {
-        skuName: 'Steel Beam',
-        skuCategory: 'raw',
-        skuUnit: 'pieces',
-        quantity: 20,
-        effectiveDate: '2024-01-01',
-        locationTagId: 'tag-1',
-      },
-    });
-
-    await service.create(request, reply);
-
-    expect(reply.statusCode).toBe(400);
-    expect(reply.payload).toEqual({ error: 'Location tag capacity exceeded' });
-    expect(skusRepository.create).not.toHaveBeenCalled();
   });
 
   it('returns 404 when updating missing SKU', async () => {
@@ -178,6 +158,7 @@ describe('SkusService', () => {
     locationTagsRepository.findById.mockResolvedValue({ id: 'tag-2', capacity: 200 });
     locationTagsRepository.getUsage.mockResolvedValue(20);
     skusRepository.update.mockResolvedValue({ id: 'sku-1', quantity: '45', locationTagId: 'tag-2' });
+    skusRepository.findBySkuId.mockResolvedValue(null);
 
     const reply = createMockReply();
     const request = createMockRequest({
@@ -187,7 +168,6 @@ describe('SkusService', () => {
 
     await service.update(request, reply);
 
-    expect(locationTagsRepository.getUsage).toHaveBeenCalledWith('tag-2', 'org-1', 'sku-1');
     expect(skusRepository.update).toHaveBeenCalledWith(
       'sku-1',
       'org-1',

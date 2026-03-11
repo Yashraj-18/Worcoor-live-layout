@@ -37,6 +37,7 @@ interface WarehouseLayout {
   lastActivity: string;
   unitId?: string | null;
   orgUnit?: { id?: string | null; name?: string | null;[key: string]: any } | null;
+  isComponentsFetched?: boolean;
   layoutData: {
     items: WarehouseItem[];
   };
@@ -115,13 +116,13 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   const [selectedZone, setSelectedZone] = useState<any>(null);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [selectedUnitForDemo, setSelectedUnitForDemo] = useState<string | null>(initialSelectedLayoutId || null);
-  
+
   // Ref to track if selectedUnitForDemo has been set to prevent duplicate calls
   const hasSetSelectedUnitRef = useRef(false);
-  
+
   // Ref to track the last unit ID that was actually hydrated to prevent duplicate API calls
   const lastHydratedUnitRef = useRef<string | null>(null);
-  
+
   const [showDemoMapModal, setShowDemoMapModal] = useState<boolean>(!!initialSelectedLayoutId);
   const [showTemplateModal, setShowTemplateModal] = useState<boolean>(false);
   const [showCreateUnitModal, setShowCreateUnitModal] = useState<boolean>(false);
@@ -254,7 +255,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   // Additional socket listeners for location-specific events
   useEffect(() => {
     if (!resolvedUnitIdForSocket) return;
-    
+
     const unsubLocationUpdated = on('location:updated', handleLocationUpdated);
     const unsubInventoryChanged = on('inventory:changed', handleInventoryChanged);
     const unsubSkuMoved = on('sku:moved', handleSkuMoved);
@@ -361,7 +362,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       setSavedLayouts(prev =>
         prev.map(layout =>
           layout.id === layoutId
-            ? { ...layout, layoutData: { ...layout.layoutData, items: liveItems.length > 0 ? liveItems : layout.layoutData.items } }
+            ? { ...layout, isComponentsFetched: true, layoutData: { ...layout.layoutData, items: liveItems.length > 0 ? liveItems : layout.layoutData.items } }
             : layout
         )
       );
@@ -442,7 +443,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
       (layout as any).orgUnit?.id ||
       (layout.layoutData as any)?.orgUnit?.id ||
       (layout.layoutData as any)?.unitId;
-        if (!unitId) return;
+    if (!unitId) return;
 
     try {
       // Collect all location tags referenced in the layout items to filter dropdowns
@@ -482,7 +483,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
           }
         });
       }
-      
+
       const [tags, skuResponse, assetResponse] = await Promise.all([
         locationTagService.listByUnit(unitId).catch(() => []),
         skuService.list({ unitId, limit: 100 }).catch(() => ({ items: [] })),
@@ -594,13 +595,23 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     }
   }, [layoutId]);
 
+  // Ref just for component loading
+  const lastFetchedComponentsRef = useRef<string | null>(null);
+
   // When a layout is opened, fetch its live components immediately so the view
   // always shows the current state from the components table (not stale JSONB).
   useEffect(() => {
     if (!selectedUnitForDemo) return;
-    if (lastHydratedUnitRef.current === selectedUnitForDemo) return;
+
+    // Check if it's already in the layout list. If not, we wait.
+    const layoutExists = savedLayouts.some(l => l.id === selectedUnitForDemo);
+    if (!layoutExists) return;
+
+    if (lastFetchedComponentsRef.current === selectedUnitForDemo) return;
+    lastFetchedComponentsRef.current = selectedUnitForDemo;
+
     void refreshActiveLayoutComponents(selectedUnitForDemo);
-  }, [selectedUnitForDemo, refreshActiveLayoutComponents]);
+  }, [selectedUnitForDemo, savedLayouts, refreshActiveLayoutComponents]);
 
   // Handle URL param selection when savedLayouts is populated
   // This ensures the layout from ?map= is selected regardless of whether
@@ -721,13 +732,20 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
     void hydrateDropdownsFromBackend(selectedLayout);
   }, [hydrateDropdownsFromBackend]);
 
-  // Extract dropdown options when selected unit changes
+  // Extract dropdown options when selected unit changes or when layouts finish loading
   useEffect(() => {
     if (!selectedUnitForDemo) return;
+    // We need to wait for the selected layout to actually exist in savedLayouts
+    const targetLayout = savedLayouts.find(l => l.id === selectedUnitForDemo);
+    if (!targetLayout) return; // Layout not loaded yet, wait for savedLayouts to update
+
+    // We must wait for real components to be fetched so dropdowns aren't empty
+    if (!targetLayout.isComponentsFetched && !prefetchedLayouts?.length) return;
+
     if (lastHydratedUnitRef.current === selectedUnitForDemo) return;
     lastHydratedUnitRef.current = selectedUnitForDemo;
     extractDropdownOptionsFromSelectedUnit(selectedUnitForDemo);
-  }, [selectedUnitForDemo, extractDropdownOptionsFromSelectedUnit]);
+  }, [selectedUnitForDemo, savedLayouts, prefetchedLayouts, extractDropdownOptionsFromSelectedUnit]);
 
   // Close filter dropdown when clicking outside
   useEffect(() => {
@@ -903,7 +921,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   };
 
   const handleActionClick = (actionId: string, unitId?: string) => {
-        // Add your action handling logic here
+    // Add your action handling logic here
     switch (actionId) {
       case 'all-units':
         // Navigate to all units view
@@ -951,7 +969,7 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   };
 
   const handleUnitAction = (unitId: string, action: string) => {
-    
+
     switch (action) {
       case 'view-live':
         // Show demo map modal for specific unit

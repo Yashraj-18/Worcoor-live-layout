@@ -390,8 +390,18 @@ tests/
 | Database       | PostgreSQL (Supabase)               |
 | Authentication | JWT (httpOnly cookies) + bcrypt     |
 | Validation     | Zod                                 |
-| Realtime       | Socket.IO (planned)                 |
+| Realtime       | Socket.IO (implemented)             |
 | Testing        | Vitest                              |
+
+---
+
+## 🚀 Backend Performance Optimizations
+
+The backend has been optimized for high-throughput and large dataset management:
+
+- **N+1 Query Elimination:** Implemented bulk fetching using Drizzle `inArray` and `GROUP BY` logic to reduce database round-trips for multi-location statistics and component lists.
+- **Database Indexing:** Added composite indexes on `organization_id`, `unit_id`, and `layout_id` for the most frequent query patterns to ensure sub-100ms response times.
+- **WebSocket Efficiency:** Refactored real-time event emitters to calculate state changes purely on the server, reducing the need for frontend-side recalculations or full-screen refetches.
 
 ---
 

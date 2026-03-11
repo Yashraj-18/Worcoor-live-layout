@@ -66,6 +66,9 @@ describe('LayoutsService', () => {
       layoutName: 'Mezzanine',
       unitId: 'unit-1',
       organizationId: 'org-1',
+      layoutData: null,
+      metadata: null,
+      status: 'draft',
     });
     expect(reply.statusCode).toBe(201);
   });

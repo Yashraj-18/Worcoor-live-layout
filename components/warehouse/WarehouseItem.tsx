@@ -301,16 +301,16 @@ const WarehouseItem = ({
           // Use status-based border colors for storage racks
           // Enhanced: Determine capacity status based on ALL location tags using new multi-location logic
           const allLocationIds = extractAllLocationIds(item, compartmentData);
-          const capacityStatus = allLocationIds.length > 1 
+          const capacityStatus = allLocationIds.length > 1
             ? determineCapacityStatusForMultiLocation(allLocationIds, locationTagsMap)
             : (() => {
-                // Fallback to single location logic for backward compatibility
-                const hasLocationTags = Boolean(compartmentData?.locationId || compartmentData?.uniqueId || compartmentData?.primaryLocationId || (compartmentData?.locationIds && compartmentData.locationIds.length > 0));
-                const compartmentLocationId = compartmentData?.locationId || compartmentData?.primaryLocationId;
-                const compartmentLocationTag = compartmentLocationId ? locationTagsMap[compartmentLocationId] : null;
-                const hasSkusAssigned = Boolean(compartmentLocationTag && compartmentLocationTag.currentItems > 0);
-                return determineCapacityStatus(hasLocationTags, hasSkusAssigned);
-              })();
+              // Fallback to single location logic for backward compatibility
+              const hasLocationTags = Boolean(compartmentData?.locationId || compartmentData?.uniqueId || compartmentData?.primaryLocationId || (compartmentData?.locationIds && compartmentData.locationIds.length > 0));
+              const compartmentLocationId = compartmentData?.locationId || compartmentData?.primaryLocationId;
+              const compartmentLocationTag = compartmentLocationId ? locationTagsMap[compartmentLocationId] : null;
+              const hasSkusAssigned = Boolean(compartmentLocationTag && compartmentLocationTag.currentItems > 0);
+              return determineCapacityStatus(hasLocationTags, hasSkusAssigned);
+            })();
 
           const borderStyle = isReadOnly
             ? getStorageComponentBorder(allLocationIds.length > 0, capacityStatus)
@@ -344,7 +344,7 @@ const WarehouseItem = ({
 
                 // In readonly mode, trigger item selection for location details (even for empty compartments)
                 if (isReadOnly && onSelect) {
-                                    // Pass the compartment-specific data by calling onSelect with a special format
+                  // Pass the compartment-specific data by calling onSelect with a special format
                   // We'll pass the compartmentId so the parent can identify which compartment was clicked
                   // For empty compartments, compartmentData will be null/undefined
                   onSelect(item.id, { compartmentId, compartmentData, row, col });
@@ -566,8 +566,8 @@ const WarehouseItem = ({
   const isSingleSkuStorageComponent = Boolean(isStorageUnitType && item?.hasSku && item?.singleSku);
   const isStorageComponentType = isStorageUnitType || isSingleSkuStorageComponent || isOpenStorageSpaceType || isStorageZoneType || isContainerUnitType;
 
-// Enhanced storage component detection for all storage-related types that should have status borders
-const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageComponent || isOpenStorageSpaceType || isStorageZoneType || isContainerUnitType;
+  // Enhanced storage component detection for all storage-related types that should have status borders
+  const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageComponent || isOpenStorageSpaceType || isStorageZoneType || isContainerUnitType;
 
   const isContained = item.containerId;
   const containerLevel = item.containerLevel || 0;
@@ -622,30 +622,30 @@ const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageCom
     ? `${resolvedLocationId} +${locationIdCount - 1}`
     : resolvedLocationId;
 
-  
+
   // Calculate capacity status for storage units using enhanced multi-location logic
   const allUnitLocationIds = extractAllLocationIds(item);
-    
+
   const storageUnitCapacityStatus = allUnitLocationIds.length > 1
     ? (() => {
-                return determineCapacityStatusForMultiLocation(allUnitLocationIds, locationTagsMap);
-      })()
+      return determineCapacityStatusForMultiLocation(allUnitLocationIds, locationTagsMap);
+    })()
     : (() => {
-                // Fallback to single location logic for backward compatibility
-        const hasLocationTagsForUnit = Boolean(
-          item?.locationId ||
-          item?.locationData?.primaryLocationId ||
-          item?.inventoryData?.locationId ||
-          item?.inventoryData?.uniqueId ||
-          (item?.locationData?.locationIds && item.locationData.locationIds.length > 0)
-        );
-        const unitLocationId = item?.locationId || item?.locationData?.primaryLocationId || item?.inventoryData?.locationId || item?.inventoryData?.uniqueId;
-        const unitLocationTag = unitLocationId ? locationTagsMap[unitLocationId] : null;
-        const hasSkusAssignedForUnit = Boolean(unitLocationTag && unitLocationTag.currentItems > 0);
-                return determineCapacityStatus(hasLocationTagsForUnit, hasSkusAssignedForUnit);
-      })();
-      
-  
+      // Fallback to single location logic for backward compatibility
+      const hasLocationTagsForUnit = Boolean(
+        item?.locationId ||
+        item?.locationData?.primaryLocationId ||
+        item?.inventoryData?.locationId ||
+        item?.inventoryData?.uniqueId ||
+        (item?.locationData?.locationIds && item.locationData.locationIds.length > 0)
+      );
+      const unitLocationId = item?.locationId || item?.locationData?.primaryLocationId || item?.inventoryData?.locationId || item?.inventoryData?.uniqueId;
+      const unitLocationTag = unitLocationId ? locationTagsMap[unitLocationId] : null;
+      const hasSkusAssignedForUnit = Boolean(unitLocationTag && unitLocationTag.currentItems > 0);
+      return determineCapacityStatus(hasLocationTagsForUnit, hasSkusAssignedForUnit);
+    })();
+
+
   // Simple fallback color
   const statusColor = '#ddd';
 
@@ -674,15 +674,15 @@ const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageCom
               isSpareUnit ? 'none' :
                 isContainer ? 'none' :
                   'none')),
-        border: isIconOnly ? 'none' : ((shouldHaveStorageStatusBorder && !isStorageRack) ? 
+        border: isIconOnly ? 'none' : ((shouldHaveStorageStatusBorder && !isStorageRack) ?
           (isReadOnly ? getStorageComponentBorder(allUnitLocationIds.length > 0, storageUnitCapacityStatus) : '1px solid #000000') :
           isSpareUnit ? 'none' :
-          isStorageRack ? 'none' :
-            (normalizedType === 'square_boundary' ? '4px solid #000000' :
-              (isMainBoundary ? '4px solid #263238' :
-                (isZone ? `3px solid ${getComponentColor(normalizedType)}` :
-                  (isContainer ? `3px solid ${getComponentColor(normalizedType)}` :
-                    (isContained ? `2px dashed ${getComponentColor(normalizedType) || statusColor}` : `3px solid ${getComponentColor(normalizedType) || statusColor}`)))))),
+            isStorageRack ? 'none' :
+              (normalizedType === 'square_boundary' ? '4px solid #000000' :
+                (isMainBoundary ? '4px solid #263238' :
+                  (isZone ? `3px solid ${getComponentColor(normalizedType)}` :
+                    (isContainer ? `3px solid ${getComponentColor(normalizedType)}` :
+                      (isContained ? `2px dashed ${getComponentColor(normalizedType) || statusColor}` : `3px solid ${getComponentColor(normalizedType) || statusColor}`)))))),
         borderRadius: '0px',
         boxShadow: isHighlighted && !hasHighlightedCompartments ? '0 0 12px 3px rgba(79, 70, 229, 0.6)' : 'none',
         opacity: isDragging ? 0.7 : 1,
@@ -1027,7 +1027,7 @@ const shouldHaveStorageStatusBorder = isStorageUnitType || isSingleSkuStorageCom
               if (e?.target?.dataset) {
                 e.target.dataset.fallbackApplied = 'true';
               }
-                            // Show fallback text
+              // Show fallback text
               e.target.style.display = 'none';
               const fallback = document.createElement('div');
               fallback.innerHTML = `
@@ -1265,6 +1265,71 @@ WarehouseItem.defaultProps = {
   highlightedCompartments: null,
   hideNonMatchingCompartments: false
 };
+// Custom comparison function to prevent unnecessary re-renders of WarehouseItem
+const arePropsEqual = (prevProps: any, nextProps: any) => {
+  // Always prevent re-rendering when the component is hidden by filtering
+  if (nextProps.hideNonMatchingCompartments !== prevProps.hideNonMatchingCompartments) {
+    return false;
+  }
 
-export default WarehouseItem;
+  // If highlighted compartments changed, we must re-render
+  if (nextProps.highlightedCompartments !== prevProps.highlightedCompartments) {
+    // Deep equality check for arrays if it's not the same reference
+    if (Array.isArray(nextProps.highlightedCompartments) && Array.isArray(prevProps.highlightedCompartments)) {
+      if (nextProps.highlightedCompartments.length !== prevProps.highlightedCompartments.length) {
+        return false;
+      }
+      for (let i = 0; i < nextProps.highlightedCompartments.length; i++) {
+        if (nextProps.highlightedCompartments[i] !== prevProps.highlightedCompartments[i]) {
+          return false;
+        }
+      }
+    } else {
+      return false; // One is array and other isn't, or one is null/undefined
+    }
+  }
+
+  // Basic reference checks
+  if (prevProps.isSelected !== nextProps.isSelected ||
+    prevProps.isHighlighted !== nextProps.isHighlighted ||
+    prevProps.zoomLevel !== nextProps.zoomLevel ||
+    prevProps.isReadOnly !== nextProps.isReadOnly ||
+    prevProps.gridSize !== nextProps.gridSize ||
+    prevProps.snapToGrid !== nextProps.snapToGrid) {
+    return false;
+  }
+
+  // Deep comparison of the specific item data that affects rendering
+  const prevItem = prevProps.item;
+  const nextItem = nextProps.item;
+
+  if (prevItem.id !== nextItem.id ||
+    prevItem.x !== nextItem.x ||
+    prevItem.y !== nextItem.y ||
+    prevItem.width !== nextItem.width ||
+    prevItem.height !== nextItem.height ||
+    prevItem.color !== nextItem.color ||
+    prevItem.locationId !== nextItem.locationId) {
+    return false;
+  }
+
+  // Extract all relevant location IDs for this item to check against locationTagsMap
+  const allLocationIds = extractAllLocationIds(nextItem);
+
+  // Only check locationTagsMap for the IDs this specific item cares about
+  // This is the key optimization: ignore map updates for other locations
+  if (allLocationIds.length > 0) {
+    for (const locId of allLocationIds) {
+      if (prevProps.locationTagsMap[locId] !== nextProps.locationTagsMap[locId]) {
+        // We do a shallow reference check here because patchLocationTag returns a new object 
+        // reference for the updated tag, while preserving references for unchanged tags
+        return false;
+      }
+    }
+  }
+
+  return true; // Props are equal, skip re-render
+};
+
+export default React.memo(WarehouseItem, arePropsEqual);
 

@@ -57,7 +57,7 @@ describe('ComponentsService', () => {
     const layoutSpy = spyLayoutAccess();
     layoutSpy.mockResolvedValue({ id: 'layout-1', unitId: 'unit-1' });
     const tagSpy = spyLocationTagAccess();
-    tagSpy.mockResolvedValue({ id: 'tag-1' });
+    tagSpy.mockResolvedValue({ id: 'tag-1', locationTagName: 'TAG-NAME-1' });
     repository.create.mockResolvedValue({
       id: 'component-1',
       layoutId: 'layout-1',
@@ -83,13 +83,21 @@ describe('ComponentsService', () => {
 
     expect(layoutSpy).toHaveBeenCalledWith('layout-1', 'org-1');
     expect(tagSpy).toHaveBeenCalledWith('tag-1', 'org-1', 'unit-1');
-    expect(repository.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        layoutId: 'layout-1',
-        organizationId: 'org-1',
-        locationTagId: 'tag-1',
-      }),
-    );
+    expect(repository.create).toHaveBeenCalledWith({
+      componentType: 'vertical_rack',
+      displayName: 'Rack A',
+      positionX: 10,
+      positionY: 20,
+      width: 100,
+      height: 40,
+      locationTagId: 'tag-1',
+      locationTagName: 'TAG-NAME-1',
+      color: null,
+      label: null,
+      metadata: null,
+      layoutId: 'layout-1',
+      organizationId: 'org-1',
+    });
     expect(reply.statusCode).toBe(201);
   });
 
@@ -179,7 +187,10 @@ describe('ComponentsService', () => {
 
     await service.update(request, reply);
 
-    expect(repository.update).toHaveBeenCalledWith('component-1', 'org-1', { locationTagId: null });
+    expect(repository.update).toHaveBeenCalledWith('component-1', 'org-1', {
+      locationTagId: null,
+      locationTagName: null
+    });
     expect(reply.payload).toEqual({ id: 'component-1', locationTagId: null });
   });
 
@@ -189,8 +200,8 @@ describe('ComponentsService', () => {
       organizationId: 'org-1',
     } as never);
     const tagSpy = spyLocationTagAccess();
-    tagSpy.mockResolvedValue({ id: 'tag-1' });
-    repository.update.mockResolvedValue({ id: 'component-1', locationTagId: 'tag-1' } as never);
+    tagSpy.mockResolvedValue({ id: 'tag-1', locationTagName: 'TAG-NAME-1' });
+    repository.update.mockResolvedValue({ id: 'component-1', locationTagId: 'tag-1', locationTagName: 'TAG-NAME-1' } as never);
 
     const request = createMockRequest({
       params: { componentId: 'component-1' },
@@ -204,6 +215,7 @@ describe('ComponentsService', () => {
     expect(tagSpy).toHaveBeenCalledWith('tag-1', 'org-1');
     expect(repository.update).toHaveBeenCalledWith('component-1', 'org-1', {
       locationTagId: 'tag-1',
+      locationTagName: 'TAG-NAME-1',
     });
   });
 
@@ -267,7 +279,7 @@ describe('ComponentsService', () => {
     const layoutSpy = spyLayoutAccess();
     layoutSpy.mockResolvedValue({ id: 'layout-1', unitId: 'unit-1' });
     const tagSpy = spyLocationTagAccess();
-    tagSpy.mockResolvedValue({ id: 'tag-1' });
+    tagSpy.mockResolvedValue({ id: 'tag-1', locationTagName: 'TAG-NAME-1' });
     repository.update.mockResolvedValue({
       id: 'component-1',
       locationTagId: 'tag-1',
@@ -286,6 +298,7 @@ describe('ComponentsService', () => {
     expect(tagSpy).toHaveBeenCalledWith('tag-1', 'org-1', 'unit-1');
     expect(repository.update).toHaveBeenCalledWith('component-1', 'org-1', {
       locationTagId: 'tag-1',
+      locationTagName: 'TAG-NAME-1',
     });
     expect(reply.payload).toEqual({ id: 'component-1', locationTagId: 'tag-1' });
   });

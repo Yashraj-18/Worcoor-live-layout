@@ -7,6 +7,7 @@ import { createMockReply, createMockRequest } from '../helpers/mocks.js';
 type LiveMapRepositoryMock = {
   getUnitWithLayouts: ReturnType<typeof vi.fn>;
   getLayoutComponents: ReturnType<typeof vi.fn>;
+  getLayoutComponentsBatch: ReturnType<typeof vi.fn>;
   getLocationTagSkus: ReturnType<typeof vi.fn>;
   getSkusForLocationTags: ReturnType<typeof vi.fn>;
   calculateUtilization: ReturnType<typeof vi.fn>;
@@ -17,6 +18,7 @@ function buildRepository(): LiveMapRepositoryMock {
   return {
     getUnitWithLayouts: vi.fn(),
     getLayoutComponents: vi.fn(),
+    getLayoutComponentsBatch: vi.fn(),
     getLocationTagSkus: vi.fn(),
     getSkusForLocationTags: vi.fn(),
     calculateUtilization: vi.fn(),
@@ -53,7 +55,7 @@ describe('LiveMapService', () => {
         unit: { id: 'unit-1', unitName: 'Warehouse A', status: 'active' },
         layouts: [{ id: 'layout-1', layoutName: 'Floor 1' }],
       });
-      repository.getLayoutComponents.mockResolvedValue([
+      repository.getLayoutComponentsBatch.mockResolvedValue([
         {
           id: 'comp-1',
           componentType: 'rack',
@@ -66,6 +68,7 @@ describe('LiveMapService', () => {
           locationTagId: 'tag-1',
           locationTagName: 'Zone A',
           capacity: 100,
+          layoutId: 'layout-1'
         },
       ]);
       repository.getSkusForLocationTags.mockResolvedValue([
@@ -97,7 +100,7 @@ describe('LiveMapService', () => {
         unit: { id: 'unit-1', unitName: 'Warehouse A', status: 'active' },
         layouts: [{ id: 'layout-1', layoutName: 'Floor 1' }],
       });
-      repository.getLayoutComponents.mockResolvedValue([
+      repository.getLayoutComponentsBatch.mockResolvedValue([
         {
           id: 'comp-1',
           componentType: 'pathway',
@@ -110,6 +113,7 @@ describe('LiveMapService', () => {
           locationTagId: null,
           locationTagName: null,
           capacity: null,
+          layoutId: 'layout-1'
         },
       ]);
       repository.getSkusForLocationTags.mockResolvedValue([]);

@@ -31,8 +31,8 @@ export type UpdateLocationTagInput = Partial<CreateLocationTagInput>;
 const BASE_PATH = '/api/location-tags';
 
 export const locationTagService = {
-  async listByUnit(unitId: string): Promise<LocationTag[]> {
-    const response = await apiService.get({ path: `/api/units/${unitId}/location-tags` });
+  async listByUnit(unitId: string, config?: { signal?: AbortSignal }): Promise<LocationTag[]> {
+    const response = await apiService.get({ path: `/api/units/${unitId}/location-tags` }, config);
     return response.data as LocationTag[];
   },
 

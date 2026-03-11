@@ -52,17 +52,20 @@ export function createMockRequest<TBody = unknown, TParams = unknown, TQuery = u
   params,
   query,
   user,
+  server,
 }: {
   body?: TBody;
   params?: TParams;
   query?: TQuery;
   user?: MockUserContext;
+  server?: any;
 }) {
   const mockRequest = {
     body,
     params,
     query,
     user: user ?? { organizationId: 'org-1', role: 'admin', userId: 'user-1' },
+    server: server ?? { io: { emit: vi.fn() } },
   };
 
   return mockRequest as FastifyRequest<{

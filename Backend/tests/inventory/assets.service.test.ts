@@ -86,6 +86,7 @@ describe('AssetsService', () => {
       assetName: 'Forklift',
       assetType: 'vehicle',
       locationTagId: 'tag-1',
+      assetId: null,
       organizationId: 'org-1',
     });
     expect(reply.statusCode).toBe(201);

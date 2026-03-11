@@ -209,9 +209,9 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
           }
 
           // Use parent-provided location tags if available, otherwise fetch them
-          const allTags = locationTags && locationTags.length > 0 
-            ? locationTags 
-            : await locationTagService.listByUnit(unitId);
+          const allTags = locationTags && locationTags.length > 0
+            ? locationTags
+            : await locationTagService.listByUnit(unitId, { signal });
           const matchedTags = allTags.filter(tag =>
             locationTagIds.includes(tag.locationTagName)
           );
@@ -269,7 +269,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
             };
           });
 
-          
+
           if (!signal.aborted) {
             setLevelsData(newLevelsData);
             setIsMultiLevel(true);
@@ -292,9 +292,9 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
           }
 
           // Use parent-provided location tags if available, otherwise fetch them
-          const allTags = locationTags && locationTags.length > 0 
-            ? locationTags 
-            : await locationTagService.listByUnit(unitId);
+          const allTags = locationTags && locationTags.length > 0
+            ? locationTags
+            : await locationTagService.listByUnit(unitId, { signal });
           const matchedTags = allTags.filter(tag =>
             locationTagCodes.includes(tag.locationTagName)
           );
@@ -349,7 +349,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
             };
           });
 
-          
+
           if (!signal.aborted) {
             setMultiLocationData(newMultiLocationData);
             setIsMultiLocation(true);
@@ -370,9 +370,9 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
 
           const [allTags, skuResponse, assetResponse] = await Promise.all([
             // Use parent-provided location tags if available, otherwise fetch them
-            locationTags && locationTags.length > 0 
+            locationTags && locationTags.length > 0
               ? Promise.resolve(locationTags)
-              : locationTagService.listByUnit(unitId),
+              : locationTagService.listByUnit(unitId, { signal }),
             skuService.list({ locationTagId, limit: 100 }, { signal }),
             assetService.list({ locationTagId, limit: 100 }, { signal }),
           ]);
@@ -388,7 +388,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
             setLevelsData([]);
             setIsMultiLocation(false);
             setMultiLocationData([]);
-            
+
             // Update global locationTagsData with fresh SKU quantity
             if (onLocationTagUpdate && locationTagId) {
               const totalQuantity = skuResponse.items.reduce((sum, sku) => sum + (sku.quantity || 0), 0);
@@ -424,7 +424,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
       const skuResponse = await skuService.list({ locationTagId, limit: 100 }, { signal });
       if (!signal.aborted) {
         setSkus(skuResponse.items);
-        
+
         // Update global locationTagsData with fresh SKU quantity
         if (onLocationTagUpdate) {
           const totalQuantity = skuResponse.items.reduce((sum, sku) => sum + (sku.quantity || 0), 0);

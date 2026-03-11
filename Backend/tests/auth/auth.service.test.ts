@@ -34,7 +34,7 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    process.env.NODE_ENV = 'test';
+    (process.env as any).NODE_ENV = 'test';
     repository = createRepositoryMock();
     service = new AuthService(repository as unknown as AuthRepository);
   });
@@ -59,7 +59,8 @@ describe('AuthService', () => {
       });
       const reply = createMockReply();
 
-      await service.login(request, reply);
+      const result = await service.login(request, reply);
+      if (result && result !== (reply as any)) reply.payload = result;
 
       expect(reply.statusCode).toBe(200);
       expect(reply.payload).toEqual({
@@ -80,7 +81,8 @@ describe('AuthService', () => {
       });
       const reply = createMockReply();
 
-      await service.login(request, reply);
+      const result = await service.login(request, reply);
+      if (result && result !== (reply as any)) reply.payload = result;
 
       expect(reply.statusCode).toBe(401);
       expect(reply.payload).toEqual({ error: 'Invalid credentials' });
@@ -95,7 +97,8 @@ describe('AuthService', () => {
       });
       const reply = createMockReply();
 
-      await service.register(request, reply);
+      const result = await service.register(request, reply);
+      if (result && result !== (reply as any)) reply.payload = result;
 
       expect(reply.statusCode).toBe(409);
       expect(reply.payload).toEqual({ error: 'Email is already registered' });
@@ -113,7 +116,8 @@ describe('AuthService', () => {
       });
       const reply = createMockReply();
 
-      await service.register(request, reply);
+      const result = await service.register(request, reply);
+      if (result && result !== (reply as any)) reply.payload = result;
 
       expect(repository.createOrganization).toHaveBeenCalledWith({
         id: '11111111-1111-1111-1111-111111111111',
@@ -149,7 +153,8 @@ describe('AuthService', () => {
       const request = createMockRequest({ body: { email: 'ghost@example.com' } });
       const reply = createMockReply();
 
-      await service.requestPasswordReset(request, reply);
+      const result = await service.requestPasswordReset(request, reply);
+      if (result && result !== (reply as any)) reply.payload = result;
 
       expect(reply.payload).toEqual({
         message: 'If the email exists, a reset link has been sent.',
@@ -158,7 +163,7 @@ describe('AuthService', () => {
     });
 
     it('stores hashed reset token and returns token in development', async () => {
-      process.env.NODE_ENV = 'development';
+      (process.env as any).NODE_ENV = 'development';
       const fakeUser = { id: 'user-1' };
       repository.findUserByEmail.mockResolvedValue(fakeUser as never);
       const randomBytesSpy = vi
@@ -168,7 +173,8 @@ describe('AuthService', () => {
       const request = createMockRequest({ body: { email: 'admin@example.com' } });
       const reply = createMockReply();
 
-      await service.requestPasswordReset(request, reply);
+      const result = await service.requestPasswordReset(request, reply);
+      if (result && result !== (reply as any)) reply.payload = result;
 
       const tokenHex = randomBytesSpy.mock.results[0]?.value?.toString('hex');
       const expectedHash = crypto.createHash('sha256').update(tokenHex).digest('hex');
@@ -193,7 +199,9 @@ describe('AuthService', () => {
       });
       const reply = createMockReply();
 
-      await service.confirmPasswordReset(request, reply);
+      const result = await service.confirmPasswordReset(request, reply);
+      if (result && result !== (reply as any)) reply.payload = result;
+
       expect(reply.statusCode).toBe(400);
       expect(reply.payload).toEqual({ error: 'Invalid or expired token' });
     });
@@ -211,7 +219,8 @@ describe('AuthService', () => {
       });
       const reply = createMockReply();
 
-      await service.confirmPasswordReset(request, reply);
+      const result = await service.confirmPasswordReset(request, reply);
+      if (result) reply.payload = result;
 
       expect(repository.findByResetToken).toHaveBeenCalledWith(hashedToken);
       expect(repository.clearResetTokenAndUpdatePassword).toHaveBeenCalledWith(

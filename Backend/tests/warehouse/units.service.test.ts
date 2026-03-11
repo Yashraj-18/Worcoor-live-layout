@@ -7,6 +7,8 @@ import { createMockReply, createMockRequest } from '../helpers/mocks.js';
 type UnitsRepositoryMock = {
   findAllByOrganization: ReturnType<typeof vi.fn>;
   findById: ReturnType<typeof vi.fn>;
+  findByIdWithUtilization: ReturnType<typeof vi.fn>;
+  findByUnitId: ReturnType<typeof vi.fn>;
   create: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;
   delete: ReturnType<typeof vi.fn>;
@@ -16,6 +18,8 @@ function buildRepository(): UnitsRepositoryMock {
   return {
     findAllByOrganization: vi.fn(),
     findById: vi.fn(),
+    findByIdWithUtilization: vi.fn(),
+    findByUnitId: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
@@ -48,24 +52,33 @@ describe('UnitsService', () => {
   it('creates unit while injecting organization id', async () => {
     repository.create.mockResolvedValue({
       id: 'unit-2',
+      unitId: 'WH-001',
       unitName: 'Secondary',
       description: null,
       organizationId: 'org-1',
     } as never);
+    repository.findByUnitId.mockResolvedValue(null);
 
     const reply = createMockReply();
     const request = createMockRequest({
-      body: { unitName: 'Secondary', unitType: 'warehouse', status: 'LIVE' as const },
+      body: {
+        unitId: 'WH-001',
+        unitName: 'Secondary',
+        unitType: 'warehouse',
+        status: 'LIVE' as const
+      },
       user: { organizationId: 'org-1' },
     });
 
     await service.create(request, reply);
 
     expect(repository.create).toHaveBeenCalledWith({
+      unitId: 'WH-001',
       unitName: 'Secondary',
       unitType: 'warehouse',
       status: 'LIVE',
       description: null,
+      area: null,
       organizationId: 'org-1',
     });
     expect(reply.statusCode).toBe(201);

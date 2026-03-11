@@ -166,13 +166,20 @@ export default function WarehouseManagementPage() {
           });
         }
       } else {
-        totalMax += 1;
-        const hasId = (item.locationId || item.primaryLocationId || item.sku || '').toString().trim();
-        const hasInv = item.inventoryData && (
-          (Array.isArray(item.inventoryData.inventory) && item.inventoryData.inventory.length > 0) ||
-          (typeof item.inventoryData.utilization === 'number' && item.inventoryData.utilization > 0)
-        );
-        if (hasId || hasInv) totalUsed += 1;
+        // Multi-location items count each location tag as a slot
+        const multiLocIds: string[] = Array.isArray(item.locationData?.locationIds) ? item.locationData.locationIds : [];
+        if (multiLocIds.length > 1) {
+          totalMax += multiLocIds.length;
+          totalUsed += multiLocIds.length;
+        } else {
+          totalMax += 1;
+          const hasId = (item.locationId || item.primaryLocationId || item.sku || '').toString().trim();
+          const hasInv = item.inventoryData && (
+            (Array.isArray(item.inventoryData.inventory) && item.inventoryData.inventory.length > 0) ||
+            (typeof item.inventoryData.utilization === 'number' && item.inventoryData.utilization > 0)
+          );
+          if (hasId || hasInv) totalUsed += 1;
+        }
       }
     });
     return totalMax > 0 ? Math.round(Math.min(totalUsed, totalMax) / totalMax * 1000) / 10 : 0;
@@ -197,15 +204,20 @@ export default function WarehouseManagementPage() {
         }
       });
 
-      // Collect all unique placed tag IDs from the canvas
-      const placedTagIds = new Set<string>();
+      // Collect unique backend tag UUIDs found on the canvas.
+      // Only count identifiers that resolve to a known backend tag — this
+      // guarantees no duplicates (the same tag discovered from multiple item
+      // properties always resolves to the same UUID).
+      const normalizedTagIds = new Set<string>();
 
       const addTag = (id: any) => {
-        if (!id || typeof id !== 'string') return;
+        if (!id) return;
+        if (Array.isArray(id)) { id.forEach(addTag); return; }
+        if (typeof id !== 'string') return;
         const cleanId = id.trim();
         if (!cleanId) return;
         const backendTag = tagByKey.get(cleanId);
-        placedTagIds.add(backendTag?.id ?? cleanId);
+        if (backendTag) normalizedTagIds.add(backendTag.id);
       };
 
       canvasItems.forEach((item: any) => {
@@ -220,6 +232,11 @@ export default function WarehouseManagementPage() {
         // Item-level arrays
         if (Array.isArray(item.locationIds)) {
           item.locationIds.forEach((id: any) => addTag(id));
+        }
+
+        // Multi-location storage units / vertical racks
+        if (item.locationData?.locationIds && Array.isArray(item.locationData.locationIds)) {
+          item.locationData.locationIds.forEach((id: any) => addTag(id));
         }
 
         // Item-level vertical rack mappings
@@ -246,29 +263,19 @@ export default function WarehouseManagementPage() {
         }
       });
 
-      // For each placed tag, get its backend utilization percentage
-      const total = placedTagIds.size;
-      let utilizationSum = 0;
+      // Count tags that have SKU items assigned (currentItems > 0)
+      const total = normalizedTagIds.size;
       let inUse = 0;
-      placedTagIds.forEach(tagId => {
+      normalizedTagIds.forEach(tagId => {
         const backendTag = tagByKey.get(tagId);
-        if (backendTag) {
-          const tagUtil = typeof backendTag.utilizationPercentage === 'number'
-            ? Math.min(backendTag.utilizationPercentage, 100)
-            : (backendTag.capacity > 0
-              ? Math.min((backendTag.currentItems / backendTag.capacity) * 100, 100)
-              : 0);
-          utilizationSum += tagUtil;
-          if (tagUtil > 0) inUse += 1;
-        } else {
-          // Tag placed on canvas but not found in backend — treat as 0% utilization
-          utilizationSum += 0;
+        if (backendTag && (backendTag.currentItems ?? 0) > 0) {
+          inUse += 1;
         }
       });
 
-      const avgUtil = total > 0 ? Math.round((utilizationSum / total) * 10) / 10 : 0;
+      // Per-layout avg = (tags with items / total tags) × 100
       const pct = total > 0 ? Math.round((inUse / total) * 100) : 0;
-      return { layoutId: layout.id, total, inUse, pct, avgUtil };
+      return { layoutId: layout.id, total, inUse, pct, avgUtil: pct };
     });
   }, [layouts, locationTagsMap]);
 

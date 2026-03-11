@@ -7,9 +7,9 @@
  * 
  * Current Implementation: All variants use 'transparent' with status-based borders
  * Status-based borders represent location tag and SKU assignment status:
- * - Green: Location tags attached to component AND SKUs assigned to those location tags
+ * - Red: Location tags attached to component AND SKUs assigned to those location tags
  * - Orange: Partially configured - some location tags have SKUs, others don't
- * - Red: Location tags attached to component BUT no SKUs assigned
+ * - Green: Location tags attached to component BUT no SKUs assigned
  * - Black: No location tags attached (default in layout editor)
  * 
  * Applies to:
@@ -44,11 +44,11 @@ export interface StorageComponentBorderConfig {
  * Status-based border colors for location tag and SKU assignment representation
  */
 export interface CapacityBorderColors {
-  /** Green - Location tags attached AND SKUs assigned */
+  /** Red - Location tags attached AND SKUs assigned */
   full: string;
   /** Orange - Partially configured - some location tags have SKUs, others don't */
   partial: string;
-  /** Red - Location tags attached BUT no SKUs assigned */
+  /** Green - Location tags attached BUT no SKUs assigned */
   empty: string;
   /** Black - No location tags attached (default) */
   unknown: string;
@@ -77,15 +77,15 @@ export const STORAGE_COMPONENT_STATUS_COLORS: Record<string, string> = {
 /**
  * Capacity-based border colors
  * Colors represent location tag and SKU assignment status:
- * - full (Green): Location tags attached AND SKUs assigned to those location tags
+ * - full (Red): Location tags attached AND SKUs assigned to those location tags
  * - partial (Orange): Partially configured - some location tags have SKUs, others don't
- * - empty (Red): Location tags attached BUT no SKUs assigned
+ * - empty (Green): Location tags attached BUT no SKUs assigned
  * - unknown (Black): No location tags attached (default in layout editor)
  */
 export const CAPACITY_BORDER_COLORS: CapacityBorderColors = {
-  full: '#1B5E20',      // Darker Green - Higher contrast for full status
-  partial: '#E65100',   // Darker Orange - Higher contrast for partial status  
-  empty: '#B71C1C',     // Darker Red - Higher contrast for empty status
+  full: '#B71C1C',      // Red - SKUs assigned (utilised)
+  partial: '#E65100',   // Orange - Partially configured
+  empty: '#1B5E20',     // Green - No SKUs assigned (available)
   unknown: '#000000',   // Black - No location tags attached (default)
 };
 

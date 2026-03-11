@@ -261,7 +261,7 @@ const FullscreenMap = () => {
             setMapData(transformedData);
 
             // Hydrate dropdowns from backend using the resolved unitId
-            void hydrateDropdownsFromBackend(transformedData.layoutData.id, transformedData.unitId);
+            void hydrateDropdownsFromBackend(transformedData.layoutData.id, transformedData.unitId, transformedData.layoutData?.items || []);
 
             // Generate operational data for each item
             const layoutItems = transformedData.layoutData?.items || [];
@@ -452,6 +452,11 @@ const FullscreenMap = () => {
 
     const addLocation = (value) => {
       if (!value) return;
+      // Handle array values (e.g. compartment primaryLocationId can be an array)
+      if (Array.isArray(value)) {
+        value.forEach(addLocation);
+        return;
+      }
       const normalized = typeof value === 'string' ? value.trim() : String(value).trim();
       if (normalized) {
         locationTags.add(normalized);
@@ -545,6 +550,14 @@ const FullscreenMap = () => {
         });
       }
 
+      // Multi-location storage units / vertical racks store extra tags in locationData.locationIds
+      if (item.locationData?.locationIds && Array.isArray(item.locationData.locationIds)) {
+        item.locationData.locationIds.forEach(locId => {
+          addLocation(locId);
+          addSku(locId);
+        });
+      }
+
       // Extract from item-level levelLocationMappings (vertical racks)
       if (Array.isArray(item.levelLocationMappings)) {
         item.levelLocationMappings.forEach((mapping) => {
@@ -598,7 +611,7 @@ const FullscreenMap = () => {
   };
 
   // Fetch location tags, SKUs, and assets from backend for the selected layout's unit
-  const hydrateDropdownsFromBackend = useCallback(async (layoutId, unitId) => {
+  const hydrateDropdownsFromBackend = useCallback(async (layoutId, unitId, layoutItems?: any[]) => {
     if (!unitId || isHydrating) return;
 
     setIsHydrating(true);
@@ -606,14 +619,19 @@ const FullscreenMap = () => {
 
     try {
       // Collect all location tags referenced in the layout items to filter dropdowns
+      // Use passed-in layoutItems if available (avoids stale React state issue)
       const activeLocationIds = new Set();
-      if (mapData?.layoutData?.items) {
-        mapData.layoutData.items.forEach((item) => {
+      const items = layoutItems || mapData?.layoutData?.items || [];
+      if (items.length > 0) {
+        items.forEach((item) => {
           if (item.locationId) activeLocationIds.add(item.locationId.trim());
           if (item.locationCode) activeLocationIds.add(item.locationCode.trim());
           if (item.locationTag) activeLocationIds.add(item.locationTag.trim());
           if (Array.isArray(item.locationIds)) {
             item.locationIds.forEach((id) => id && activeLocationIds.add(id.trim()));
+          }
+          if (item.locationData?.locationIds && Array.isArray(item.locationData.locationIds)) {
+            item.locationData.locationIds.forEach((id) => id && activeLocationIds.add(id.trim()));
           }
           if (Array.isArray(item.levelLocationMappings)) {
             item.levelLocationMappings.forEach((m) => {
@@ -775,6 +793,11 @@ const FullscreenMap = () => {
           let itemLocationIdsMatch = false;
           if (Array.isArray(item.locationIds)) {
             itemLocationIdsMatch = item.locationIds.includes(selectedLocationTag);
+          }
+
+          // Check locationData.locationIds (multi-location storage units / vertical racks)
+          if (!itemLocationIdsMatch && item.locationData?.locationIds && Array.isArray(item.locationData.locationIds)) {
+            itemLocationIdsMatch = item.locationData.locationIds.includes(selectedLocationTag);
           }
 
           // Check item-level levelLocationMappings (vertical racks)

@@ -78,11 +78,15 @@ const deriveItemCapacity = (item: any): { maxCapacity: number; usedCapacity: num
     return { maxCapacity, usedCapacity: Math.min(maxCapacity, usedCapacity) };
   }
 
-  // Non-rack single-slot components
-  const maxCapacity = 1;
+  // Non-rack components: multi-location items count each location tag as a slot
+  const multiLocIds: string[] = Array.isArray(item.locationData?.locationIds) ? item.locationData.locationIds : [];
+  const maxCapacity = multiLocIds.length > 1 ? multiLocIds.length : 1;
   let usedCapacity = 0;
 
-  if (item.inventoryData && typeof item.inventoryData === 'object') {
+  if (multiLocIds.length > 1) {
+    // For multi-location items, each location tag counts as used
+    usedCapacity = multiLocIds.length;
+  } else if (item.inventoryData && typeof item.inventoryData === 'object') {
     const { inventory, utilization } = item.inventoryData;
     if (Array.isArray(inventory) && inventory.length > 0) usedCapacity = 1;
     else if (typeof utilization === 'number' && utilization > 0) usedCapacity = 1;
@@ -216,7 +220,13 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
 
     // ── Collect unique location tags and SKUs ──────────────────────────────────
     const addLocationTag = (id: any) => {
-      if (id && typeof id === 'string') uniqueLocationTags.add(id.trim());
+      if (!id) return;
+      // Handle array values (e.g. compartment primaryLocationId can be an array)
+      if (Array.isArray(id)) {
+        id.forEach(addLocationTag);
+        return;
+      }
+      if (typeof id === 'string') uniqueLocationTags.add(id.trim());
     };
 
     items.forEach((item: any) => {
@@ -236,6 +246,11 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
       addLocationTag(item.primaryLocationId);
       if (Array.isArray(item.locationIds)) {
         item.locationIds.forEach(addLocationTag);
+      }
+
+      // Multi-location storage units / vertical racks store extra tags in locationData.locationIds
+      if (item.locationData?.locationIds && Array.isArray(item.locationData.locationIds)) {
+        item.locationData.locationIds.forEach(addLocationTag);
       }
 
       // Item-level levelLocationMappings (vertical racks)
@@ -379,7 +394,22 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
       } else {
         // For non-compartmentalized items, process as before
         const { usedCapacity } = deriveItemCapacity(item);
-        if (itemTagName) {
+
+        // Multi-location items (storage units / vertical racks) store extra tags in locationData.locationIds
+        const multiLocIds: string[] = Array.isArray(item.locationData?.locationIds) ? item.locationData.locationIds : [];
+        if (multiLocIds.length > 0) {
+          multiLocIds.forEach((locId: string) => {
+            const trimmed = (locId || '').toString().trim();
+            if (trimmed) {
+              let tagData = locationTagLookup.get(trimmed);
+              if (!tagData) {
+                tagData = { id: trimmed, locationTagName: trimmed, unitId: unitId || 'fallback' } as LocationTag;
+                locationTagLookup.set(trimmed, tagData);
+              }
+              addToTag(tagData, 0);
+            }
+          });
+        } else if (itemTagName) {
           let tagData = locationTagLookup.get(itemTagName);
           if (!tagData) {
             tagData = { id: itemTagName, locationTagName: itemTagName, unitId: unitId || 'fallback' } as LocationTag;
@@ -471,11 +501,26 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
         });
         newlyAdded += newKeys.length;
       } else {
-        // Non-rack items count as 1 shelf slot each
-        totalShelves += 1;
-        const { usedCapacity } = deriveItemCapacity(item);
-        if (usedCapacity > 0) fullShelves += 1;
-        else emptyShelves += 1;
+        // Non-rack items: multi-location items count each location tag as a shelf slot
+        const multiLocIds: string[] = Array.isArray(item.locationData?.locationIds) ? item.locationData.locationIds : [];
+        if (multiLocIds.length > 1) {
+          totalShelves += multiLocIds.length;
+          // Each location tag that has backend data (currentItems > 0) counts as full
+          multiLocIds.forEach((locId: string) => {
+            const trimmed = (locId || '').toString().trim();
+            const tagData = locationTagLookup.get(trimmed);
+            if (tagData && (tagData.currentItems ?? 0) > 0) {
+              fullShelves += 1;
+            } else {
+              emptyShelves += 1;
+            }
+          });
+        } else {
+          totalShelves += 1;
+          const { usedCapacity } = deriveItemCapacity(item);
+          if (usedCapacity > 0) fullShelves += 1;
+          else emptyShelves += 1;
+        }
       }
     });
 
@@ -506,8 +551,8 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
   const displayStats = useMemo(() => ({
     ...overviewData,
     totalLocations: overviewData.totalLocations,
-    totalSkus: apiStats?.totalSkus ?? overviewData.totalSkus,
-    totalComponents: apiStats?.totalComponents ?? overviewData.totalComponents,
+    totalSkus: (apiStats?.totalSkus || overviewData.totalSkus),
+    totalComponents: (apiStats?.totalComponents || overviewData.totalComponents),
   }), [overviewData, apiStats]);
 
   // Same styling as LocationDetailsPanel
@@ -569,7 +614,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
   // the donut matches Summary Metrics. locationTagData may have fewer entries when a
   // tag is detected in the count but has no capacity data to map.
   const placedTagCount = displayStats.totalLocations;
-  const placedTagInUseCount = displayStats.locationTagData.filter((t: any) => t.utilizationPercentage > 0 || t.usedCapacity > 0).length;
+  const placedTagInUseCount = displayStats.locationTagData.filter((t: any) => (t.currentItems ?? 0) > 0).length;
   const placedTagUtilPercent = placedTagCount > 0 ? Math.round((placedTagInUseCount / placedTagCount) * 100) : 0;
 
   return (
@@ -579,15 +624,6 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
           <div style={{ fontSize: '1.1rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <TrendingUp size={20} />
             Warehouse Overview
-            {unitId && (
-              <span style={{ fontSize: '0.75rem', marginLeft: '0.5rem' }}>
-                {isConnected ? (
-                  <Wifi size={14} color="#22c55e" title="Live updates active" />
-                ) : (
-                  <WifiOff size={14} color="#ef4444" title="Disconnected" />
-                )}
-              </span>
-            )}
           </div>
           <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>
             {layoutData?.name || 'Warehouse Layout'} - Overall Metrics
@@ -658,31 +694,14 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
                       )}
                     </div>
                     <div style={{
-                      fontSize: '0.9rem',
-                      fontWeight: 'bold',
-                      color: location.utilizationPercentage > 80 ? '#22c55e' :
-                        location.utilizationPercentage > 50 ? '#f59e0b' : '#ef4444'
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      padding: '0.2rem 0.6rem',
+                      borderRadius: '4px',
+                      color: '#fff',
+                      backgroundColor: location.currentItems > 0 ? '#ef4444' : '#22c55e'
                     }}>
-                      {location.utilizationPercentage}%
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <div style={{
-                      width: '100%',
-                      height: '6px',
-                      backgroundColor: 'hsl(215.3 25.1% 32.6%)',
-                      borderRadius: '3px'
-                    }}>
-                      <div style={{
-                        width: `${location.utilizationPercentage}%`,
-                        height: '100%',
-                        backgroundColor: location.utilizationPercentage > 80 ? '#22c55e' :
-                          location.utilizationPercentage > 50 ? '#f59e0b' : '#ef4444',
-                        borderRadius: '3px',
-                        transition: 'width 0.3s ease'
-                      }}></div>
+                      {location.currentItems > 0 ? 'Utilised' : 'Not Utilised'}
                     </div>
                   </div>
 
@@ -712,36 +731,47 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
             Slot &amp; Tag Utilization
           </h4>
 
-          {/* Location Tag Utilization Ring */}
+          {/* Location Tag Utilization Donut */}
           <div style={{ marginBottom: '1rem', textAlign: 'center' }}>
             <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
               Location Tag Utilization
             </div>
-            <div style={{ position: 'relative', display: 'inline-block', width: '120px', height: '120px' }}>
-              {/* Ring Widget SVG */}
-              <svg width="120" height="120" style={{ transform: 'rotate(-90deg)' }}>
-                {/* Background ring */}
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="50"
-                  fill="none"
-                  stroke="hsl(215.3 25.1% 32.6%)"
-                  strokeWidth="12"
-                />
-                {/* Progress ring */}
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="50"
-                  fill="none"
-                  stroke="#f59e0b"
-                  strokeWidth="12"
-                  strokeDasharray={`${2 * Math.PI * 50}`}
-                  strokeDashoffset={`${2 * Math.PI * 50 * (1 - (placedTagCount > 0 ? placedTagInUseCount / placedTagCount : 0))}`}
-                  style={{ transition: 'stroke-dashoffset 0.5s ease' }}
-                />
-              </svg>
+            <div style={{ position: 'relative', display: 'inline-block', width: '140px', height: '140px' }}>
+              {(() => {
+                const r = 55;
+                const circumference = 2 * Math.PI * r;
+                const ratio = placedTagCount > 0 ? placedTagInUseCount / placedTagCount : 0;
+                const utilisedLen = circumference * ratio;
+                const notUtilisedLen = circumference - utilisedLen;
+                return (
+                  <svg width="140" height="140" style={{ transform: 'rotate(-90deg)' }}>
+                    {/* Not-utilised segment (green) — drawn first as full ring */}
+                    <circle
+                      cx="70"
+                      cy="70"
+                      r={r}
+                      fill="none"
+                      stroke="#22c55e"
+                      strokeWidth="16"
+                      strokeDasharray={`${circumference}`}
+                      strokeDashoffset="0"
+                    />
+                    {/* Utilised segment (red) — overlays from the start */}
+                    <circle
+                      cx="70"
+                      cy="70"
+                      r={r}
+                      fill="none"
+                      stroke="#ef4444"
+                      strokeWidth="16"
+                      strokeDasharray={`${utilisedLen} ${notUtilisedLen}`}
+                      strokeDashoffset="0"
+                      strokeLinecap="butt"
+                      style={{ transition: 'stroke-dasharray 0.5s ease' }}
+                    />
+                  </svg>
+                );
+              })()}
               {/* Center text */}
               <div style={{
                 position: 'absolute',
@@ -750,30 +780,24 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
                 transform: 'translate(-50%, -50%)',
                 fontSize: '1.5rem',
                 fontWeight: 'bold',
-                color: '#f59e0b'
+                color: '#e2e8f0'
               }}>
                 {placedTagUtilPercent}%
               </div>
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.5rem' }}>
+            {/* Legend */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '0.5rem', fontSize: '0.7rem', color: '#94a3b8' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#ef4444', display: 'inline-block' }} />
+                Utilised ({placedTagInUseCount})
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
+                Not Utilised ({placedTagCount - placedTagInUseCount})
+              </span>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.35rem' }}>
               {placedTagInUseCount} of {placedTagCount} placed tags in use
-            </div>
-          </div>
-
-          {/* Slot Fill Rate bar */}
-          <div style={{ marginTop: '0.75rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.25rem' }}>
-              <span style={{ color: '#94a3b8' }}>Slot Fill Rate</span>
-              <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{displayStats.slotFillRate ?? 0}% ({displayStats.totalUsed ?? 0}/{displayStats.totalMax ?? 0} slots)</span>
-            </div>
-            <div style={{ width: '100%', height: '6px', backgroundColor: 'hsl(215.3 25.1% 32.6%)', borderRadius: '3px' }}>
-              <div style={{
-                width: `${displayStats.slotFillRate ?? 0}%`,
-                height: '100%',
-                backgroundColor: (displayStats.slotFillRate ?? 0) > 80 ? '#22c55e' : (displayStats.slotFillRate ?? 0) > 50 ? '#f59e0b' : '#ef4444',
-                borderRadius: '3px',
-                transition: 'width 0.3s ease'
-              }} />
             </div>
           </div>
 
@@ -792,7 +816,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
                 <span style={{ color: '#ef4444', fontWeight: '600' }}>{displayStats.emptyShelves}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.8rem' }}>
-                <span style={{ color: '#94a3b8' }}>Full Shelves</span>
+                <span style={{ color: '#94a3b8' }}>Utilised Shelves</span>
                 <span style={{ color: '#22c55e', fontWeight: '600' }}>{displayStats.fullShelves}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.8rem' }}>

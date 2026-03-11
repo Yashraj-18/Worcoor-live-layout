@@ -1314,15 +1314,21 @@ const arePropsEqual = (prevProps: any, nextProps: any) => {
   }
 
   // Extract all relevant location IDs for this item to check against locationTagsMap
-  const allLocationIds = extractAllLocationIds(nextItem);
+  // Include item-level AND compartment-level IDs so racks re-render when
+  // backend data arrives for individual compartment location tags.
+  const allLocationIds = new Set(extractAllLocationIds(nextItem));
+  if (nextItem.compartmentContents && typeof nextItem.compartmentContents === 'object') {
+    Object.values(nextItem.compartmentContents).forEach((c: any) => {
+      if (!c) return;
+      extractAllLocationIds(nextItem, c).forEach((id: string) => allLocationIds.add(id));
+    });
+  }
 
   // Only check locationTagsMap for the IDs this specific item cares about
   // This is the key optimization: ignore map updates for other locations
-  if (allLocationIds.length > 0) {
+  if (allLocationIds.size > 0) {
     for (const locId of allLocationIds) {
       if (prevProps.locationTagsMap[locId] !== nextProps.locationTagsMap[locId]) {
-        // We do a shallow reference check here because patchLocationTag returns a new object 
-        // reference for the updated tag, while preserving references for unchanged tags
         return false;
       }
     }

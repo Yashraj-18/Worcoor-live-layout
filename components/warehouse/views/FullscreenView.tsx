@@ -416,6 +416,11 @@ const FullscreenMap = () => {
 
     const addLocation = (value) => {
       if (!value) return;
+      // Handle array values (e.g. compartment primaryLocationId can be an array)
+      if (Array.isArray(value)) {
+        value.forEach(addLocation);
+        return;
+      }
       const normalized = typeof value === 'string' ? value.trim() : String(value).trim();
       if (normalized) {
         locationTags.add(normalized);
@@ -506,6 +511,14 @@ const FullscreenMap = () => {
         item.locationIds.forEach(locId => {
           addLocation(locId);
           addSku(locId); // Extract SKU from each location ID
+        });
+      }
+
+      // Multi-location storage units / vertical racks store extra tags in locationData.locationIds
+      if (item.locationData?.locationIds && Array.isArray(item.locationData.locationIds)) {
+        item.locationData.locationIds.forEach(locId => {
+          addLocation(locId);
+          addSku(locId);
         });
       }
 
@@ -624,6 +637,11 @@ const FullscreenMap = () => {
           let itemLocationIdsMatch = false;
           if (Array.isArray(item.locationIds)) {
             itemLocationIdsMatch = item.locationIds.includes(selectedLocationTag);
+          }
+
+          // Check locationData.locationIds (multi-location storage units / vertical racks)
+          if (!itemLocationIdsMatch && item.locationData?.locationIds && Array.isArray(item.locationData.locationIds)) {
+            itemLocationIdsMatch = item.locationData.locationIds.includes(selectedLocationTag);
           }
 
           // Check item-level levelLocationMappings (vertical racks)

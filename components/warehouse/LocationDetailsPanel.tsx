@@ -360,26 +360,56 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
           }
         } else {
           // Handle single-level (existing logic)
-          if (!locationTagId) {
+          // Resolve the effective tag ID: prefer the DB UUID, but fall back to
+          // looking up the display-name (locationId) when the UUID isn't stored
+          // on the item (e.g. storage units like "Asset Parking Area").
+          let resolvedTagId = locationTagId;
+          const displayLocationId = selectedItem?.locationId
+            || selectedItem?.locationData?.primaryLocationId
+            || selectedItem?.inventoryData?.locationId
+            || selectedItem?.inventoryData?.uniqueId
+            || null;
+
+          if (!resolvedTagId && !displayLocationId) {
             if (!signal.aborted) {
               setLocationTag(null);
               setSkus([]);
+              setAssets([]);
             }
             return;
           }
 
-          const [allTags, skuResponse, assetResponse] = await Promise.all([
-            // Use parent-provided location tags if available, otherwise fetch them
-            locationTags && locationTags.length > 0
-              ? Promise.resolve(locationTags)
-              : locationTagService.listByUnit(unitId, { signal }),
-            skuService.list({ locationTagId, limit: 100 }, { signal }),
-            assetService.list({ locationTagId, limit: 100 }, { signal }),
+          // Fetch all tags for the unit first so we can resolve by name if needed
+          // Use parent-provided location tags if available, otherwise fetch them
+          const allTags = locationTags && locationTags.length > 0
+            ? locationTags
+            : await locationTagService.listByUnit(unitId, { signal });
+          if (signal.aborted) return;
+
+          if (!resolvedTagId && displayLocationId) {
+            const matched = allTags.find(
+              (t) => t.locationTagName === displayLocationId || t.id === displayLocationId,
+            );
+            if (matched) {
+              resolvedTagId = matched.id;
+            } else {
+              if (!signal.aborted) {
+                setLocationTag(null);
+                setSkus([]);
+                setAssets([]);
+              }
+              return;
+            }
+          }
+
+          const [skuResponse, assetResponse] = await Promise.all([
+            skuService.list({ locationTagId: resolvedTagId!, limit: 100 }, { signal }),
+            assetService.list({ locationTagId: resolvedTagId!, limit: 100 }, { signal }),
           ]);
 
           if (cancelled) return;
 
-          const tag = allTags.find((t) => t.id === locationTagId) ?? null;
+          const tag = allTags.find((t) => t.id === resolvedTagId) ?? null;
           if (!signal.aborted) {
             setLocationTag(tag);
             setSkus(skuResponse.items);
@@ -390,9 +420,9 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
             setMultiLocationData([]);
 
             // Update global locationTagsData with fresh SKU quantity
-            if (onLocationTagUpdate && locationTagId) {
+            if (onLocationTagUpdate && resolvedTagId) {
               const totalQuantity = skuResponse.items.reduce((sum, sku) => sum + (sku.quantity || 0), 0);
-              onLocationTagUpdate(locationTagId, totalQuantity);
+              onLocationTagUpdate(resolvedTagId, totalQuantity);
             }
           }
         }
@@ -601,7 +631,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
         )}
 
         {/* No Data Available */}
-        {selectedItem?.selectedCompartmentId && !locationTagId && (
+        {selectedItem?.selectedCompartmentId && !locationTagId && !selectedItem?.selectedCompartment?.locationId && !selectedItem?.selectedCompartment?.primaryLocationId && !selectedItem?.locationId && (
           <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
             <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
               <PackageOpen size={32} />
@@ -630,7 +660,7 @@ const LocationDetailsPanel: React.FC<LocationDetailsPanelProps> = ({
         )}
 
         {/* No locationTagId on the component (but NOT a compartment - compartments have their own message above) */}
-        {!loading && !error && !locationTagId && !selectedItem?.selectedCompartmentId && (
+        {!loading && !error && !locationTagId && !selectedItem?.selectedCompartmentId && !selectedItem?.locationId && !selectedItem?.locationData?.primaryLocationId && !selectedItem?.inventoryData?.locationId && !selectedItem?.inventoryData?.uniqueId && (
           <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
             <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
               <PackageOpen size={32} />

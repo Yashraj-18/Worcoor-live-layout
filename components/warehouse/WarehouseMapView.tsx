@@ -460,6 +460,10 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
           if (Array.isArray(item.locationIds)) {
             item.locationIds.forEach((id: string) => id && activeLocationIds.add(id.trim()));
           }
+          // Multi-location storage units / vertical racks store extra tags in locationData.locationIds
+          if (item.locationData?.locationIds && Array.isArray(item.locationData.locationIds)) {
+            item.locationData.locationIds.forEach((id: string) => id && activeLocationIds.add(id.trim()));
+          }
           if (Array.isArray(item.levelLocationMappings)) {
             item.levelLocationMappings.forEach((m: any) => {
               if (m?.locationId) activeLocationIds.add(m.locationId.trim());
@@ -502,7 +506,29 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         if (name) tagSet.add(name);
       });
       setAvailableLocationTags(Array.from(tagSet).sort());
-      setLocationTagsData(filteredTags);
+
+      // Enrich tags with actual SKU counts from the fetched SKU data.
+      // The backend's denormalized currentItems counter can be stale for rack
+      // compartment tags, so we cross-reference with live SKU query results.
+      const skuCountByTagName = new Map<string, number>();
+      (skuResponse.items || []).forEach((s: any) => {
+        const locTag = (s.locationTagName || '').trim();
+        if (locTag) {
+          skuCountByTagName.set(locTag, (skuCountByTagName.get(locTag) || 0) + 1);
+        }
+      });
+      const enrichedTags = filteredTags.map((tag: any) => {
+        const name = (tag.locationTagName || tag.name || '').trim();
+        const liveCount = skuCountByTagName.get(name) ?? 0;
+        // Use whichever is higher: backend counter or live SKU count
+        const effectiveItems = Math.max(tag.currentItems ?? 0, liveCount);
+        if (effectiveItems !== (tag.currentItems ?? 0)) {
+          return { ...tag, currentItems: effectiveItems };
+        }
+        return tag;
+      });
+
+      setLocationTagsData(enrichedTags);
 
       // 2. Filter SKUs: only those whose location tag is in the layout
       const filteredSkuItems = (skuResponse.items || []).filter((s: any) => {
@@ -799,6 +825,9 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
   const locationTagsMap = useMemo(() => {
     const map: Record<string, any> = {};
     locationTagsData.forEach((tag: any) => {
+      if (tag.id) {
+        map[tag.id] = tag;
+      }
       const name = tag.locationTagName || tag.name;
       if (name) {
         map[name] = tag;
@@ -1422,6 +1451,11 @@ const WarehouseMapView: React.FC<WarehouseMapViewProps> = ({ facilityData, initi
         let itemLocationIdsMatch = false;
         if (Array.isArray(item.locationIds)) {
           itemLocationIdsMatch = item.locationIds.includes(selectedLocationTag);
+        }
+
+        // Check locationData.locationIds (multi-location storage units / vertical racks)
+        if (!itemLocationIdsMatch && item.locationData?.locationIds && Array.isArray(item.locationData.locationIds)) {
+          itemLocationIdsMatch = item.locationData.locationIds.includes(selectedLocationTag);
         }
 
         // Check item-level levelLocationMappings (vertical racks)

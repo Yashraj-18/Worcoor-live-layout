@@ -180,7 +180,8 @@ const WarehouseItem = ({
       item,
       compartmentData,
       rowIndex,
-      colIndex
+      colIndex,
+      locationTagsMap
     });
 
     showTooltip(
@@ -190,7 +191,7 @@ const WarehouseItem = ({
       'compartment',
       2 // higher priority for compartments
     );
-  }, [isReadOnly, item, showTooltip, setHoveredCompartment]);
+  }, [isReadOnly, item, showTooltip, setHoveredCompartment, locationTagsMap]);
 
   const handleCompartmentMouseMove = useCallback((event: React.MouseEvent) => {
     if (!isReadOnly) return;

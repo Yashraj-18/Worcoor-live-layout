@@ -19,6 +19,7 @@ export interface CompartmentTooltipData {
   compartmentData: any;
   rowIndex: number;
   colIndex: number;
+  locationTagsMap?: Record<string, any>;
 }
 
 export const buildItemTooltipContent = (data: ItemTooltipData): React.ReactNode => {
@@ -152,12 +153,11 @@ export const buildItemTooltipContent = (data: ItemTooltipData): React.ReactNode 
         `${totalInventoryQuantity} units`
       ]);
 
-      // Issue 5: Status Full/Empty logic
       const hasLocationTags = allLocationTags.length > 0;
       const hasSkusAssigned = totalInventoryQuantity > 0;
       let statusText = 'Unknown';
       if (hasLocationTags) {
-        statusText = hasSkusAssigned ? 'Full' : 'Empty';
+        statusText = hasSkusAssigned ? 'Utilised' : 'Unutilised';
       }
       rows.push(['Status', statusText]);
     }
@@ -309,19 +309,29 @@ export const buildCompartmentTooltipContent = (data: CompartmentTooltipData): Re
     return primaryLocation;
   })();
 
-  let capacity = 1;
-  let occupiedCount = 0;
+  // Pull real data from locationTagsMap (backend tag) when available
+  const backendTag = data.locationTagsMap && compartmentLocationId
+    ? data.locationTagsMap[compartmentLocationId]
+    : null;
 
-  if (realLocationData) {
-    capacity = realLocationData.max_capacity || compartmentDefinedCapacity || 1;
-    occupiedCount = realLocationData.available_quantity || 0;
+  let capacityValue: string = '—';
+  let hasSkus = false;
+
+  if (backendTag) {
+    // Use backend tag's capacity (with unit) and currentItems for status
+    const cap = backendTag.capacity ?? backendTag.maxCapacity;
+    const unit = backendTag.unitOfMeasurement || item.unitOfMeasurement || 'cubic feet';
+    capacityValue = cap != null ? `${cap} ${unit}` : '—';
+    hasSkus = (backendTag.currentItems ?? 0) > 0;
+  } else if (realLocationData) {
+    const cap = realLocationData.max_capacity || compartmentDefinedCapacity;
+    capacityValue = cap != null ? `${cap} cubic ${item.unitOfMeasurement || 'metre'}` : '—';
+    hasSkus = (realLocationData.available_quantity || 0) > 0;
   } else {
     if (typeof compartmentDefinedCapacity === 'number' && compartmentDefinedCapacity > 0) {
-      capacity = compartmentDefinedCapacity;
-    } else if (hasAssignment && isMultiLocation && resolvedLocationIds.length > 0) {
-      capacity = resolvedLocationIds.length;
+      capacityValue = `${compartmentDefinedCapacity} cubic ${item.unitOfMeasurement || 'metre'}`;
     }
-    occupiedCount = hasAssignment ? (isMultiLocation && resolvedLocationIds.length > 0 ? resolvedLocationIds.length : 1) : 0;
+    hasSkus = false;
   }
 
   return (
@@ -352,13 +362,13 @@ export const buildCompartmentTooltipContent = (data: CompartmentTooltipData): Re
             <div className="warehouse-tooltip__metric">
               <span className="warehouse-tooltip__metric-label">Capacity</span>
               <span className="warehouse-tooltip__metric-value">
-                {capacity} cubic {item.unitOfMeasurement || 'metre'}
+                {capacityValue}
               </span>
             </div>
             <div className="warehouse-tooltip__metric">
               <span className="warehouse-tooltip__metric-label">Status</span>
               <span className="warehouse-tooltip__metric-value">
-                {!hasAssignment ? 'Unknown' : (occupiedCount > 0 ? 'Full' : 'Empty')}
+                {!hasAssignment ? 'Unknown' : (hasSkus ? 'Utilised' : 'Unutilised')}
               </span>
             </div>
           </div>

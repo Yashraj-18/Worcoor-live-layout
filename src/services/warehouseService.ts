@@ -248,7 +248,15 @@ export const warehouseService = {
       path: `${COMPONENT_BASE_PATH}/${componentId}`,
     });
   },
-
+ 
+  async syncLayout(layoutId: string, payload: { components: any[]; deleteIds?: string[] }): Promise<{ status: string }> {
+    const response = await apiService.put({
+      path: `${LAYOUT_BASE_PATH}/${layoutId}/sync`,
+      data: payload,
+    });
+    return response.data as { status: string };
+  },
+ 
   async setComponentLocationTag(componentId: string, locationTagId: string | null): Promise<Component> {
     const response = await apiService.put({
       path: `${COMPONENT_BASE_PATH}/${componentId}/location-tag`,

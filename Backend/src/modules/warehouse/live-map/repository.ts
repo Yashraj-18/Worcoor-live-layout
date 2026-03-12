@@ -110,21 +110,49 @@ export class LiveMapRepository {
   }
 
   async calculateUtilization(unitId: string, organizationId: string) {
-    const result = await db
+    // 1. Get all unique location tags attached to components in this unit's layouts
+    // 2. Sum their capacities
+    // 3. Sum all SKU quantities for those tags
+    
+    // Subquery for unique tags in layouts
+    const activeLayouts = db
+      .select({ id: layouts.id })
+      .from(layouts)
+      .where(and(eq(layouts.unitId, unitId), eq(layouts.organizationId, organizationId)));
+
+    const activeTags = await db
       .select({
-        totalCapacity: sql<number>`COALESCE(SUM(${locationTags.capacity}), 0)`,
-        totalItems: sql<number>`COALESCE(SUM(${skus.quantity}), 0)`,
+        id: locationTags.id,
+        capacity: locationTags.capacity,
       })
       .from(components)
       .innerJoin(locationTags, eq(components.locationTagId, locationTags.id))
-      .leftJoin(skus, eq(skus.locationTagId, locationTags.id))
       .innerJoin(layouts, eq(components.layoutId, layouts.id))
-      .where(and(eq(layouts.unitId, unitId), eq(components.organizationId, organizationId)));
+      .where(and(eq(layouts.unitId, unitId), eq(components.organizationId, organizationId)))
+      .groupBy(locationTags.id);
 
-    const { totalCapacity, totalItems } = result[0] || { totalCapacity: 0, totalItems: 0 };
+    if (activeTags.length === 0) {
+      return { totalCapacity: 0, totalItems: 0, utilizationPercentage: 0 };
+    }
+
+    const totalCapacity = activeTags.reduce((sum, tag) => sum + (tag.capacity || 0), 0);
+    const tagIds = activeTags.map(t => t.id);
+
+    const skusResult = await db
+      .select({
+        totalQuantity: sql<number>`SUM(${skus.quantity})`,
+      })
+      .from(skus)
+      .where(and(eq(skus.organizationId, organizationId), inArray(skus.locationTagId, tagIds)));
+
+    const totalItems = Number(skusResult[0]?.totalQuantity || 0);
     const utilization = totalCapacity > 0 ? (totalItems / totalCapacity) * 100 : 0;
 
-    return { totalCapacity, totalItems, utilizationPercentage: Math.round(utilization * 10) / 10 };
+    return {
+      totalCapacity,
+      totalItems,
+      utilizationPercentage: Math.round(utilization * 10) / 10,
+    };
   }
 
   async search(unitId: string, organizationId: string, query: string) {

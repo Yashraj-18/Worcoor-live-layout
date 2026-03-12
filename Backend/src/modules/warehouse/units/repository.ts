@@ -17,6 +17,14 @@ export class UnitsRepository {
   async findAllByOrganization(organizationId: string): Promise<UnitEntity[]> {
     return db.select().from(units).where(eq(units.organizationId, organizationId));
   }
+ 
+  async findAllWithUtilization(organizationId: string): Promise<UnitWithUtilization[]> {
+    const unitsList = await this.findAllByOrganization(organizationId);
+    const results = await Promise.all(
+      unitsList.map((u) => this.findByIdWithUtilization(u.id, organizationId))
+    );
+    return results.filter((u): u is UnitWithUtilization => u !== null);
+  }
 
   async findById(id: string, organizationId: string): Promise<UnitEntity | null> {
     const result = await db
@@ -31,26 +39,30 @@ export class UnitsRepository {
   async findByIdWithUtilization(id: string, organizationId: string): Promise<UnitWithUtilization | null> {
     const unit = await this.findById(id, organizationId);
     if (!unit) return null;
-
-    const locationStats = await db
+ 
+    const stats = await db
       .select({
-        totalLocations: count(locationTags.id),
-        occupiedLocations: count(sql`CASE WHEN EXISTS (
-          SELECT 1 FROM skus WHERE skus.location_tag_id = ${locationTags.id}
-        ) THEN 1 END`),
+        totalCapacity: sql<number>`COALESCE(SUM(${locationTags.capacity}), 0)`,
+        totalOccupied: sql<number>`COALESCE((
+          SELECT SUM(skus.quantity)
+          FROM skus
+          WHERE skus.location_tag_id IN (
+            SELECT id FROM location_tags WHERE unit_id = ${id}
+          ) AND skus.organization_id = ${organizationId}
+        ), 0)`,
       })
       .from(locationTags)
       .where(eq(locationTags.unitId, id));
-
-    const stats = locationStats[0] ?? { totalLocations: 0, occupiedLocations: 0 };
-    const utilizationPercentage = stats.totalLocations > 0
-      ? (Number(stats.occupiedLocations) / Number(stats.totalLocations)) * 100
+ 
+    const { totalCapacity, totalOccupied } = stats[0] ?? { totalCapacity: 0, totalOccupied: 0 };
+    const utilizationPercentage = totalCapacity > 0
+      ? (Number(totalOccupied) / Number(totalCapacity)) * 100
       : 0;
-
+ 
     return {
       ...unit,
-      totalLocations: Number(stats.totalLocations),
-      occupiedLocations: Number(stats.occupiedLocations),
+      totalLocations: Number(totalCapacity), // Renamed conceptually in this context
+      occupiedLocations: Number(totalOccupied),
       utilizationPercentage: Math.round(utilizationPercentage * 10) / 10,
     };
   }

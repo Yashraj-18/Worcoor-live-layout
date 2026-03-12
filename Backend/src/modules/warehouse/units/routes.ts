@@ -73,7 +73,15 @@ export async function unitsRoutes(app: FastifyInstance) {
       response: {
         200: {
           type: 'array',
-          items: unitResponseSchema,
+          items: {
+            type: 'object',
+            properties: {
+              ...unitResponseSchema.properties,
+              totalLocations: { type: 'integer' },
+              occupiedLocations: { type: 'integer' },
+              utilizationPercentage: { type: 'number' },
+            },
+          },
         },
       },
     },

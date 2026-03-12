@@ -12,6 +12,9 @@ export type OrgUnit = {
   status: OrgUnitStatus;
   description: string | null;
   area: string | null;
+  totalLocations?: number;
+  occupiedLocations?: number;
+  utilizationPercentage?: number;
   createdAt: string;
 };
 

@@ -929,100 +929,49 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
       try {
         existingComponents = await warehouseService.getComponents(layoutId);
       } catch {
-        // Layout may be brand new with no components yet
         existingComponents = [];
       }
-
+ 
       const existingIds = new Set(existingComponents.map(c => c.id));
       const currentIds = new Set(warehouseItems.map(i => i.id));
-
-      // 2. Create components that don't exist in backend yet
-      const toCreate = warehouseItems.filter(item => !existingIds.has(item.id));
-      // 3. Update components that exist in both
-      const toUpdate = warehouseItems.filter(item => existingIds.has(item.id));
-      // 4. Delete components that are in backend but not in current items
-      const toDelete = existingComponents.filter(c => !currentIds.has(c.id));
-
-      console.log(`🔄 Component sync: ${toCreate.length} create, ${toUpdate.length} update, ${toDelete.length} delete`);
-
-      // Helper: resolve location tag name → UUID for an item
+ 
+      // 2. Identify sync operations
+      const toDelete = existingComponents.filter(c => !currentIds.has(c.id)).map(c => c.id);
+      
       const resolveLocationTagUuid = (item: any): string | null => {
         const tagName = extractPrimaryLocationTagName(item);
-        console.log(`🔍 resolveLocationTagUuid: item.id=${item.id}, label=${item.label}, locationId=${item.locationId}, tagName=${tagName}, compartmentContents keys=`, item.compartmentContents ? Object.keys(item.compartmentContents) : 'none');
         if (!tagName) return null;
-        const uuid = findLocationTagUuid(tagName);
-        if (!uuid) {
-          console.warn(`⚠️ Location tag "${tagName}" not found in loaded tags (${locationTags.length} tags loaded)`);
-        }
-        return uuid;
+        return findLocationTagUuid(tagName);
       };
-
-      // Create new components
-      const createPromises = toCreate.map(item => {
+ 
+      const componentsToSync = warehouseItems.map(item => {
         const payload = itemToCreatePayload(item);
-        // Resolve location tag and inject into payload
         const tagUuid = resolveLocationTagUuid(item);
         if (tagUuid) payload.locationTagId = tagUuid;
-        console.log(`📤 Creating component: type=${payload.componentType}, label=${payload.label}, locationTagId=${payload.locationTagId}`);
-        return warehouseService.createComponent(layoutId, payload)
-          .then(async backendComp => {
-            console.log(`✅ Created component ${backendComp.id} (was ${item.id}), locationTagId=${backendComp.locationTagId}`);
-            // Update local item ID to match backend
-            setWarehouseItems(prev => prev.map(i =>
-              i.id === item.id ? { ...i, id: backendComp.id, _backendId: backendComp.id } : i
-            ));
-            // If locationTagId wasn't set via create payload, try setComponentLocationTag as fallback
-            if (tagUuid && !backendComp.locationTagId) {
-              try {
-                await warehouseService.setComponentLocationTag(backendComp.id, tagUuid);
-                console.log(`🏷️ Set location_tag_id via fallback for ${backendComp.id}`);
-              } catch (err: any) {
-                console.warn(`⚠️ Fallback setComponentLocationTag failed:`, err?.response?.status, err?.response?.data || err.message);
-              }
-            }
-            return backendComp;
-          })
-          .catch(err => {
-            console.error(`❌ Failed to create component for ${item.id}:`, err?.response?.status, err?.response?.data || err.message);
-            return null;
-          });
+        
+        // If it already exists in backend, it's an update
+        if (existingIds.has(item.id)) {
+          return { id: item.id, ...payload };
+        }
+        // Otherwise it's a new component
+        return payload;
       });
-
-      // Update existing components (full snapshot + location tag)
-      const updatePromises = toUpdate.map(item => {
-        const payload = itemUpdatesToPayload(item);
-        const fullPayload = itemToCreatePayload(item);
-        payload.metadata = fullPayload.metadata;
-        // Resolve location tag and inject into payload
-        const tagUuid = resolveLocationTagUuid(item);
-        if (tagUuid !== null) payload.locationTagId = tagUuid;
-        return warehouseService.updateComponent(item.id, payload)
-          .then(async () => {
-            console.log(`✅ Updated component ${item.id}, locationTagId=${tagUuid}`);
-            // Also call setComponentLocationTag to ensure FK is set
-            if (tagUuid !== undefined) {
-              try {
-                await warehouseService.setComponentLocationTag(item.id, tagUuid);
-                console.log(`🏷️ Set location_tag_id for ${item.id}: ${tagUuid ?? 'NULL'}`);
-              } catch (err: any) {
-                console.warn(`⚠️ Failed to set location tag for ${item.id}:`, err?.response?.status, err?.response?.data || err.message);
-              }
-            }
-          })
-          .catch(err => console.warn(`⚠️ Failed to update component ${item.id}:`, err?.response?.status, err?.response?.data || err.message));
+ 
+      console.log(`🔄 Atomic Sync: ${componentsToSync.length} components, ${toDelete.length} deletions`);
+ 
+      const { status } = await warehouseService.syncLayout(layoutId, {
+        components: componentsToSync,
+        deleteIds: toDelete
       });
-
-      // Delete removed components
-      const deletePromises = toDelete.map(comp =>
-        warehouseService.deleteComponent(comp.id)
-          .then(() => console.log(`✅ Deleted stale component ${comp.id}`))
-          .catch(err => console.warn(`⚠️ Failed to delete component ${comp.id}:`, err?.response?.status, err?.response?.data || err.message))
-      );
-
-      await Promise.allSettled([...createPromises, ...updatePromises, ...deletePromises]);
-      console.log('✅ Component sync complete');
+ 
+      if (status === 'success') {
+        console.log('✅ Atomic Component sync complete');
+        // Refresh items to get proper backend IDs for new items
+        const updatedComponents = await warehouseService.getComponents(layoutId);
+        setWarehouseItems(updatedComponents.map(c => componentToItem(c)));
+      }
     } catch (err: any) {
-      console.error('❌ Component sync failed:', err?.message || err);
+      console.error('❌ Atomic Component sync failed:', err?.message || err);
     }
   }, [warehouseItems, findLocationTagUuid, extractPrimaryLocationTagName, locationTags]);
 

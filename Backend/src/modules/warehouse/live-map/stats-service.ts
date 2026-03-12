@@ -61,15 +61,18 @@ export class LiveMapStatsService {
         )[0]?.count ?? 0
       : 0;
 
+    const utilizationResult = await this.repository.calculateUtilization(unitId, organizationId);
+ 
     const stats = {
       unitId,
       totalLocationTags: uniqueLocationTagIds.length,
       totalSkus: uniqueSkuNames.size,
       totalComponents: allComponents.length,
       totalAssets,
+      utilizationPercentage: utilizationResult.utilizationPercentage,
       timestamp: new Date().toISOString(),
     };
-
+ 
     reply.send(stats);
   }
 }

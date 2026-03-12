@@ -1331,9 +1331,15 @@ const arePropsEqual = (prevProps: any, nextProps: any) => {
   const prevMap = prevProps.locationTagsMap || {};
   const nextMap = nextProps.locationTagsMap || {};
 
+  // Additional safety check - ensure both maps exist before accessing
+  if (!prevMap || !nextMap) {
+    return false; // Re-render if maps are not properly initialized
+  }
+
   if (allLocationIds.size > 0) {
     for (const locId of allLocationIds) {
-      if (prevMap[locId] !== nextMap[locId]) {
+      // Ensure the location ID exists before trying to access it
+      if (locId && (prevMap[locId] !== nextMap[locId])) {
         return false;
       }
     }

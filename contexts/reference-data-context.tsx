@@ -4,127 +4,127 @@ import { createContext, useContext, useState, type ReactNode } from "react"
 
 // Define types for each reference data entity
 interface Unit {
-  Unit_ID: string
-  Unit_Name: string
-  Description: string
+  id: string
+  name: string
+  description: string
 }
 
 interface Department {
-  Department_ID: string
-  Department_Name: string
-  Mapped_Unit: string
-  Description: string
+  id: string
+  name: string
+  mappedUnit: string
+  description: string
 }
 
 interface UserType {
-  User_Type_ID: string
-  User_Type_Name: string
-  Description: string
+  id: string
+  name: string
+  description: string
 }
 
 interface SkillSet {
-  Skill_Set_ID: string
-  Skill_Set_Name: string
-  Description: string
+  id: string
+  name: string
+  description: string
 }
 
 interface IPAddress {
-  IP_Add_ID: string
-  Name: string
-  IP_Address: string
-  Description: string
+  id: string
+  name: string
+  ipAddress: string
+  description: string
 }
 
 interface GeoLocation {
-  GEO_LOC_ID: string
-  Unit: string
-  Latitude: string
-  Longitude: string
+  id: string
+  unit: string
+  latitude: string
+  longitude: string
 }
 
 interface TaskType {
-  TT_ID: string
-  Task_Type_Name: string
-  Description: string
+  id: string
+  name: string
+  description: string
 }
 
 interface ProjectSchedule {
-  PS_ID: string
-  Name: string
-  Description: string
+  id: string
+  name: string
+  description: string
 }
 
 interface ProjectType {
-  PT_ID: string
-  Project_Type_Name: string
-  Description: string
+  id: string
+  name: string
+  description: string
 }
 
 interface ResourceType {
-  Res_Type_ID: string
-  Resource_Type_Name: string
+  id: string
+  name: string
 }
 
 interface Resource {
-  Resource_ID: string
-  Resource_Name: string
-  Resource_Type: string
-  Resource_Specification?: string
+  id: string
+  name: string
+  resourceType: string
+  resourceSpecification?: string
 }
 
 interface SKUCategory {
-  SKU_CAT_ID: string
-  SKU_Category_Name: string
-  Description: string
+  id: string
+  name: string
+  description: string
 }
 
 interface SKUType {
-  SKU_Type_ID: string
-  SKU_Type_Name: string
-  Description: string
+  id: string
+  name: string
+  description: string
 }
 
 interface LocationTag {
-  LOC_TAG_ID: string
-  Location_Tag: string
-  Description: string
+  id: string
+  name: string
+  description: string
 }
 
 interface SKUUnit {
-  SKU_Unit: string
+  skuUnit: string
 }
 
 interface SKUWeight {
-  SUW_ID: string
-  SKU_Single_Unit_Weight: string
+  id: string
+  unit: string
 }
 
 interface Currency {
-  CUR_ID: string
-  Currency: string
-  Default_Flag: string
+  id: string
+  currency: string
+  isDefault: boolean
 }
 
 interface QualityRating {
-  QCR_ID: string
-  SKU_Quality_Rating: string
+  id: string
+  name: string
 }
 
 interface AssetCategory {
-  Ass_CAT_ID: string
-  Asset_Category: string
+  id: string
+  name: string
 }
 
 interface AssetState {
-  Ass_ST_ID: string
-  Asset_Status_Name: string
-  Description: string
+  id: string
+  name: string
+  description: string
 }
 
 interface ProductCategory {
-  PRC_ID: string
-  PRC_Name: string
-  Description: string
+  prcId: string
+  prcName: string
+  description: string
 }
 
 // Define the context type
@@ -175,200 +175,200 @@ interface ReferenceDataContextType {
 
 // Initial data based on the provided tables
 const initialUnits: Unit[] = [
-  { Unit_ID: "U-001", Unit_Name: "All", Description: "Represents All Unit (Default Unit)" },
-  { Unit_ID: "U-002", Unit_Name: "Unit 1", Description: "Unit 1 is storage unit" },
-  { Unit_ID: "U-003", Unit_Name: "Production Unit 1", Description: "Production Unit" },
-  { Unit_ID: "U-004", Unit_Name: "Asset Storing Facility", Description: "Asset Storing for Production Machine" },
-  { Unit_ID: "U-005", Unit_Name: "Main Office", Description: "Main Office of Company" },
+  { id: "U-001", name: "All", description: "Represents All Unit (Default Unit)" },
+  { id: "U-002", name: "Unit 1", description: "Unit 1 is storage unit" },
+  { id: "U-003", name: "Production Unit 1", description: "Production Unit" },
+  { id: "U-004", name: "Asset Storing Facility", description: "Asset Storing for Production Machine" },
+  { id: "U-005", name: "Main Office", description: "Main Office of Company" },
 ]
 
 const initialDepartments: Department[] = [
-  { Department_ID: "D-001", Department_Name: "All", Mapped_Unit: "All", Description: "Default Department" },
-  { Department_ID: "D-002", Department_Name: "Auditing", Mapped_Unit: "All", Description: "Auditing Department" },
-  { Department_ID: "D-003", Department_Name: "Quality Check", Mapped_Unit: "All", Description: "QC Department" },
-  { Department_ID: "D-004", Department_Name: "IT", Mapped_Unit: "All", Description: "IT Department" },
+  { id: "D-001", name: "All", mappedUnit: "All", description: "Default Department" },
+  { id: "D-002", name: "Auditing", mappedUnit: "All", description: "Auditing Department" },
+  { id: "D-003", name: "Quality Check", mappedUnit: "All", description: "QC Department" },
+  { id: "D-004", name: "IT", mappedUnit: "All", description: "IT Department" },
 ]
 
 const initialUserTypes: UserType[] = [
-  { User_Type_ID: "UT-001", User_Type_Name: "Executives", Description: "" },
-  { User_Type_ID: "UT-002", User_Type_Name: "Managers", Description: "" },
-  { User_Type_ID: "UT-003", User_Type_Name: "Technicians", Description: "" },
-  { User_Type_ID: "UT-004", User_Type_Name: "Worker", Description: "" },
+  { id: "UT-001", name: "Executives", description: "" },
+  { id: "UT-002", name: "Managers", description: "" },
+  { id: "UT-003", name: "Technicians", description: "" },
+  { id: "UT-004", name: "Worker", description: "" },
 ]
 
 const initialSkillSets: SkillSet[] = [
-  { Skill_Set_ID: "SS-001", Skill_Set_Name: "Business Management", Description: "" },
-  { Skill_Set_ID: "SS-002", Skill_Set_Name: "Project Management", Description: "" },
-  { Skill_Set_ID: "SS-003", Skill_Set_Name: "Team Management", Description: "" },
-  { Skill_Set_ID: "SS-004", Skill_Set_Name: "Auditor", Description: "" },
-  { Skill_Set_ID: "SS-005", Skill_Set_Name: "Machine Operator", Description: "" },
-  { Skill_Set_ID: "SS-006", Skill_Set_Name: "Quality Manager", Description: "" },
-  { Skill_Set_ID: "SS-007", Skill_Set_Name: "Packaging", Description: "" },
-  { Skill_Set_ID: "SS-008", Skill_Set_Name: "Electrician", Description: "" },
-  { Skill_Set_ID: "SS-009", Skill_Set_Name: "Plumber", Description: "" },
-  { Skill_Set_ID: "SS-010", Skill_Set_Name: "Welder", Description: "" },
-  { Skill_Set_ID: "SS-011", Skill_Set_Name: "Assembly Line", Description: "" },
-  { Skill_Set_ID: "SS-012", Skill_Set_Name: "HAZMAT", Description: "" },
-  { Skill_Set_ID: "SS-013", Skill_Set_Name: "Machine Repair", Description: "" },
-  { Skill_Set_ID: "SS-014", Skill_Set_Name: "ERT", Description: "" },
-  { Skill_Set_ID: "SS-015", Skill_Set_Name: "Equipment Handling", Description: "" },
+  { id: "SS-001", name: "Business Management", description: "" },
+  { id: "SS-002", name: "Project Management", description: "" },
+  { id: "SS-003", name: "Team Management", description: "" },
+  { id: "SS-004", name: "Auditor", description: "" },
+  { id: "SS-005", name: "Machine Operator", description: "" },
+  { id: "SS-006", name: "Quality Manager", description: "" },
+  { id: "SS-007", name: "Packaging", description: "" },
+  { id: "SS-008", name: "Electrician", description: "" },
+  { id: "SS-009", name: "Plumber", description: "" },
+  { id: "SS-010", name: "Welder", description: "" },
+  { id: "SS-011", name: "Assembly Line", description: "" },
+  { id: "SS-012", name: "HAZMAT", description: "" },
+  { id: "SS-013", name: "Machine Repair", description: "" },
+  { id: "SS-014", name: "ERT", description: "" },
+  { id: "SS-015", name: "Equipment Handling", description: "" },
 ]
 
 // Define initialIPAddresses with only the two required IP addresses
 const initialIPAddresses: IPAddress[] = [
   {
-    IP_Add_ID: "IP-001",
-    Name: "General IP",
-    IP_Address: "10.09.878.54",
-    Description: "General purpose IP address for standard network operations and basic connectivity",
+    id: "IP-001",
+    name: "General IP",
+    ipAddress: "10.09.878.54",
+    description: "General purpose IP address for standard network operations and basic connectivity",
   },
   {
-    IP_Add_ID: "IP-002",
-    Name: "Production IP",
-    IP_Address: "10.09.67.56",
-    Description: "Production environment IP address for live system operations and critical services",
+    id: "IP-002",
+    name: "Production IP",
+    ipAddress: "10.09.67.56",
+    description: "Production environment IP address for live system operations and critical services",
   },
 ]
 
 const initialGeoLocations: GeoLocation[] = [
-  { GEO_LOC_ID: "G-001", Unit: "Production Unit 1", Latitude: "29.7320° N", Longitude: "-95.3422° W" },
-  { GEO_LOC_ID: "G-002", Unit: "Asset Storing Facility", Latitude: "51.5074° N", Longitude: "-0.1278° W" },
+  { id: "G-001", unit: "Production Unit 1", latitude: "29.7320° N", longitude: "-95.3422° W" },
+  { id: "G-002", unit: "Asset Storing Facility", latitude: "51.5074° N", longitude: "-0.1278° W" },
 ]
 
 const initialTaskTypes: TaskType[] = [
-  { TT_ID: "TT-001", Task_Type_Name: "Auditor/Complaince/QC", Description: "" },
-  { TT_ID: "TT-002", Task_Type_Name: "Machine Operator", Description: "" },
-  { TT_ID: "TT-003", Task_Type_Name: "Equipment Manager", Description: "" },
-  { TT_ID: "TT-004", Task_Type_Name: "Warehouse Operation", Description: "" },
-  { TT_ID: "TT-005", Task_Type_Name: "Maintanance Management", Description: "" },
+  { id: "TT-001", name: "Auditor/Complaince/QC", description: "" },
+  { id: "TT-002", name: "Machine Operator", description: "" },
+  { id: "TT-003", name: "Equipment Manager", description: "" },
+  { id: "TT-004", name: "Warehouse Operation", description: "" },
+  { id: "TT-005", name: "Maintanance Management", description: "" },
 ]
 
 const initialProjectSchedules: ProjectSchedule[] = [
-  { PS_ID: "PS-001", Name: "One-Time", Description: "" },
-  { PS_ID: "PS-002", Name: "Repetative", Description: "" },
+  { id: "PS-001", name: "One-Time", description: "" },
+  { id: "PS-002", name: "Repetative", description: "" },
 ]
 
 const initialProjectTypes: ProjectType[] = [
-  { PT_ID: "PT-001", Project_Type_Name: "Maintainance Work", Description: "" },
-  { PT_ID: "PT-002", Project_Type_Name: "Auditing Work", Description: "" },
-  { PT_ID: "PT-003", Project_Type_Name: "Production Work", Description: "" },
-  { PT_ID: "PT-004", Project_Type_Name: "Internal Orders", Description: "" },
-  { PT_ID: "PT-005", Project_Type_Name: "External Orders", Description: "" },
+  { id: "PT-001", name: "Maintainance Work", description: "" },
+  { id: "PT-002", name: "Auditing Work", description: "" },
+  { id: "PT-003", name: "Production Work", description: "" },
+  { id: "PT-004", name: "Internal Orders", description: "" },
+  { id: "PT-005", name: "External Orders", description: "" },
 ]
 
 const initialResourceTypes: ResourceType[] = [
-  { Res_Type_ID: "RT-001", Resource_Type_Name: "SKU" },
-  { Res_Type_ID: "RT-002", Resource_Type_Name: "Asset" },
-  { Res_Type_ID: "RT-003", Resource_Type_Name: "Finished Good(FG)" },
+  { id: "RT-001", name: "SKU" },
+  { id: "RT-002", name: "Asset" },
+  { id: "RT-003", name: "Finished Good(FG)" },
 ]
 
 const initialResources: Resource[] = [
-  { Resource_ID: "R-001", Resource_Name: "Pallets", Resource_Type: "Asset" },
-  { Resource_ID: "R-002", Resource_Name: "Crates", Resource_Type: "Asset" },
-  { Resource_ID: "R-003", Resource_Name: "Forklift Machine", Resource_Type: "Asset" },
-  { Resource_ID: "R-004", Resource_Name: "Crane", Resource_Type: "Asset" },
-  { Resource_ID: "R-005", Resource_Name: "Packaging Material", Resource_Type: "SKU" },
-  { Resource_ID: "R-006", Resource_Name: "RAW Material", Resource_Type: "SKU" },
-  { Resource_ID: "R-007", Resource_Name: "Laptop", Resource_Type: "Asset" },
-  { Resource_ID: "R-008", Resource_Name: "Tables", Resource_Type: "Asset" },
-  { Resource_ID: "R-009", Resource_Name: "Miscellaneous", Resource_Type: "SKU" },
+  { id: "R-001", name: "Pallets", resourceType: "Asset" },
+  { id: "R-002", name: "Crates", resourceType: "Asset" },
+  { id: "R-003", name: "Forklift Machine", resourceType: "Asset" },
+  { id: "R-004", name: "Crane", resourceType: "Asset" },
+  { id: "R-005", name: "Packaging Material", resourceType: "SKU" },
+  { id: "R-006", name: "RAW Material", resourceType: "SKU" },
+  { id: "R-007", name: "Laptop", resourceType: "Asset" },
+  { id: "R-008", name: "Tables", resourceType: "Asset" },
+  { id: "R-009", name: "Miscellaneous", resourceType: "SKU" },
 ]
 
 const initialSKUCategories: SKUCategory[] = [
-  { SKU_CAT_ID: "SC-001", SKU_Category_Name: "RAW Material", Description: "" },
-  { SKU_CAT_ID: "SC-002", SKU_Category_Name: "Spare Parts", Description: "" },
-  { SKU_CAT_ID: "SC-003", SKU_Category_Name: "Packaging Material", Description: "" },
-  { SKU_CAT_ID: "SC-004", SKU_Category_Name: "Others", Description: "" },
+  { id: "SC-001", name: "RAW Material", description: "" },
+  { id: "SC-002", name: "Spare Parts", description: "" },
+  { id: "SC-003", name: "Packaging Material", description: "" },
+  { id: "SC-004", name: "Others", description: "" },
 ]
 
 const initialSKUTypes: SKUType[] = [
-  { SKU_Type_ID: "ST-001", SKU_Type_Name: "Primary", Description: "" },
-  { SKU_Type_ID: "ST-002", SKU_Type_Name: "Secondary", Description: "" },
+  { id: "ST-001", name: "Primary", description: "" },
+  { id: "ST-002", name: "Secondary", description: "" },
 ]
 
 const initialLocationTags: LocationTag[] = [
   {
-    LOC_TAG_ID: "LT-001",
-    Location_Tag: "U1-W1-Z2-R3",
-    Description: "Nomanclature is Unit-Warehouse-Zone-Rack.",
+    id: "LT-001",
+    name: "U1-W1-Z2-R3",
+    description: "Nomanclature is Unit-Warehouse-Zone-Rack.",
   },
-  { LOC_TAG_ID: "LT-002", Location_Tag: "U1-W1-Z4", Description: "" },
-  { LOC_TAG_ID: "LT-003", Location_Tag: "U1-W1-Z5", Description: "" },
-  { LOC_TAG_ID: "LT-004", Location_Tag: "U1-W2", Description: "" },
-  { LOC_TAG_ID: "LT-005", Location_Tag: "U1-W3-CR1", Description: "Cold room 1" },
-  { LOC_TAG_ID: "LT-006", Location_Tag: "Packaging Store 1", Description: "" },
-  { LOC_TAG_ID: "LT-007", Location_Tag: "W4-Spare-Part-Z1", Description: "" },
+  { id: "LT-002", name: "U1-W1-Z4", description: "" },
+  { id: "LT-003", name: "U1-W1-Z5", description: "" },
+  { id: "LT-004", name: "U1-W2", description: "" },
+  { id: "LT-005", name: "U1-W3-CR1", description: "Cold room 1" },
+  { id: "LT-006", name: "Packaging Store 1", description: "" },
+  { id: "LT-007", name: "W4-Spare-Part-Z1", description: "" },
 ]
 
 const initialSKUUnits: SKUUnit[] = [
-  { SKU_Unit: "Count" },
-  { SKU_Unit: "KG" },
-  { SKU_Unit: "Pounds" },
-  { SKU_Unit: "Liters" },
-  { SKU_Unit: "Rolls" },
-  { SKU_Unit: "Sheet" },
+  { skuUnit: "Count" },
+  { skuUnit: "KG" },
+  { skuUnit: "Pounds" },
+  { skuUnit: "Liters" },
+  { skuUnit: "Rolls" },
+  { skuUnit: "Sheet" },
 ]
 
 const initialSKUWeights: SKUWeight[] = [
-  { SUW_ID: "SUW-001", SKU_Single_Unit_Weight: "KG" },
-  { SUW_ID: "SUW-002", SKU_Single_Unit_Weight: "lb" },
-  { SUW_ID: "SUW-003", SKU_Single_Unit_Weight: "Grams" },
+  { id: "SUW-001", unit: "KG" },
+  { id: "SUW-002", unit: "lb" },
+  { id: "SUW-003", unit: "Grams" },
 ]
 
 const initialCurrencies: Currency[] = [
-  { CUR_ID: "CUR-001", Currency: "USD", Default_Flag: "Yes" },
-  { CUR_ID: "CUR-002", Currency: "INR", Default_Flag: "NO" },
-  { CUR_ID: "CUR-003", Currency: "EUR", Default_Flag: "NO" },
-  { CUR_ID: "CUR-004", Currency: "GBP", Default_Flag: "NO" },
-  { CUR_ID: "CUR-005", Currency: "", Default_Flag: "NO" },
-  { CUR_ID: "CUR-006", Currency: "", Default_Flag: "NO" },
-  { CUR_ID: "CUR-007", Currency: "", Default_Flag: "NO" },
+  { id: "CUR-001", currency: "USD", isDefault: true },
+  { id: "CUR-002", currency: "INR", isDefault: false },
+  { id: "CUR-003", currency: "EUR", isDefault: false },
+  { id: "CUR-004", currency: "GBP", isDefault: false },
+  { id: "CUR-005", currency: "", isDefault: false },
+  { id: "CUR-006", currency: "", isDefault: false },
+  { id: "CUR-007", currency: "", isDefault: false },
 ]
 
 const initialQualityRatings: QualityRating[] = [
-  { QCR_ID: "QCR-001", SKU_Quality_Rating: "Not Rates" },
-  { QCR_ID: "QCR-002", SKU_Quality_Rating: "A-Premium" },
-  { QCR_ID: "QCR-003", SKU_Quality_Rating: "B-Standard" },
-  { QCR_ID: "QCR-004", SKU_Quality_Rating: "C-Economy" },
+  { id: "QCR-001", name: "Not Rates" },
+  { id: "QCR-002", name: "A-Premium" },
+  { id: "QCR-003", name: "B-Standard" },
+  { id: "QCR-004", name: "C-Economy" },
 ]
 
 const initialAssetCategories: AssetCategory[] = [
-  { Ass_CAT_ID: "ASC-001", Asset_Category: "Lifting Machine" },
-  { Ass_CAT_ID: "ASC-002", Asset_Category: "Transfortation Asset" },
-  { Ass_CAT_ID: "ASC-003", Asset_Category: "Manifacturing Machine" },
-  { Ass_CAT_ID: "ASC-004", Asset_Category: "Equipement" },
-  { Ass_CAT_ID: "ASC-005", Asset_Category: "Tool" },
-  { Ass_CAT_ID: "ASC-006", Asset_Category: "IT Asset" },
-  { Ass_CAT_ID: "ASC-007", Asset_Category: "Office Asset" },
+  { id: "ASC-001", name: "Lifting Machine" },
+  { id: "ASC-002", name: "Transfortation Asset" },
+  { id: "ASC-003", name: "Manifacturing Machine" },
+  { id: "ASC-004", name: "Equipement" },
+  { id: "ASC-005", name: "Tool" },
+  { id: "ASC-006", name: "IT Asset" },
+  { id: "ASC-007", name: "Office Asset" },
 ]
 
 const initialAssetStates: AssetState[] = [
   {
-    Ass_ST_ID: "AST-001",
-    Asset_Status_Name: "Active",
-    Description:
+    id: "AST-001",
+    name: "Active",
+    description:
       "High-performance industrial conveyor belt system currently operational in production line A, processing 500 units per hour with 99.2% uptime efficiency.",
   },
   {
-    Ass_ST_ID: "AST-002",
-    Asset_Status_Name: "Under Maintenance",
-    Description:
+    id: "AST-002",
+    name: "Under Maintenance",
+    description:
       "Hydraulic press machine temporarily offline for scheduled quarterly maintenance including seal replacement, pressure calibration, and safety system inspection.",
   },
   {
-    Ass_ST_ID: "AST-003",
-    Asset_Status_Name: "Decommissioned",
-    Description:
+    id: "AST-003",
+    name: "Decommissioned",
+    description:
       "Legacy packaging equipment retired from service due to obsolescence, replaced by automated system and awaiting disposal through certified recycling vendor.",
   },
 ]
 
 const initialProductCategories: ProductCategory[] = [
-  { PRC_ID: "PRC-001", PRC_Name: "Office Furniture", Description: "Desks, chairs, tables, and other office furnishings" },
-  { PRC_ID: "PRC-002", PRC_Name: "Office Equipment", Description: "Electronics and equipment used in office environments" },
-  { PRC_ID: "PRC-003", PRC_Name: "Storage Solutions", Description: "Shelving, cabinets, and storage products" },
-  { PRC_ID: "PRC-004", PRC_Name: "Lighting", Description: "Lamps, fixtures, and lighting accessories" },
-  { PRC_ID: "PRC-005", PRC_Name: "Office Supplies", Description: "Consumable office materials" },
+  { prcId: "PRC-001", prcName: "Office Furniture", description: "Desks, chairs, tables, and other office furnishings" },
+  { prcId: "PRC-002", prcName: "Office Equipment", description: "Electronics and equipment used in office environments" },
+  { prcId: "PRC-003", prcName: "Storage Solutions", description: "Shelving, cabinets, and storage products" },
+  { prcId: "PRC-004", prcName: "Lighting", description: "Lamps, fixtures, and lighting accessories" },
+  { prcId: "PRC-005", prcName: "Office Supplies", description: "Consumable office materials" },
 ]
 
 // Create the context

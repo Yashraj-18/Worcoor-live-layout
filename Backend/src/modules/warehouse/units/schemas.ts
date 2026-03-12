@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const unitStatusEnum = z.enum(['LIVE', 'OFFLINE', 'MAINTENANCE', 'PLANNING']);
 const unitIdRegex = /^[a-zA-Z0-9_-]+$/;
-const areaRegex = /^\d+(?:\.\d+)?\s+sq\s+[A-Za-z]+$/i;
+const areaRegex = /^\d+(?:\.\d+)?(?:\s*(?:sq|square)\s*[a-zA-Z]*\d*|\s*[a-zA-Z]+\d*)?$/i;
 
 export const createUnitSchema = z.object({
   unitId: z
@@ -17,7 +17,7 @@ export const createUnitSchema = z.object({
   area: z
     .string()
     .max(100, 'Area must be less than 100 characters')
-    .regex(areaRegex, 'Area must be in format: [number] sq [unit] (e.g., 200 sq meters)')
+    .regex(areaRegex, 'Area must be a number, optionally followed by units (e.g., 200, 200 sqm, 500 square feet, 1000m²)')
     .optional()
     .nullable(),
 });

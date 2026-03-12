@@ -7,7 +7,7 @@ export class UnitsService {
   constructor(private readonly repository: UnitsRepository) { }
 
   async list(request: FastifyRequest, reply: FastifyReply) {
-    const units = await this.repository.findAllByOrganization(request.user.organizationId);
+    const units = await this.repository.findAllWithUtilization(request.user.organizationId);
     reply.send(units);
   }
 

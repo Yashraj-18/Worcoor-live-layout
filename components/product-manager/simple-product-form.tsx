@@ -335,11 +335,11 @@ export function SimpleProductForm({ onSubmit, onCancel, initialValues }: SimpleP
                   <SelectContent className="bg-background dark:bg-gray-800 border-border dark:border-gray-600">
                     {productCategories.map((category) => (
                       <SelectItem
-                        key={category.PRC_ID}
-                        value={category.PRC_ID}
+                        key={category.prcId}
+                        value={category.prcId}
                         className="text-foreground dark:text-gray-100 hover:bg-accent dark:hover:bg-gray-700 focus:bg-accent dark:focus:bg-gray-700"
                       >
-                        {category.PRC_Name}
+                        {category.prcName}
                       </SelectItem>
                     ))}
                   </SelectContent>

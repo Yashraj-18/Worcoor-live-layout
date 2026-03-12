@@ -107,6 +107,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
     totalSkus: number;
     totalComponents: number;
     totalAssets: number;
+    utilizationPercentage?: number;
   } | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
 
@@ -152,6 +153,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
           totalSkus: stats.totalSkus,
           totalComponents: stats.totalComponents,
           totalAssets: stats.totalAssets,
+          utilizationPercentage: stats.utilizationPercentage,
         });
       }
     } catch (error) {
@@ -179,6 +181,7 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
         totalSkus: stats.totalSkus,
         totalComponents: stats.totalComponents,
         totalAssets: stats.totalAssets,
+        utilizationPercentage: stats.utilizationPercentage,
       });
     },
   });
@@ -615,7 +618,9 @@ const WarehouseOverviewPanel = ({ layoutData, unitId, layoutId, locationTags: lo
   // tag is detected in the count but has no capacity data to map.
   const placedTagCount = displayStats.totalLocations;
   const placedTagInUseCount = displayStats.locationTagData.filter((t: any) => (t.currentItems ?? 0) > 0).length;
-  const placedTagUtilPercent = placedTagCount > 0 ? Math.round((placedTagInUseCount / placedTagCount) * 100) : 0;
+  const placedTagUtilPercent = apiStats?.utilizationPercentage !== undefined
+    ? Math.round(apiStats.utilizationPercentage)
+    : (placedTagCount > 0 ? Math.round((placedTagInUseCount / placedTagCount) * 100) : 0);
 
   return (
     <div style={panelStyle} className="animate-slide-up">

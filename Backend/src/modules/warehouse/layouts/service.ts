@@ -1,7 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import type { LayoutsRepository } from './repository.js';
-import type { CreateLayoutInput, UpdateLayoutInput } from './schemas.js';
+import type { CreateLayoutInput, UpdateLayoutInput, SyncLayoutInput } from './schemas.js';
 
 export class LayoutsService {
   constructor(private readonly repository: LayoutsRepository) {}
@@ -87,5 +87,22 @@ export class LayoutsService {
     }
 
     reply.code(204).send();
+  }
+ 
+  async sync(
+    request: FastifyRequest<{ Params: { layoutId: string }; Body: SyncLayoutInput }>,
+    reply: FastifyReply,
+  ) {
+    const { layoutId } = request.params;
+    const { organizationId } = request.user;
+ 
+    // Verify layout ownership before syncing
+    const layout = await this.repository.findById(layoutId, organizationId);
+    if (!layout) {
+      return reply.code(404).send({ error: 'Layout not found' });
+    }
+ 
+    await this.repository.syncComponents(layoutId, organizationId, request.body);
+    reply.send({ status: 'success' });
   }
 }

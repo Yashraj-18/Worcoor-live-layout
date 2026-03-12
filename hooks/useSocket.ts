@@ -66,7 +66,7 @@ export const useSocket = (options: UseSocketOptions = {}) => {
     if (prev === 0) {
       // First caller for this unitId — register one join handler
       const joinRoom = () => {
-        socket.emit('join-unit', { unit_id: unitId });
+        socket.emit('join:unit', { unitId });
       };
       unitJoinHandlers.set(unitId, joinRoom);
 
@@ -86,7 +86,7 @@ export const useSocket = (options: UseSocketOptions = {}) => {
           socket.off('connect', handler);
           unitJoinHandlers.delete(unitId);
         }
-        socket.emit('leave-unit', { unit_id: unitId });
+        socket.emit('leave:unit', { unitId });
       } else {
         unitRefCounts.set(unitId, current - 1);
       }

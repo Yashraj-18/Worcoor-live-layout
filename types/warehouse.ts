@@ -133,7 +133,12 @@ export interface UpdateComponentInput {
   label?: string | null;
   metadata?: Record<string, any> | null;
 }
-
+ 
+export interface SyncLayoutInput {
+  components: Array<CreateComponentInput | UpdateComponentInput>;
+  deleteIds?: string[];
+}
+ 
 export interface WarehouseMapDashboardProps {
   orgUnits: any[];
   layouts: Layout[];

@@ -63,11 +63,11 @@ export function useWarehouseSocket(options: UseWarehouseSocketOptions) {
   });
 
   // Use the shared singleton socket — no new io() connection created per caller.
-  // useSocket handles join-unit room via its own effect.
+  // useSocket handles join:unit room via its own effect.
   const { on, emit } = useSocket({ unitId });
 
   // Join/leave layout room only — unit room is already joined by useSocket({ unitId })
-  // via the legacy join-unit event. Emitting join:unit here would cause a double
+  // via the standardized join:unit event. Emitting join:unit here would cause a double
   // room-join and an extra DB query through requireUnitAccess on every mount.
   useEffect(() => {
     if (layoutId) emit('join:layout', { layoutId });

@@ -6,6 +6,7 @@ import { createMockReply, createMockRequest } from '../helpers/mocks.js';
 
 type UnitsRepositoryMock = {
   findAllByOrganization: ReturnType<typeof vi.fn>;
+  findAllWithUtilization: ReturnType<typeof vi.fn>;
   findById: ReturnType<typeof vi.fn>;
   findByIdWithUtilization: ReturnType<typeof vi.fn>;
   findByUnitId: ReturnType<typeof vi.fn>;
@@ -17,6 +18,7 @@ type UnitsRepositoryMock = {
 function buildRepository(): UnitsRepositoryMock {
   return {
     findAllByOrganization: vi.fn(),
+    findAllWithUtilization: vi.fn(),
     findById: vi.fn(),
     findByIdWithUtilization: vi.fn(),
     findByUnitId: vi.fn(),
@@ -35,9 +37,9 @@ describe('UnitsService', () => {
     service = new UnitsService(repository as unknown as UnitsRepository);
   });
 
-  it('lists units scoped to organization', async () => {
-    repository.findAllByOrganization.mockResolvedValue([
-      { id: 'unit-1', unitName: 'Main', organizationId: 'org-1' },
+  it('lists units with utilization scoped to organization', async () => {
+    repository.findAllWithUtilization.mockResolvedValue([
+      { id: 'unit-1', unitName: 'Main', organizationId: 'org-1', utilizationPercentage: 50 },
     ] as never);
 
     const reply = createMockReply();
@@ -45,8 +47,8 @@ describe('UnitsService', () => {
 
     await service.list(request, reply);
 
-    expect(repository.findAllByOrganization).toHaveBeenCalledWith('org-1');
-    expect(reply.payload).toEqual([{ id: 'unit-1', unitName: 'Main', organizationId: 'org-1' }]);
+    expect(repository.findAllWithUtilization).toHaveBeenCalledWith('org-1');
+    expect(reply.payload).toEqual([{ id: 'unit-1', unitName: 'Main', organizationId: 'org-1', utilizationPercentage: 50 }]);
   });
 
   it('creates unit while injecting organization id', async () => {

@@ -1,0 +1,48 @@
+services:
+  # Frontend Service (Next.js)
+  - type: web
+    name: worcoor-frontend
+    env: node
+    buildCommand: npm run build
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BACKEND_URL
+        sync: false
+    autoDeploy: true
+    healthCheckPath: /
+
+  # Backend Service (Fastify)
+  - type: web
+    name: worcoor-backend
+    env: node
+    buildCommand: cd Backend && npm run build
+    startCommand: cd Backend && npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: HOST
+        value: 0.0.0.0
+      - key: CORS_ORIGIN
+        sync: false
+      - key: SUPABASE_PROJECT_ID
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: COOKIE_SECRET
+        sync: false
+    autoDeploy: true
+    healthCheckPath: /health

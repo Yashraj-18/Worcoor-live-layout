@@ -238,11 +238,11 @@ export function SkuForm({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormItem className="space-y-1 gap-2">
-                <FormLabel className="text-sm font-medium leading-none">Warehouse</FormLabel>
+                <FormLabel className="text-sm font-medium leading-none">Unit</FormLabel>
                 <Select value={selectedWarehouseId} onValueChange={handleWarehouseChange}>
                   <FormControl>
                     <SelectTrigger className="h-12 rounded-md border border-input bg-white/100 dark:bg-slate-800/80 dark:border-slate-700">
-                      <SelectValue placeholder="Select Warehouse" />
+                      <SelectValue placeholder="Select Unit" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -254,7 +254,7 @@ export function SkuForm({
                   </SelectContent>
                 </Select>
                 {!selectedWarehouseId && (
-                  <p className="text-xs text-muted-foreground">Choose a warehouse to see its location tags.</p>
+                  <p className="text-xs text-muted-foreground">Choose a unit to see its location tags.</p>
                 )}
               </FormItem>
               <FormField

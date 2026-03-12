@@ -22,7 +22,7 @@ const LOCATION_TAG_NONE_VALUE = "__none__"
 const LOCATION_TAG_UNASSIGNED_VALUE = "__unassigned__"
 const LOCATION_TAG_ALL_VALUE = "__all__"
 const ASSET_TYPE_ALL_VALUE = "__all_types__"
-const WAREHOUSE_ALL_VALUE = "__all_warehouses__"
+const WAREHOUSE_ALL_VALUE = "__all_units__"
 
 const assetFormSchema = z.object({
   assetId: z.string().max(100, "Asset ID must be less than 100 characters").optional(),
@@ -196,17 +196,17 @@ export default function AssetManagementPage() {
   const fetchLocationTags = async () => {
     try {
       const units = await orgUnitService.list()
-      const warehouseUnits = units.filter((unit) => unit.unitType === "warehouse")
-      const warehouseOptions: WarehouseOption[] = warehouseUnits.map((unit) => ({
+      const allUnits = units
+      const unitOptions: WarehouseOption[] = allUnits.map((unit) => ({
         id: unit.id,
         name: unit.unitName,
       }))
-      setWarehouses(warehouseOptions)
+      setWarehouses(unitOptions)
 
       const tagOptions: LocationTagOption[] = []
 
       await Promise.all(
-        warehouseUnits.map(async (unit) => {
+        allUnits.map(async (unit) => {
           try {
             const tags = await locationTagService.listByUnit(unit.id)
             tags.forEach((tag) => {
@@ -225,7 +225,7 @@ export default function AssetManagementPage() {
       setAllLocationTags(tagOptions)
       setLocationTags(selectedWarehouseId ? tagOptions.filter((tag) => tag.unitId === selectedWarehouseId) : tagOptions)
     } catch (error) {
-      console.error("Failed to load warehouses and location tags", error)
+      console.error("Failed to load units and location tags", error)
     }
   }
 
@@ -415,7 +415,7 @@ export default function AssetManagementPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Asset Management</h1>
-          <p className="text-muted-foreground">Manage your warehouse assets</p>
+          <p className="text-muted-foreground">Manage your assets</p>
         </div>
         <Button onClick={handleAddAsset}>
           <Plus className="mr-2 h-4 w-4" />
@@ -428,7 +428,7 @@ export default function AssetManagementPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Assets</CardTitle>
-              <CardDescription>View and manage your warehouse assets</CardDescription>
+              <CardDescription>View and manage your assets</CardDescription>
             </div>
             <div className="flex items-center space-x-2">
               <Select
@@ -440,10 +440,10 @@ export default function AssetManagementPage() {
                 }}
               >
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select warehouse" />
+                  <SelectValue placeholder="Select Unit" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={WAREHOUSE_ALL_VALUE}>All Warehouses</SelectItem>
+                  <SelectItem value={WAREHOUSE_ALL_VALUE}>All Units</SelectItem>
                   {warehouses.map((wh) => (
                     <SelectItem key={wh.id} value={wh.id}>
                       {wh.name}
@@ -541,7 +541,7 @@ export default function AssetManagementPage() {
                     <TableHead className="text-foreground font-semibold whitespace-nowrap min-w-[200px]">Asset ID</TableHead>
                     <TableHead className="text-foreground font-semibold whitespace-nowrap min-w-[200px]">Asset Name</TableHead>
                     <TableHead className="text-foreground font-semibold whitespace-nowrap">Asset Type</TableHead>
-                    <TableHead className="text-foreground font-semibold whitespace-nowrap">Warehouse</TableHead>
+                    <TableHead className="text-foreground font-semibold whitespace-nowrap">Unit</TableHead>
                     <TableHead className="text-foreground font-semibold whitespace-nowrap">Location Tag</TableHead>
                     <TableHead className="text-foreground font-semibold whitespace-nowrap text-right">Actions</TableHead>
                   </TableRow>
@@ -608,7 +608,7 @@ export default function AssetManagementPage() {
           <DialogHeader>
             <DialogTitle>Add New Asset</DialogTitle>
             <DialogDescription>
-              Add a new asset to your warehouse inventory.
+              Add a new asset to your inventory.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -663,20 +663,20 @@ export default function AssetManagementPage() {
                   </FormItem>
                 )}
               />
-              {/* Warehouse Selection */}
+              {/* Unit Selection */}
               <FormItem>
-                <FormLabel>Warehouse</FormLabel>
+                <FormLabel>Unit</FormLabel>
                 <Select
                   value={dialogWarehouseId || WAREHOUSE_ALL_VALUE}
                   onValueChange={(value) => handleWarehouseChange(value === WAREHOUSE_ALL_VALUE ? "" : value)}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select warehouse" />
+                      <SelectValue placeholder="Select Unit" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value={WAREHOUSE_ALL_VALUE}>All Warehouses</SelectItem>
+                    <SelectItem value={WAREHOUSE_ALL_VALUE}>All Units</SelectItem>
                     {warehouses.map((wh) => (
                       <SelectItem key={wh.id} value={wh.id}>
                         {wh.name}
@@ -799,20 +799,20 @@ export default function AssetManagementPage() {
                 )}
               />
 
-              {/* Warehouse Selection */}
+              {/* Unit Selection */}
               <FormItem>
-                <FormLabel>Warehouse</FormLabel>
+                <FormLabel>Unit</FormLabel>
                 <Select
                   value={dialogWarehouseId || WAREHOUSE_ALL_VALUE}
                   onValueChange={(value) => handleWarehouseChange(value === WAREHOUSE_ALL_VALUE ? "" : value)}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select warehouse" />
+                      <SelectValue placeholder="Select Unit" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value={WAREHOUSE_ALL_VALUE}>All Warehouses</SelectItem>
+                    <SelectItem value={WAREHOUSE_ALL_VALUE}>All Units</SelectItem>
                     {warehouses.map((wh) => (
                       <SelectItem key={wh.id} value={wh.id}>
                         {wh.name}

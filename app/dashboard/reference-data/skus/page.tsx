@@ -64,12 +64,11 @@ export default function SkuManagementPage() {
   const loadLocationTags = useCallback(async () => {
     try {
       const units = await orgUnitService.list()
-      const warehouseUnits = units.filter((unit) => unit.unitType === "warehouse")
-      setOrgUnits(warehouseUnits)
+      setOrgUnits(units)
       const tagOptions: LocationTagOption[] = []
 
       await Promise.all(
-        warehouseUnits.map(async (unit) => {
+        units.map(async (unit) => {
           try {
             const tags = await locationTagService.listByUnit(unit.id)
             tags.forEach((tag) => {
@@ -260,10 +259,10 @@ export default function SkuManagementPage() {
           </div>
           <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
             <SelectTrigger className="w-full md:w-60 h-11 rounded-xl bg-background border-input">
-              <SelectValue placeholder="All Warehouses" />
+              <SelectValue placeholder="All Units" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Warehouses</SelectItem>
+              <SelectItem value="all">All Units</SelectItem>
               {orgUnits.map((unit) => (
                 <SelectItem key={unit.id} value={unit.id}>
                   {unit.unitId ? `${unit.unitId} - ${unit.unitName}` : unit.unitName}

@@ -3,7 +3,8 @@ services:
   - type: web
     name: worcoor-frontend
     env: node
-    buildCommand: npm run build
+    runtime: node
+    buildCommand: npm install && npm run build
     startCommand: npm start
     plan: free
     envVars:
@@ -18,7 +19,8 @@ services:
   - type: web
     name: worcoor-backend
     env: node
-    buildCommand: cd Backend && npm run build
+    runtime: node
+    buildCommand: cd Backend && npm install && npm run build
     startCommand: cd Backend && npm start
     plan: free
     envVars:

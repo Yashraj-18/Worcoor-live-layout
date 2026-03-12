@@ -141,12 +141,14 @@ export default function WarehouseManagementPage() {
   const activeWarehouses = layouts.filter((layout) => layout.status === 'operational').length;
  
   // Avg Tag Utilization = (total occupied tags / total tags) across all units
+  // Only compute when layouts exist; otherwise show '—'
   const avgTagUtilization = useMemo(() => {
+    if (layouts.length === 0) return null;
     const allTags = Object.values(locationTagsMap).flat();
     if (allTags.length === 0) return null;
     const occupiedTags = allTags.filter(t => (t.currentItems ?? 0) > 0).length;
     return Math.round((occupiedTags / allTags.length) * 1000) / 10;
-  }, [locationTagsMap]);
+  }, [locationTagsMap, layouts]);
 
   const isEmptyState = !isLoadingLayouts && layouts.length === 0;
 

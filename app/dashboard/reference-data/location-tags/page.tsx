@@ -175,6 +175,7 @@ export default function LocationTagsPage() {
     setEditingTag(null)
     resetDimensionInputs()
     form.reset()
+    setErrorMessage(null)
     setIsEditDialogOpen(false)
     setIsAddDialogOpen(true)
   }, [form, resetDimensionInputs])
@@ -311,6 +312,7 @@ export default function LocationTagsPage() {
 
   const handleEditClick = (tag: ApiLocationTag) => {
     setEditingTag(tag)
+    setErrorMessage(null)
     form.reset({
       locationTagName: tag.locationTagName,
       unitId: tag.unitId,
@@ -495,6 +497,14 @@ export default function LocationTagsPage() {
                 : "Fill in the details below to create a new location tag."}
             </DialogDescription>
           </DialogHeader>
+          
+          {errorMessage && (
+            <div className="mb-4 text-sm font-medium text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-4 py-3 flex items-center gap-2">
+              <span className="text-lg">⚠️</span>
+              {errorMessage}
+            </div>
+          )}
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField

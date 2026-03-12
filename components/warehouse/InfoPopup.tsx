@@ -44,8 +44,8 @@ const InfoPopup = ({ item, x, y, onClose }) => {
 
   const popupStyle = {
     position: 'fixed',
-    top: Math.min(y, window.innerHeight - 400),
-    left: Math.min(x, window.innerWidth - 350),
+    top: typeof window !== 'undefined' ? Math.min(y, window.innerHeight - 400) : y,
+    left: typeof window !== 'undefined' ? Math.min(x, window.innerWidth - 350) : x,
     backgroundColor: 'white',
     border: '1px solid #ddd',
     borderRadius: '8px',

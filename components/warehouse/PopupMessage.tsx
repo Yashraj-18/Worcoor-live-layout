@@ -281,6 +281,12 @@ class PopupManager {
     if (PopupManager.instance) {
       return PopupManager.instance;
     }
+    PopupManager.instance = this;
+  }
+  
+  // Lazy initialization - only create container when first needed
+  private ensureInitialized(): void {
+    if (this.root) return; // Already initialized
     
     // Only initialize on client-side (not during SSR)
     if (typeof window !== 'undefined' && typeof document !== 'undefined') {
@@ -289,13 +295,20 @@ class PopupManager {
       document.body.appendChild(this.container);
       this.root = createRoot(this.container);
     }
-    PopupManager.instance = this;
   }
   
   show(message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info', duration: number | null = null): Promise<void> {
     // Only show popup on client-side
-    if (typeof window === 'undefined' || !this.container || !this.root) {
+    if (typeof window === 'undefined') {
       console.warn('PopupManager: Cannot show popup during SSR');
+      return Promise.resolve();
+    }
+    
+    // Ensure container is initialized
+    this.ensureInitialized();
+    
+    if (!this.root) {
+      console.warn('PopupManager: Failed to initialize root');
       return Promise.resolve();
     }
     

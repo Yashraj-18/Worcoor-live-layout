@@ -40,9 +40,17 @@ interface PropertiesPanelProps {
   selectedItem: any;
   onUpdateItem: (id: string, updates: any) => void;
   onDeleteItem: (id: string) => void;
+  locationTags?: any[];
+  isLoadingLocationTags?: boolean;
 }
 
-const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdateItem, onDeleteItem }) => {
+const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ 
+  selectedItem, 
+  onUpdateItem, 
+  onDeleteItem,
+  locationTags = [],
+  isLoadingLocationTags = false
+}) => {
   const [skuIdSelectorVisible, setSkuIdSelectorVisible] = useState(false);
   const [pendingCompartmentId, setPendingCompartmentId] = useState<string | null>(null);
 
@@ -1373,6 +1381,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedItem, onUpdat
         onClose={handleSkuIdSelectorClose}
         onSave={handleSkuIdSelect}
         existingLocationIds={getExistingSkuIds()}
+        locationTags={locationTags}
+        isLoadingLocationTags={isLoadingLocationTags}
+        allowMultipleIds={selectedItem?.type !== 'sku_holder'}
       />
     </div>
   );

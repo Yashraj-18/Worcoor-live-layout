@@ -80,7 +80,13 @@ const WarehouseTooltip: React.FC<WarehouseTooltipProps> = ({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
-  if (!tooltip || !tooltip.content) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !tooltip || !tooltip.content) {
     return null;
   }
 
@@ -94,6 +100,10 @@ const WarehouseTooltip: React.FC<WarehouseTooltipProps> = ({
     variantClasses[tooltip.variant] || variantClasses.item,
     className
   ].filter(Boolean).join(' ');
+
+  const portalTarget = typeof document !== 'undefined' ? document.body : null;
+
+  if (!portalTarget) return null;
 
   return createPortal(
     <div
@@ -118,7 +128,7 @@ const WarehouseTooltip: React.FC<WarehouseTooltipProps> = ({
         ×
       </button>
     </div>,
-    document.body
+    portalTarget
   );
 };
 

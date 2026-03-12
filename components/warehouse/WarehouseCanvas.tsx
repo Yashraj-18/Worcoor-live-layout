@@ -28,7 +28,8 @@ const WarehouseCanvas = ({
   panOffset,
   onPanChange,
   onRequestSkuId,
-  centerCanvasTrigger
+  centerCanvasTrigger,
+  locationTagsMap = {}
 }) => {
   const canvasRef = useRef(null);
   const isDragging = useRef(false);
@@ -894,6 +895,7 @@ const WarehouseCanvas = ({
                   onInfoClick={onInfoClick}
                   stackMode={stackMode}
                   onRequestSkuId={onRequestSkuId}
+                  locationTagsMap={locationTagsMap}
                 />
               </div>
             );

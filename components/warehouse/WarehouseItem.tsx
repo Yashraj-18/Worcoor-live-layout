@@ -1310,7 +1310,8 @@ const arePropsEqual = (prevProps: any, nextProps: any) => {
     prevItem.width !== nextItem.width ||
     prevItem.height !== nextItem.height ||
     prevItem.color !== nextItem.color ||
-    prevItem.locationId !== nextItem.locationId) {
+    prevItem.locationId !== nextItem.locationId ||
+    JSON.stringify(nextItem.compartmentContents) !== JSON.stringify(prevItem.compartmentContents)) {
     return false;
   }
 
@@ -1327,9 +1328,12 @@ const arePropsEqual = (prevProps: any, nextProps: any) => {
 
   // Only check locationTagsMap for the IDs this specific item cares about
   // This is the key optimization: ignore map updates for other locations
+  const prevMap = prevProps.locationTagsMap || {};
+  const nextMap = nextProps.locationTagsMap || {};
+
   if (allLocationIds.size > 0) {
     for (const locId of allLocationIds) {
-      if (prevProps.locationTagsMap[locId] !== nextProps.locationTagsMap[locId]) {
+      if (prevMap[locId] !== nextMap[locId]) {
         return false;
       }
     }

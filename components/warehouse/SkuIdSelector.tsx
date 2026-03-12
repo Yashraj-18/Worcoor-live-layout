@@ -72,14 +72,14 @@ const SkuIdSelector: React.FC<SkuIdSelectorProps> = ({
   const availableLocationTags = getAvailableLocationTags();
 
   useEffect(() => {
-    if (availableLocationTags.length > 0) {
+    if (isVisible && availableLocationTags.length > 0) {
       setSelectedLocationId(availableLocationTags[0].locationTagName);
     }
     // Reset multiple mode when selector opens
     setMultipleIds([]);
     setShowMultipleMode(false);
     setSelectedCategory('');
-  }, [availableLocationTags.length]);
+  }, [availableLocationTags.length, isVisible]);
 
   const addMoreIds = () => {
     const finalLocationId = selectedLocationId;

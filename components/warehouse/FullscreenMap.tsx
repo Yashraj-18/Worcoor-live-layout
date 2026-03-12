@@ -141,6 +141,19 @@ const FullscreenMap = () => {
   const [assetTagMap, setAssetTagMap] = useState({});
   const [isHydrating, setIsHydrating] = useState(false);
 
+  // Memoized location tags map for fast lookups by location_tag_name
+  const locationTagsMap = useMemo(() => {
+    const map = {};
+    if (Array.isArray(locationTagsData)) {
+      locationTagsData.forEach(tag => {
+        if (tag.locationTagName) {
+          map[tag.locationTagName] = tag;
+        }
+      });
+    }
+    return map;
+  }, [locationTagsData]);
+
   const storageSummaries = useMemo(() => {
     if (!mapData) {
       return [];
@@ -1993,6 +2006,7 @@ const FullscreenMap = () => {
                       stageShadow="none"
                       stageBorderRadius="0px"
                       onItemClick={handleItemClick}
+                      locationTagsMap={locationTagsMap}
                     />
                   )}
                 </div>

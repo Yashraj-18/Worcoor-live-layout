@@ -98,6 +98,7 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   const [selectedFacility, setSelectedFacility] = useState<any>(null);
   const [showMainDashboard, setShowMainDashboard] = useState<boolean>(false);
   const [gridVisible, setGridVisible] = useState<boolean>(true);
+  const [isFullscreenMap, setIsFullscreenMap] = useState<boolean>(false);
   const [snapEnabled, setSnapEnabled] = useState<boolean>(true);
   const [undoStack, setUndoStack] = useState<any[]>([]);
   const [redoStack, setRedoStack] = useState<any[]>([]);
@@ -108,6 +109,13 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
   const [selectedOrgMap, setSelectedOrgMap] = useState<any>(null);
   const [locationTags, setLocationTags] = useState<LocationTag[]>([]);
   const [isLoadingLocationTags, setIsLoadingLocationTags] = useState(false);
+
+  const locationTagsMap = React.useMemo(() => {
+    return (locationTags || []).reduce((acc: Record<string, any>, tag) => {
+      acc[tag.locationTagName] = tag;
+      return acc;
+    }, {});
+  }, [locationTags]);
   const [skuIdSelectorVisible, setSkuIdSelectorVisible] = useState<boolean>(false);
   const [multiLocationSelectorVisible, setMultiLocationSelectorVisible] = useState<boolean>(false);
   const [pendingSkuRequest, setPendingSkuRequest] = useState<any>(null);
@@ -486,6 +494,19 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
         localStorage.removeItem('loadLayoutData');
       }
     }
+  }, []);
+
+  // Detect fullscreen map mode safely (client-side only)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const checkFullscreen = () => {
+      setIsFullscreenMap(window.location.hash.startsWith('#fullscreen-map='));
+    };
+
+    checkFullscreen();
+    window.addEventListener('hashchange', checkFullscreen);
+    return () => window.removeEventListener('hashchange', checkFullscreen);
   }, []);
 
   // Clear context menu when no warehouse items exist
@@ -1756,9 +1777,8 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
     router.push('/warehouse-management');
   }, [router]);
 
-  // Check if we're in fullscreen map mode
-  const isFullscreenMap = window.location.hash.startsWith('#fullscreen-map=');
-
+  // Check if we're in fullscreen map mode - now handled via state for SSR safety
+  
   // If fullscreen map, render only the fullscreen component
   if (isFullscreenMap) {
     return <FullscreenMap />;
@@ -1855,12 +1875,15 @@ function App({ initialOrgUnit = null, initialLayout = null, layoutId: propLayout
                 onPanChange={handlePanChange}
                 onRequestSkuId={handleLocationIdRequest}
                 centerCanvasTrigger={centerCanvasTrigger}
+                locationTagsMap={locationTagsMap}
               />
 
               <PropertiesPanel
                 selectedItem={selectedItem}
                 onUpdateItem={handleUpdateItem}
                 onDeleteItem={handleDeleteItem}
+                locationTags={locationTags}
+                isLoadingLocationTags={isLoadingLocationTags}
               />
             </div>
 

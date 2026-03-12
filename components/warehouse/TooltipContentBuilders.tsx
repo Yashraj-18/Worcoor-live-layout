@@ -309,6 +309,12 @@ export const buildCompartmentTooltipContent = (data: CompartmentTooltipData): Re
     return primaryLocation;
   })();
 
+  const formatCubicUnit = (unit: string | undefined) => {
+    const trimmed = unit?.trim();
+    if (!trimmed) return 'cubic units';
+    return trimmed.toLowerCase().includes('cubic') ? trimmed : `cubic ${trimmed}`;
+  };
+
   // Pull real data from locationTagsMap (backend tag) when available
   const backendTag = data.locationTagsMap && compartmentLocationId
     ? data.locationTagsMap[compartmentLocationId]
@@ -320,7 +326,7 @@ export const buildCompartmentTooltipContent = (data: CompartmentTooltipData): Re
   if (backendTag) {
     // Use backend tag's capacity (with unit) and currentItems for status
     const cap = backendTag.capacity ?? backendTag.maxCapacity;
-    const unit = backendTag.unitOfMeasurement || item.unitOfMeasurement || 'cubic feet';
+    const unit = formatCubicUnit(backendTag.unitOfMeasurement || item.unitOfMeasurement || 'feet');
     capacityValue = cap != null ? `${cap} ${unit}` : '—';
     hasSkus = (backendTag.currentItems ?? 0) > 0;
   } else if (realLocationData) {
